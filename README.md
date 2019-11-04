@@ -12,7 +12,7 @@
 SDK分四层设计，从上至下分别为平台服务层、核心协议层、网络层、硬件抽象层。
 
 - 服务层
-在网络协议层之上，实现了包括设备接入鉴权，设备影子，数据模板，网关，动态注册，日志上报和OTA等功能，并提供相关API接口给用户使用，关于服务层API说明，请参考doc目录文档[C-SDK_API及可变参数说明]()
+在网络协议层之上，实现了包括设备接入鉴权，设备影子，数据模板，网关，动态注册，日志上报和OTA等功能，并提供相关API接口给用户使用，关于服务层API说明，请参考doc目录文档[C-SDK_API及可变参数说明](https://github.com/tencentyun/qcloud-iot-explorer-sdk-embedded-c/blob/master/docs/C-SDK_API%E5%8F%8A%E5%8F%AF%E5%8F%98%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E.md)
 
 - 协议层
 设备端和IoT平台交互的网络协议包括MQTT/COAP/HTTP
@@ -51,9 +51,9 @@ C-SDK 支持三种编译方式：
 - Makefile 方式
 - 代码抽取方式
 
-编译方式以及编译配置选项的详细说明请参考docs目录文档[C-SDK_Build编译环境及配置选项说明]() 
+编译方式以及编译配置选项的详细说明请参考docs目录文档[C-SDK_Build编译环境及配置选项说明](https://github.com/tencentyun/qcloud-iot-explorer-sdk-embedded-c/blob/master/docs/C-SDK_Build%E7%BC%96%E8%AF%91%E7%8E%AF%E5%A2%83%E5%8F%8A%E9%85%8D%E7%BD%AE%E9%80%89%E9%A1%B9%E8%AF%B4%E6%98%8E.md) 
 
 ## SDK 快速体验
 
-请参考docs目录文档 [IoT_Explorer开发平台快速入门]()
+请参考docs目录文档 [IoT_Explorer开发平台快速入门](https://github.com/tencentyun/qcloud-iot-explorer-sdk-embedded-c/blob/master/docs/IoT_Explorer%E5%BC%80%E5%8F%91%E5%B9%B3%E5%8F%B0%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8.md)
 
