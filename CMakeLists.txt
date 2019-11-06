@@ -57,7 +57,8 @@ set(FEATURE_AT_DEBUG OFF)
 ######################CONFIG END######################################
 
 # 设置CMAKE使用编译工具及编译选项
-if (PLATFORM STREQUAL "linux" AND COMPILE_TOOLS  STREQUAL "gcc")
+#if (PLATFORM STREQUAL "linux" AND COMPILE_TOOLS  STREQUAL "gcc")
+if (PLATFORM STREQUAL "linux")
 	set(CMAKE_C_COMPILER ${COMPILE_TOOLS}) 
 	if(${BUILD_TYPE} STREQUAL  "release")
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -Wno-error=sign-compare -Wno-error=format -Os -pthread") # 编译选项
