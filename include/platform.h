@@ -30,16 +30,20 @@ typedef unsigned long ssize_t;
 #define getcwd(buffer,len)	_getcwd(buffer,len)
 #endif
 
-#if defined(__linux__) && defined(__GLIBC__)
+
+#if defined(__linux__) 
 #include <pthread.h>
 #include <fcntl.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <assert.h>
 #include <signal.h>
 #include <limits.h>
+#include <time.h>
+
 #endif
+
 
 #ifdef __cplusplus
 }

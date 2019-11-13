@@ -6,7 +6,7 @@
 
 #### 架构图
 
-![framework](https://main.qcloudimg.com/raw/ebcd38eda169523c4b1751dac1c630a0.png)
+![framework](https://main.qcloudimg.com/raw/76fc3f15c4c91ea6cf7e496f25d5d572.jpg)
 
 #### 架构说明
 
@@ -49,9 +49,9 @@ SDK在 **platform/os** 目录示例了Linux、Windows、FreeRTOS及nonOS四个�
 
 #### 网络及TLS相关的HAL接口
 
-网络相关接口提供二选一的适配移植。对于具备网络通讯能力并且本身集成TCP/IP网络协议栈的设备，需要实现POSIX_socket的网络HAL接口，使用TLS/SSL加密通讯的还需要实现TLS相关的HAL接口。而对于[MCU+通用TCP_AT模组]()的设备，则可以选择SDK提供的AT_Socket框架，并实现相关的AT模组接口。
+网络相关接口提供二选一的适配移植。对于具备网络通讯能力并且本身集成TCP/IP网络协议栈的设备，需要实现BSD_socket的网络HAL接口，使用TLS/SSL加密通讯的还需要实现TLS相关的HAL接口。而对于[MCU+通用TCP_AT模组]()的设备，则可以选择SDK提供的AT_Socket框架，并实现相关的AT模组接口。
 
-##### 基于POSIX_socket的HAL接口
+##### 基于BSD_socket的HAL接口
 
 其中TCP/UDP相关接口基于POSIX socket函数实现。TLS相关接口依赖于 **mbedtls** 库，移植之前必须确保系统上有可用的**mbedtls**库。如果采用其他TLS/SSL库，可参考**platform/tls/mbedtls**相关实现进行移植适配。
 UDP/DTLS 相关的函数仅在使能 **COAP** 通讯的时候才需要移植。

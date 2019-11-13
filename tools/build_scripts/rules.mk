@@ -69,6 +69,9 @@ final-out :
 	$(TOP_Q) \
 	cp -rf $(TOP_DIR)/certs $(FINAL_DIR)/bin/
 	
+	$(TOP_Q) \
+	cp -rf $(TOP_DIR)/device_info.json $(FINAL_DIR)/bin/
+	
 ifeq (,$(filter -DAUTH_WITH_NOTLS,$(CFLAGS)))
 	$(TOP_Q) \
 	mv ${TEMP_DIR}/*.a ${FINAL_DIR}/lib/

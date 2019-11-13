@@ -30,7 +30,7 @@ extern "C" {
 #include "qcloud_iot_import.h"
 #include "utils_param_check.h"
 #include "data_template_client_json.h"
-#include "device.h"
+#include "qcloud_iot_device.h"
 #include "mqtt_client.h"
 
 

@@ -82,10 +82,7 @@ $(foreach v, \
 
 EXCLUDE_SRC_FILES := \
 
-ifeq (,$(filter -DOTA_COAP_CHANNEL, $(CFLAGS)))
-EXCLUDE_SRC_FILES += $(TOP_DIR)/$(SRC_DIR)/services/ota/ota_coap.c
-IOTSDK_SRC_FILES := $(filter-out $(EXCLUDE_SRC_FILES),$(IOTSDK_SRC_FILES))
-else
+ifeq (,$(filter -DOTA_COMM_ENABLED, $(CFLAGS)))
 EXCLUDE_SRC_FILES += $(TOP_DIR)/$(SRC_DIR)/services/ota/ota_mqtt.c
 IOTSDK_SRC_FILES := $(filter-out $(EXCLUDE_SRC_FILES),$(IOTSDK_SRC_FILES))
 endif

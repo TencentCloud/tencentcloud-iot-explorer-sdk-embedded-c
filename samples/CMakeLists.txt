@@ -1,4 +1,4 @@
-# ���ӿ�
+
 set(INC_DIR  ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/include)
 set(LINK_DIR ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/lib/)
 include_directories(${INC_DIR})
@@ -19,18 +19,15 @@ set(link_lib
 )
 endif()
 
-#if (PLATFORM STREQUAL "linux" AND COMPILE_TOOLS  STREQUAL "gcc")
-if (PLATFORM STREQUAL "linux" )
+if (PLATFORM STREQUAL "linux" AND COMPILE_TOOLS  STREQUAL "gcc")
 	set(lib -Wl,--start-group ${link_lib} -Wl,--end-group)
 elseif (PLATFORM STREQUAL "windows" AND COMPILE_TOOLS STREQUAL "MSVC")
 	set(lib ${link_lib})
 endif()
 
 
-# ���ɿ�ִ���ļ�
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
 
-# ʾ��
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
 
 
 # data_template

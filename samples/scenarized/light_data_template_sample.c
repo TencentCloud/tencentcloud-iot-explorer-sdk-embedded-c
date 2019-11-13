@@ -13,14 +13,6 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <string.h>
-#include <time.h>
-
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
 #include "lite-utils.h"

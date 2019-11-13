@@ -109,7 +109,10 @@ static void _ota_callback(void *pcontext, const char *msg, uint32_t msg_len) {
             goto End;
         }
 
-        if(NULL != json_type) HAL_Free(json_type);
+        if(NULL != json_type) {
+            HAL_Free(json_type);
+            json_type = NULL;
+        }
 
         if (0 != qcloud_otalib_get_params(msg, &json_type, &h_ota->purl, &h_ota->version,
         		h_ota->md5sum, &h_ota->size_file)) {
@@ -125,6 +128,12 @@ End:
 
 #undef OTA_JSON_TYPE_VALUE_LENGTH
 }
+
+static void IOT_OTA_ResetStatus(void *handle)
+{
+   OTA_Struct_t *h_ota = (OTA_Struct_t *) handle;
+   h_ota->state = IOT_OTAS_INITED;
+} 
 
 static int IOT_OTA_ReportProgress(void *handle, IOT_OTA_Progress_Code progress, IOT_OTAReportType reportType)
 {
@@ -228,6 +237,8 @@ static int IOT_OTA_ReportUpgradeResult(void *handle, const char *version, IOT_OT
         goto do_exit;
     }
 
+    IOT_OTA_ResetStatus(h_ota);
+
 do_exit:
     if (NULL != msg_upgrade) {
         HAL_Free(msg_upgrade);
@@ -236,7 +247,6 @@ do_exit:
 
 #undef MSG_UPGPGRADE_LEN
 }
-
 
 /* Init OTA handle */
 void *IOT_OTA_Init(const char *product_id, const char *device_name, void *ch_signal)
@@ -358,8 +368,6 @@ void IOT_OTA_UpdateClientMd5(void *handle, char * buff, uint32_t size)
 	qcloud_otalib_md5_update(h_ota->md5, buff, size);	
 }
 
-
-
 int IOT_OTA_ReportVersion(void *handle, const char *version)
 {
 #define MSG_INFORM_LEN  (128)
@@ -383,6 +391,8 @@ int IOT_OTA_ReportVersion(void *handle, const char *version)
         h_ota->err = IOT_OTA_ERR_INVALID_STATE;
         return QCLOUD_ERR_FAILURE;
     }
+
+    IOT_OTA_ResetStatus(h_ota);
 
     if (NULL == (msg_informed = HAL_Malloc(MSG_INFORM_LEN))) {
         Log_e("allocate for msg_informed failed");

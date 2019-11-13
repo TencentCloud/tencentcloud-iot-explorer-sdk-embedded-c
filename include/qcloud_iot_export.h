@@ -50,6 +50,9 @@ extern "C" {
 /* MAX size of device key file name */
 #define MAX_SIZE_OF_DEVICE_SECRET_FILE_NAME                            (128)
 
+/* MAX num of subdevice */
+#define MAX_NUM_SUB_DEV                            (5)
+
 /**************** QCloud IoT C-SDK constants end *************************/
 
 typedef struct {
@@ -72,7 +75,7 @@ typedef struct {
 #ifdef GATEWAY_ENABLED
 typedef struct {
 	DeviceInfo gw_info;
-	DeviceInfo *sub_dev_info;
+	DeviceInfo sub_dev_info[MAX_NUM_SUB_DEV];
 	unsigned int sub_dev_num;
 } GatewayDeviceInfo;
 #endif 

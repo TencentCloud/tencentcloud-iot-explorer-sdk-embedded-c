@@ -23,7 +23,7 @@ extern "C" {
 #include <stdarg.h>
 #include <stdio.h>
 
-#include "device.h"
+#include "qcloud_iot_device.h"
 #include "lite-utils.h"
 #include "data_template_client_json.h"
 #include "qcloud_iot_export_method.h"

@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-#include "ca.h"
+#include "qcloud_iot_ca.h"
 
 #include <stdlib.h>
 

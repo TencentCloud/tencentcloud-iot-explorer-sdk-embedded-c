@@ -40,7 +40,7 @@ set(FEATURE_DEBUG_DEV_INFO_USED OFF)
 # 是否打开AT模组TCP功能
 set(FEATURE_AT_TCP_ENABLED OFF)
 
-# 设置AT模组设备（目前只支持esp8266）
+# 设置AT模组设备（目前只支持esp8266，如果是其他模组请参照at_device_esp8266.c开发at_device驱动）
 set(AT_DEVICE_NAME "esp8266")
 
 # 是否打开AT模组中断接收功能
@@ -57,8 +57,7 @@ set(FEATURE_AT_DEBUG OFF)
 ######################CONFIG END######################################
 
 # 设置CMAKE使用编译工具及编译选项
-#if (PLATFORM STREQUAL "linux" AND COMPILE_TOOLS  STREQUAL "gcc")
-if (PLATFORM STREQUAL "linux")
+if (PLATFORM STREQUAL "linux" AND COMPILE_TOOLS  STREQUAL "gcc")
 	set(CMAKE_C_COMPILER ${COMPILE_TOOLS}) 
 	if(${BUILD_TYPE} STREQUAL  "release")
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -Wno-error=sign-compare -Wno-error=format -Os -pthread") # 编译选项

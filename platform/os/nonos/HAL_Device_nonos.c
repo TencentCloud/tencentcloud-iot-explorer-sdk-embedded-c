@@ -143,14 +143,12 @@ int HAL_GetGwDevInfo(void *pgwDeviceInfo)
 	ret  = HAL_GetDevInfo(&(gwDevInfo->gw_info));//get gw dev info
 	//only one sub-device is supported now 
 	gwDevInfo->sub_dev_num = 1;
-	gwDevInfo->sub_dev_info = (DeviceInfo *)HAL_Malloc(sizeof(DeviceInfo)*(gwDevInfo->sub_dev_num));
-	memset((char *)gwDevInfo->sub_dev_info, '\0', sizeof(DeviceInfo));
 	//copy sub dev info
-	ret = device_info_copy(gwDevInfo->sub_dev_info->product_id, sg_sub_device_product_id, MAX_SIZE_OF_PRODUCT_ID);
-	ret |= device_info_copy(gwDevInfo->sub_dev_info->device_name, sg_sub_device_name, MAX_SIZE_OF_DEVICE_NAME);
-
+	ret = device_info_copy(gwDevInfo->sub_dev_info[0].product_id, sg_sub_device_product_id, MAX_SIZE_OF_PRODUCT_ID);
+	ret |= device_info_copy(gwDevInfo->sub_dev_info[0].device_name, sg_sub_device_name, MAX_SIZE_OF_DEVICE_NAME);
+	
 #else
-	Log_e("HAL_GetDevInfo not implement yet");
+	Log_e("HAL_GetDevInfo from json not implement yet");
 	ret = QCLOUD_ERR_DEV_INFO;
 #endif
 

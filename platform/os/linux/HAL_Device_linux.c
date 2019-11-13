@@ -143,6 +143,7 @@ static int iot_parse_devinfo_from_json_file(DeviceInfo *pDevInfo)
 	}
 
 	char *JsonDoc = (char *)HAL_Malloc(len + 10);
+	memset(JsonDoc, 0, len+10);
 	if(NULL == JsonDoc){
 		Log_e("malloc buffer for json file read fail"); 
 		ret =  QCLOUD_ERR_FAILURE;
@@ -154,32 +155,102 @@ static int iot_parse_devinfo_from_json_file(DeviceInfo *pDevInfo)
 	
 	if(len != rlen){
 		Log_e("read data len (%d) less than needed (%d), %s", rlen, len, JsonDoc);
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
 	}
 
 	/*Get device info*/
 	char* authMode = LITE_json_value_of(KEY_AUTH_MODE, JsonDoc);
+	if(NULL == authMode) {
+		HAL_Free(JsonDoc);
+		Log_e("read authcode from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
+
 	char* productId = LITE_json_value_of(KEY_PRODUCT_ID, JsonDoc);		
+	if(NULL == productId) {
+		HAL_Free(JsonDoc);
+		HAL_Free(authMode);
+		Log_e("read product id from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}	
+
 	char* devName = LITE_json_value_of(KEY_DEV_NAME, JsonDoc);
-	
+	if(NULL == devName) {
+		HAL_Free(JsonDoc);
+		HAL_Free(authMode);
+		HAL_Free(productId);
+		Log_e("read device name from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
+
 	strncpy(pDevInfo->product_id, productId, MAX_SIZE_OF_PRODUCT_ID);
 	strncpy(pDevInfo->device_name, devName, MAX_SIZE_OF_DEVICE_NAME);
 
 #ifdef DEV_DYN_REG_ENABLED	
 	char* productSecret = LITE_json_value_of(KEY_PRODUCT_SECRET, JsonDoc);
+	if(NULL == productSecret) {
+		HAL_Free(JsonDoc);
+		HAL_Free(authMode);
+		HAL_Free(productId);
+		HAL_Free(devName);
+		Log_e("read product secret key from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
 	strncpy(pDevInfo->product_secret, productSecret, MAX_SIZE_OF_PRODUCT_SECRET);
 #endif	
 	
 #ifdef 	AUTH_MODE_CERT
 	char* devCrtFileName = LITE_json_value_of(KEY_DEV_CERT, JsonDoc);
+	if(NULL == devCrtFileName) {
+		HAL_Free(JsonDoc);
+		HAL_Free(authMode);
+		HAL_Free(productId);
+		HAL_Free(devName);
+#ifdef DEV_DYN_REG_ENABLED	
+		HAL_Free(productSecret);
+#endif	
+		Log_e("read device crt file name from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
 	char* devKeyFileName = LITE_json_value_of(KEY_DEV_PRIVATE_KEY, JsonDoc);		
+	if(NULL == devKeyFileName) {
+		HAL_Free(JsonDoc);
+		HAL_Free(authMode);
+		HAL_Free(productId);
+		HAL_Free(devName);
+		HAL_Free(productSecret);
+		HAL_Free(devCrtFileName);
+		Log_e("read device private key file name from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
 	strncpy(pDevInfo->dev_cert_file_name, devCrtFileName, MAX_SIZE_OF_DEVICE_CERT_FILE_NAME);
 	strncpy(pDevInfo->dev_key_file_name, devKeyFileName, MAX_SIZE_OF_DEVICE_SECRET_FILE_NAME);
  	//Log_d("mode:%s, pid:%s, devName:%s, devCrtFileName:%s, devKeyFileName:%s", authMode, productId, devName,  devCrtFileName, devKeyFileName);
 #else
 	char* devSecret = LITE_json_value_of(KEY_DEV_SECRET, JsonDoc);
+	if(NULL == devSecret) {
+		HAL_Free(JsonDoc);
+		HAL_Free(authMode);
+		HAL_Free(productId);
+		HAL_Free(devName);
+#ifdef 	DEV_DYN_REG_ENABLED		
+		HAL_Free(productSecret);
+#endif
+		Log_e("read device secret key from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
 	strncpy(pDevInfo->device_secret, devSecret, MAX_SIZE_OF_DEVICE_SECRET);
 	//Log_d("mode:%s, pid:%s, devName:%s, devSerect:%s", authMode, productId, devName,  devSecret);
 #endif
+
 	if(authMode){
 		HAL_Free(authMode);
 	}
@@ -211,6 +282,11 @@ static int iot_parse_devinfo_from_json_file(DeviceInfo *pDevInfo)
 		HAL_Free(devSecret);
 	}
 #endif
+
+	if(NULL != JsonDoc){
+		HAL_Free(JsonDoc);
+	}
+
 exit:	
 	if(NULL != fp){
 		fclose(fp);
@@ -242,6 +318,7 @@ static int iot_parse_subdevinfo_from_json_file(DeviceInfo *pDevInfo)
 	}
 
 	char *JsonDoc = (char *)HAL_Malloc(len + 10);
+	memset(JsonDoc, 0, len+10);
 	if(NULL == JsonDoc){
 		Log_e("malloc buffer for json file read fail"); 
 		ret =  QCLOUD_ERR_FAILURE;
@@ -256,9 +333,23 @@ static int iot_parse_subdevinfo_from_json_file(DeviceInfo *pDevInfo)
 	}
 
 	/*Get sub device info*/
-	char* productId = LITE_json_value_of(KEY_SUBDEV_PRODUCT_ID, JsonDoc);		
+	char* productId = LITE_json_value_of(KEY_SUBDEV_PRODUCT_ID, JsonDoc);	
+	if(NULL == productId) {
+		HAL_Free(JsonDoc);
+		Log_e("read product id from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}	
+
 	char* devName = LITE_json_value_of(KEY_SUBDEV_NAME, JsonDoc);
-	
+	if(NULL == devName) {
+		HAL_Free(JsonDoc);
+		HAL_Free(productId);
+		Log_e("read device name from json file failed!");
+		ret =  QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
+
 	strncpy(pDevInfo->product_id, productId, MAX_SIZE_OF_PRODUCT_ID);
 	strncpy(pDevInfo->device_name, devName, MAX_SIZE_OF_DEVICE_NAME);
 	//Log_d("pid:%s, devName:%s", productId, devName);
@@ -269,6 +360,10 @@ static int iot_parse_subdevinfo_from_json_file(DeviceInfo *pDevInfo)
 	
 	if(devName){
 		HAL_Free(devName);
+	}
+
+	if(JsonDoc){
+		HAL_Free(JsonDoc);
 	}
 	
 exit:
@@ -434,11 +529,9 @@ int HAL_GetGwDevInfo(void *pgwDeviceInfo)
 	ret  = HAL_GetDevInfo(&(gwDevInfo->gw_info));//get gw dev info
 	//only one sub-device is supported now 
 	gwDevInfo->sub_dev_num = 1;
-	gwDevInfo->sub_dev_info = (DeviceInfo *)HAL_Malloc(sizeof(DeviceInfo)*(gwDevInfo->sub_dev_num));
-	memset((char *)gwDevInfo->sub_dev_info, '\0', sizeof(DeviceInfo));
 	//copy sub dev info
-	ret = device_info_copy(gwDevInfo->sub_dev_info->product_id, sg_sub_device_product_id, MAX_SIZE_OF_PRODUCT_ID);
-	ret |= device_info_copy(gwDevInfo->sub_dev_info->device_name, sg_sub_device_name, MAX_SIZE_OF_DEVICE_NAME);
+	ret = device_info_copy(gwDevInfo->sub_dev_info[0].product_id, sg_sub_device_product_id, MAX_SIZE_OF_PRODUCT_ID);
+	ret |= device_info_copy(gwDevInfo->sub_dev_info[0].device_name, sg_sub_device_name, MAX_SIZE_OF_DEVICE_NAME);
 
 #else
 	ret = iot_parse_devinfo_from_json_file(&(gwDevInfo->gw_info));
@@ -447,10 +540,9 @@ int HAL_GetGwDevInfo(void *pgwDeviceInfo)
 	}
 	//only one sub-device is supported now 
 	gwDevInfo->sub_dev_num = 1;
-	gwDevInfo->sub_dev_info = (DeviceInfo *)HAL_Malloc(sizeof(DeviceInfo)*(gwDevInfo->sub_dev_num));
-	memset((char *)gwDevInfo->sub_dev_info, '\0', sizeof(DeviceInfo));
 	//copy sub dev info
 	ret = iot_parse_subdevinfo_from_json_file(gwDevInfo->sub_dev_info);
+
 #endif
 
 	if(QCLOUD_RET_SUCCESS != ret) {
