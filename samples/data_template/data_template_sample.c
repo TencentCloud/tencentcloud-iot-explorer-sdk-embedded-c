@@ -63,8 +63,7 @@ static void eventPostCheck(void *client)
 	uint32_t eflag;
 	uint8_t event_count;
 	sEvent *pEventList[EVENT_COUNTS];
-	
-	IOT_Event_setFlag(client, FLAG_EVENT0|FLAG_EVENT1|FLAG_EVENT2);
+		
 	eflag = IOT_Event_getFlag(client);
 	if((EVENT_COUNTS > 0 )&& (eflag > 0)){	
 		event_count = 0;
@@ -197,6 +196,12 @@ static void event_handler(void *pclient, void *handle_context, MQTTEventMsg *msg
 	}
 }
 
+/*add user init code, like sensor init*/
+static void _usr_init(void)
+{
+	Log_d("add your init code here");
+}
+
 // Setup MQTT construct parameters
 static int _setup_connect_init_params(TemplateInitParams* initParams)
 {
@@ -282,7 +287,20 @@ static int _register_data_template_property(void *pTemplate_client)
 void deal_down_stream_user_logic(void *client, ProductDataDefine   * pData)
 {
 	Log_d("someting about your own product logic wait to be done");
+
+	
+#ifdef EVENT_POST_ENABLED		
+	//IOT_Event_setFlag(client, FLAG_EVENT0);  //set the events flag when the evnts your defined occured, see events_config.c
+#endif
+
 }
+
+/*get local property data, like sensor data*/
+static void _refresh_local_property(void)
+{
+	//add your local property refresh logic
+}
+
 
 // demo for up-stream 
 // add changed properties to pReportDataList, then the changed properties would be reported
@@ -290,8 +308,11 @@ void deal_down_stream_user_logic(void *client, ProductDataDefine   * pData)
 int deal_up_stream_user_logic(DeviceProperty *pReportDataList[], int *pCount)
 {
 	int i, j;
+
+	//refresh local property
+	_refresh_local_property();
 	
-     for (i = 0, j = 0; i < TOTAL_PROPERTY_COUNT; i++) {       
+    for (i = 0, j = 0; i < TOTAL_PROPERTY_COUNT; i++) {       
         if(eCHANGED == sg_DataTemplate[i].state) {
             pReportDataList[j++] = &(sg_DataTemplate[i].data_property);
 			sg_DataTemplate[i].state = eNOCHANGE;
@@ -349,6 +370,8 @@ int main(int argc, char **argv) {
         Log_e("Cloud Device Construct Failed");
         return QCLOUD_ERR_FAILURE;
     }
+	//user init
+	_usr_init();
 
     //init data template
     _init_data_template();

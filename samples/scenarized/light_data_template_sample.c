@@ -27,6 +27,7 @@
 #endif
 
 static DeviceInfo sg_devInfo;
+static Timer sg_reportTimer;
 
 
 /* anis color control codes */
@@ -165,7 +166,7 @@ static void update_events_timestamp(sEvent *pEvents, int count)
 	        return; 
         }
 #ifdef EVENT_TIMESTAMP_USED		
-		pEvents[i].timestamp = time(NULL);	//should be UTC and accurate
+		pEvents[i].timestamp = HAL_Timer_current_sec();	//should be UTC and accurate
 #else
 		pEvents[i].timestamp = 0;
 #endif
@@ -339,6 +340,11 @@ static void event_handler(void *pclient, void *handle_context, MQTTEventMsg *msg
 	}
 }
 
+/*add user init code, like sensor init*/
+static void _usr_init(void)
+{
+	Log_d("add your init code here");
+}
 
 // Setup MQTT construct parameters
 static int _setup_connect_init_params(TemplateInitParams* initParams)
@@ -398,7 +404,6 @@ static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, ui
     Log_e("Property=%s changed no match", pProperty->key);
 }
 
-
 static void OnReportReplyCallback(void *pClient, Method method, ReplyAck replyAck, const char *pJsonDocument, void *pUserdata) {
 	Log_i("recv report_reply(ack=%d): %s", replyAck,pJsonDocument);
 }
@@ -421,6 +426,35 @@ static int _register_data_template_property(void *pTemplate_client)
     }
 
 	return QCLOUD_RET_SUCCESS;
+}
+
+/*get property state, changed or not*/
+static eDataState  get_property_state(void *pProperyData)
+{
+	int i;
+
+	for(i = 0; i < TOTAL_PROPERTY_COUNT; i++){
+		if(sg_DataTemplate[i].data_property.data == pProperyData){
+			return sg_DataTemplate[i].state;			
+		}
+	}
+
+	Log_e("no property matched");
+	return eNOCHANGE;
+}
+
+
+/*set property state, changed or no change*/
+static void  set_propery_state(void *pProperyData, eDataState state)
+{	
+	int i;
+
+	for(i = 0; i < TOTAL_PROPERTY_COUNT; i++){
+		if(sg_DataTemplate[i].data_property.data == pProperyData){
+			sg_DataTemplate[i].state = state;
+			break;
+		}
+	}
 }
 
 
@@ -471,25 +505,60 @@ static void deal_down_stream_user_logic(void *client,ProductDataDefine *light)
 	}
 	
 #ifdef EVENT_POST_ENABLED
-	if(eCHANGED == sg_DataTemplate[0].state){
+	if(eCHANGED == get_property_state(&light->m_light_switch)){
 		if(light->m_light_switch){	
-			memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
-			strcpy(sg_message,"light on");
-			sg_status = 1;
+			//memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
+			//strcpy(sg_message,"light on");
+			//sg_status = 1;
+			*(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 1;
+			memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
+			strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data,"light on");
 		}else{
-			memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
-			strcpy(sg_message,"light off");
-			sg_status = 0;			
+			//memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
+			//strcpy(sg_message,"light off");
+			//sg_status = 0;
+			*(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 0;
+			memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
+			strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light off");
 		}
-		IOT_Event_setFlag(client, FLAG_EVENT0);
+		
+		//switch state changed set EVENT0 flag, the events will be posted by eventPostCheck
+		IOT_Event_setFlag(client, FLAG_EVENT0);  
 	}
 #endif	
+}
+
+/*example for cycle report, you can delete this for your needs*/
+static void cycle_report(Timer *reportTimer)
+{
+	int i;
+
+	if(expired(reportTimer)){
+	    for (i = 0; i < TOTAL_PROPERTY_COUNT; i++) { 
+			if(JSTRING == sg_DataTemplate[i].data_property.type){
+				set_propery_state(sg_DataTemplate[i].data_property.data, eCHANGED);
+			}else{
+				set_propery_state(&(sg_DataTemplate[i].data_property.data), eCHANGED);
+			}			
+			countdown_ms(reportTimer, 5000);
+	    }
+	}	
+}
+
+/*get local property data, like sensor data*/
+static void _refresh_local_property(void)
+{
+	//add your local property refresh logic, cycle report for example 
+	cycle_report(&sg_reportTimer);
 }
 
 /* demo for up-stream code */
 static int deal_up_stream_user_logic(DeviceProperty *pReportDataList[], int *pCount)
 {
 	int i, j;
+
+	//refresh local property
+	_refresh_local_property();
 	
      for (i = 0, j = 0; i < TOTAL_PROPERTY_COUNT; i++) {       
         if(eCHANGED == sg_DataTemplate[i].state) {
@@ -525,29 +594,12 @@ static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
 	return IOT_Template_JSON_ConstructSysInfo(handle, pJsonDoc, sizeOfBuffer, plat_info, self_info); 	
 }
 
-/*example for cycle report*/
-int cycle_report(DeviceProperty *pReportDataList[], Timer *reportTimer)
-{
-	int i;
-
-	if(expired(reportTimer)){
-	    for (i = 0; i < TOTAL_PROPERTY_COUNT; i++) {       
-			pReportDataList[i] = &(sg_DataTemplate[i].data_property);
-			countdown_ms(reportTimer, 5000);
-	    }
-		return QCLOUD_RET_SUCCESS;
-	}else{
-
-		return QCLOUD_ERR_INVAL;
-	}		
-}
 
 int main(int argc, char **argv) {
    
 	DeviceProperty *pReportDataList[TOTAL_PROPERTY_COUNT];
 	sReplyPara replyPara;
-	int ReportCont;
-	Timer reportTimer;
+	int ReportCont;	
 	int rc;
 	
 	
@@ -570,9 +622,11 @@ int main(int argc, char **argv) {
         return QCLOUD_ERR_FAILURE;
     }
 
+	//usr init
+	_usr_init();
+
     //init data template
     _init_data_template();
-
 
     //register data template propertys here
     rc = _register_data_template_property(client);
@@ -616,14 +670,12 @@ int main(int argc, char **argv) {
 	}
 
 	//init a timer for cycle report, you could delete it or not for your needs
-	InitTimer(&reportTimer);
+	InitTimer(&sg_reportTimer);
 	
     while (IOT_Template_IsConnected(client) || rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT 
 		|| rc == QCLOUD_RET_MQTT_RECONNECTED || QCLOUD_RET_SUCCESS == rc) {
 
-
         rc = IOT_Template_Yield(client, 200);
-
         if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
             HAL_SleepMs(1000);
             continue;
@@ -632,12 +684,9 @@ int main(int argc, char **argv) {
 			Log_e("Exit loop caused of errCode: %d", rc);
 		}
 
-
 		/* handle control msg from server */
-		if (sg_control_msg_arrived) {	
-			
-			deal_down_stream_user_logic(client, &sg_ProductData);
-			
+		if (sg_control_msg_arrived) {				
+			deal_down_stream_user_logic(client, &sg_ProductData);			
 			/* control msg should reply, otherwise server treat device didn't receive and retain the msg which would be get by  get status*/ 
 			memset((char *)&replyPara, 0, sizeof(sReplyPara));
 			replyPara.code = eDEAL_SUCCESS;
@@ -651,9 +700,7 @@ int main(int argc, char **argv) {
             } else {
                 Log_e("Contol msg reply failed, err: %d", rc);
             }		
-		}	else{
-			//Log_d("No control msg received...");
-		}
+		}	
 
 		/*report msg to server*/
 		/*report the lastest properties's status*/	
@@ -673,28 +720,8 @@ int main(int argc, char **argv) {
 	            Log_e("construct reporte data failed, err: %d", rc);
 	        }
 
-		}else{
-			 //Log_d("no data need to be reported or someting goes wrong");
 		}
 	
-		/*example for cycle report, you can delete this for your needs*/
-		if(QCLOUD_RET_SUCCESS == cycle_report(pReportDataList, &reportTimer)){				
-			rc = IOT_Template_JSON_ConstructReportArray(client, sg_data_report_buffer, sg_data_report_buffersize, TOTAL_PROPERTY_COUNT, pReportDataList);
-	        if (rc == QCLOUD_RET_SUCCESS) {
-				//Log_d("cycle report:%s",sg_data_report_buffer);
-	            rc = IOT_Template_Report(client, sg_data_report_buffer, sg_data_report_buffersize, 
-	                    OnReportReplyCallback, NULL, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
-	            if (rc == QCLOUD_RET_SUCCESS) {
-	                Log_d("cycle reporte success");
-	            } else {
-	                Log_e("cycle reporte failed, err: %d", rc);
-	            }
-	        } else {
-	            Log_e("construct reported failed, err: %d", rc);
-	        }
-
-		}
-		
 #ifdef EVENT_POST_ENABLED	
 		eventPostCheck(client);
 #endif

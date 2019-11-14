@@ -184,10 +184,11 @@ static void _get_status_reply_ack_cb(void *pClient, Method method, ReplyAck repl
 	Log_d("replyAck=%d", replyAck);
 	if (NULL == pReceivedJsonDocument) {
         Log_d("Received Json Document is NULL");
-    }
-
-	if (*((ReplyAck *)request->user_context) == ACK_ACCEPTED){	
+    }else{
 		 Log_d("Received Json Document=%s", pReceivedJsonDocument);
+	}
+
+	if (*((ReplyAck *)request->user_context) == ACK_ACCEPTED){			
 		IOT_Template_ClearControl(pClient, request->client_token, NULL, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);	
 	}else{
 		*((ReplyAck *)request->user_context)= replyAck;

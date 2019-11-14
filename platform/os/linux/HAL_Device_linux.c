@@ -224,8 +224,10 @@ static int iot_parse_devinfo_from_json_file(DeviceInfo *pDevInfo)
 		HAL_Free(authMode);
 		HAL_Free(productId);
 		HAL_Free(devName);
-		HAL_Free(productSecret);
 		HAL_Free(devCrtFileName);
+#ifdef 	DEV_DYN_REG_ENABLED			
+		HAL_Free(productSecret);
+#endif
 		Log_e("read device private key file name from json file failed!");
 		ret =  QCLOUD_ERR_FAILURE;
 		goto exit;
