@@ -6,7 +6,7 @@
     "deviceName":"YOUR_DEV_NAME",
 
     "key_deviceinfo":{    
-        "deviceSecret":"xf/FO+HxHKyl6M7pAJnbLQ=="
+        "deviceSecret":"YOUR_IOT_PSK"
     },
 
     "cert_deviceinfo":{

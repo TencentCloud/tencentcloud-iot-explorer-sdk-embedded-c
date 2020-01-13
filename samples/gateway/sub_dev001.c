@@ -67,7 +67,7 @@ static void _init_data_template(void)
     memset((void *) & sg_ProductData, 0, sizeof(ProductDataDefine));
 
     sg_ProductData.m_light_switch = 0;
-    sg_DataTemplate[0].data_property.key  = "power_switch";
+    sg_DataTemplate[0].data_property.key  = "light_switch";
     sg_DataTemplate[0].data_property.data = &sg_ProductData.m_light_switch;
     sg_DataTemplate[0].data_property.type = TYPE_TEMPLATE_BOOL;
 
@@ -624,6 +624,11 @@ void* sub_dev1_thread(void *ptr, char *product_id, char *device_name)
     InitTimer(&sg_reportTimer);
 
     while (IOT_Template_IsConnected(client) || QCLOUD_RET_SUCCESS == rc) {
+		
+		 rc = IOT_Template_Yield_Without_MQTT_Yield(client, 200);
+		 if(QCLOUD_RET_SUCCESS != rc){
+			Log_d("Template Yield without mqtt err, rc:%d", rc);
+		 }
 
         /* handle control msg from server */
         if (sg_control_msg_arrived) {
@@ -670,7 +675,6 @@ void* sub_dev1_thread(void *ptr, char *product_id, char *device_name)
         HAL_SleepMs(1000);
     }
 
-//    rc = IOT_Template_Destroy(client);
-
+	rc = IOT_Template_Destroy_Except_MQTT(client);
     return NULL;
 }

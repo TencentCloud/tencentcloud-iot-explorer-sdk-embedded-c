@@ -269,29 +269,6 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
     }
 }
 
-#ifdef MULTITHREAD_ENABLED
-int IOT_Template_Yield_Without_MQTT_Yield(void *handle, uint32_t timeout_ms)
-{
-
-    IOT_FUNC_ENTRY;
-    int rc;
-
-    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
-    NUMBERIC_SANITY_CHECK(timeout_ms, QCLOUD_ERR_INVAL);
-
-    Qcloud_IoT_Template *ptemplate = (Qcloud_IoT_Template *)handle;
-    POINTER_SANITY_CHECK(ptemplate, QCLOUD_ERR_INVAL);
-
-    handle_template_expired_reply(ptemplate);
-
-#ifdef EVENT_POST_ENABLED
-    handle_template_expired_event(ptemplate);
-#endif
-
-    IOT_FUNC_EXIT_RC(rc);
-}
-#endif
-
 int IOT_Template_JSON_ConstructReportArray(void *handle, char *jsonBuffer, size_t sizeOfBuffer, uint8_t count, DeviceProperty *pDeviceProperties[])
 {
     POINTER_SANITY_CHECK(jsonBuffer, QCLOUD_ERR_INVAL);
@@ -864,6 +841,53 @@ int IOT_Template_Destroy(void *handle)
 
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS)
 }
+
+
+#ifdef MULTITHREAD_ENABLED
+int IOT_Template_Yield_Without_MQTT_Yield(void *handle, uint32_t timeout_ms)
+{
+
+    IOT_FUNC_ENTRY;
+
+    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
+    NUMBERIC_SANITY_CHECK(timeout_ms, QCLOUD_ERR_INVAL);
+
+    Qcloud_IoT_Template *ptemplate = (Qcloud_IoT_Template *)handle;
+    POINTER_SANITY_CHECK(ptemplate, QCLOUD_ERR_INVAL);
+
+    handle_template_expired_reply(ptemplate);
+
+#ifdef EVENT_POST_ENABLED
+    handle_template_expired_event(ptemplate);
+#endif
+
+    IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
+}
+
+int IOT_Template_Destroy_Except_MQTT(void *handle)
+{
+    IOT_FUNC_ENTRY;
+
+    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
+
+    Qcloud_IoT_Template* template_client = (Qcloud_IoT_Template*)handle;
+    qcloud_iot_template_reset(handle);
+
+    if (NULL != template_client->mutex) {
+        HAL_MutexDestroy(template_client->mutex);
+    }
+
+    if (NULL != template_client->inner_data.downstream_topic) {
+        HAL_Free(template_client->inner_data.downstream_topic);
+        template_client->inner_data.downstream_topic = NULL;
+    }
+
+    HAL_Free(handle);
+
+    IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS)
+}
+
+#endif
 
 #ifdef __cplusplus
 }

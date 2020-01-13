@@ -219,7 +219,7 @@ int IOT_Template_Destroy(void *handle);
  */ 
 int IOT_Template_Yield(void *handle, uint32_t timeout_ms);
 
-
+#ifdef MULTITHREAD_ENABLED
 /**
  * @brief Check connection and keep alive state, read/handle MQTT message in synchronized way
  *
@@ -229,6 +229,17 @@ int IOT_Template_Yield(void *handle, uint32_t timeout_ms);
  * @return QCLOUD_RET_SUCCESS when success, or err code for failure
  */ 
 int IOT_Template_Yield_Without_MQTT_Yield(void *handle, uint32_t timeout_ms);
+
+
+/**
+ * @brief Only release Data_Template Client resource, retain mqtt client for multi-thread case
+ *
+ * @param pClient    pointer of handle to data_template client
+ *
+ * @return QCLOUD_RET_SUCCESS for success, or err code for failure
+ */ 
+int IOT_Template_Destroy_Except_MQTT(void *handle);
+#endif
 
 /**
  * @brief Register device property
