@@ -28,8 +28,7 @@ extern "C" {
   * @param topicFilters the array of topic filter strings to be used in the publish
   * @return the length of buffer needed to contain the serialized version of the packet
   */
-static uint32_t _get_unsubscribe_packet_rem_len(uint32_t count, char **topicFilters)
-{
+static uint32_t _get_unsubscribe_packet_rem_len(uint32_t count, char **topicFilters) {
     size_t i;
     size_t len = 2; /* packetid */
 
@@ -52,10 +51,9 @@ static uint32_t _get_unsubscribe_packet_rem_len(uint32_t count, char **topicFilt
   * @return int indicating function execution status
   */
 static int _serialize_unsubscribe_packet(unsigned char *buf, size_t buf_len,
-        uint8_t dup, uint16_t packet_id,
-        uint32_t count, char **topicFilters,
-        uint32_t *serialized_len)
-{
+                                         uint8_t dup, uint16_t packet_id,
+                                         uint32_t count, char **topicFilters,
+                                         uint32_t *serialized_len) {
     IOT_FUNC_ENTRY;
 
     POINTER_SANITY_CHECK(buf, QCLOUD_ERR_INVAL);
@@ -91,8 +89,7 @@ static int _serialize_unsubscribe_packet(unsigned char *buf, size_t buf_len,
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
 }
 
-int qcloud_iot_mqtt_unsubscribe(Qcloud_IoT_Client *pClient, char *topicFilter)
-{
+int qcloud_iot_mqtt_unsubscribe(Qcloud_IoT_Client *pClient, char *topicFilter) {
     IOT_FUNC_ENTRY;
     int rc;
 
@@ -111,12 +108,12 @@ int qcloud_iot_mqtt_unsubscribe(Qcloud_IoT_Client *pClient, char *topicFilter)
     if (topicLen > MAX_SIZE_OF_CLOUD_TOPIC) {
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_MAX_TOPIC_LENGTH);
     }
-
+    
     /* Remove from message handler array */
     HAL_MutexLock(pClient->lock_generic);
-    for (i = 0; i < MAX_MESSAGE_HANDLERS; ++i) {
+    for (i = 0; i < MAX_MESSAGE_HANDLERS; ++i) {        
         if ((pClient->sub_handles[i].topic_filter != NULL && !strcmp(pClient->sub_handles[i].topic_filter, topicFilter))
-            || strstr(topicFilter, "/#") != NULL || strstr(topicFilter, "/+") != NULL) {
+            || strstr(topicFilter,"/#") != NULL || strstr(topicFilter,"/+") != NULL) {            
             /* notify this event to topic subscriber */
             if (NULL != pClient->sub_handles[i].sub_event_handler)
                 pClient->sub_handles[i].sub_event_handler(
@@ -159,8 +156,8 @@ int qcloud_iot_mqtt_unsubscribe(Qcloud_IoT_Client *pClient, char *topicFilter)
     rc = _serialize_unsubscribe_packet(pClient->write_buf, pClient->write_buf_size, 0, packet_id, 1, &topic_filter_stored,
                                        &len);
     if (QCLOUD_RET_SUCCESS != rc) {
-        HAL_MutexUnlock(pClient->lock_write_buf);
-        HAL_Free(topic_filter_stored);
+    	HAL_MutexUnlock(pClient->lock_write_buf);
+    	HAL_Free(topic_filter_stored);
         IOT_FUNC_EXIT_RC(rc);
     }
 
@@ -185,8 +182,8 @@ int qcloud_iot_mqtt_unsubscribe(Qcloud_IoT_Client *pClient, char *topicFilter)
         list_remove(pClient->list_sub_wait_ack, node);
         HAL_MutexUnlock(pClient->lock_list_sub);
 
-        HAL_MutexUnlock(pClient->lock_write_buf);
-        HAL_Free(topic_filter_stored);
+    	HAL_MutexUnlock(pClient->lock_write_buf);
+    	HAL_Free(topic_filter_stored);
         IOT_FUNC_EXIT_RC(rc);
     }
 

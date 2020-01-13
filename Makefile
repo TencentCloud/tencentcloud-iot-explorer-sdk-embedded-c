@@ -70,6 +70,10 @@ $(call CompLib_Map, AT_TCP_ENABLED, \
 	$(SRC_DIR)/network/at_socket \
 )
 
+$(call CompLib_Map, GATEWAY_ENABLED, \
+	$(SRC_DIR)/services/gateway \
+)
+
 IOTSDK_SRC_FILES := \
 
 $(foreach v, \

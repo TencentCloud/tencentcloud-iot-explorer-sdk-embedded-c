@@ -153,9 +153,11 @@ typedef struct {
  *
  * @param pParams data_template init parameters
  *
+ * @param pMqttClient data_template mqtt_client,construct mqtt_client if input NULL
+ *
  * @return a valid data_template client handle when success, or NULL otherwise
  */ 
-void* IOT_Template_Construct(TemplateInitParams *pParams);
+void* IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient);
 
 /**
  * @brief Publish MQTT message
@@ -216,7 +218,18 @@ int IOT_Template_Destroy(void *handle);
  * @return QCLOUD_RET_SUCCESS when success, or err code for failure
  */ 
 int IOT_Template_Yield(void *handle, uint32_t timeout_ms);
- 
+
+
+/**
+ * @brief Check connection and keep alive state, read/handle MQTT message in synchronized way
+ *
+ * @param pClient    handle to data_template client
+ * @param timeout_ms timeout value (unit: ms) for this operation
+ *
+ * @return QCLOUD_RET_SUCCESS when success, or err code for failure
+ */ 
+int IOT_Template_Yield_Without_MQTT_Yield(void *handle, uint32_t timeout_ms);
+
 /**
  * @brief Register device property
  *

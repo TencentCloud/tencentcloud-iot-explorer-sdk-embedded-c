@@ -49,6 +49,8 @@ static const char *iot_ca_crt = \
     "-----END CERTIFICATE-----"
 };
 
+#ifdef OTA_USE_HTTPS
+
 static const char *iot_https_ca_crt = \
 {
     "-----BEGIN CERTIFICATE-----\r\n"
@@ -101,19 +103,19 @@ static const char *iot_https_ca_crt = \
 };
 #endif
 
-const char *iot_ca_get()
-{
+#endif
+
+const char *iot_ca_get() {
 #ifndef AUTH_WITH_NOTLS
-    return iot_ca_crt;
+	return iot_ca_crt;
 #else
     return NULL;
 #endif
 }
 
-const char *iot_https_ca_get()
-{
-#ifndef AUTH_WITH_NOTLS
-    return iot_https_ca_crt;
+const char *iot_https_ca_get() {
+#if ((!defined(AUTH_WITH_NOTLS)) && (defined OTA_USE_HTTPS)) 
+	return iot_https_ca_crt;
 #else
     return NULL;
 #endif

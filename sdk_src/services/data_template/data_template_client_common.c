@@ -28,7 +28,8 @@ static int _add_property_handle_to_template_list(Qcloud_IoT_Template *pTemplate,
     IOT_FUNC_ENTRY;
 
     PropertyHandler *property_handle = (PropertyHandler *)HAL_Malloc(sizeof(PropertyHandler));
-    if (NULL == property_handle) {
+    if (NULL == property_handle)
+    {
         Log_e("run memory malloc is error!");
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
@@ -71,7 +72,7 @@ int template_common_remove_property(Qcloud_IoT_Template *ptemplate, DeviceProper
         list_remove(ptemplate->inner_data.property_handle_list, node);
     }
     HAL_MutexUnlock(ptemplate->mutex);
-
+    
     return rc;
 }
 
