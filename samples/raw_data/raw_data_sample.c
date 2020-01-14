@@ -185,7 +185,9 @@ static int _setup_connect_init_params(MQTTInitParams* initParams)
 
 static void HexDump(uint8_t *pData, uint16_t len)
 {
-    for (int i = 0; i < len; i++) {
+	int i;
+	
+    for (i = 0; i < len; i++) {
         if (i % 32 == 0) {
             HAL_Printf("\n");
         }
