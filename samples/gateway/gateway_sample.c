@@ -357,7 +357,9 @@ int main(int argc, char **argv)
 exit:
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //show subdev with data template.   
-    pthread_join(*light_thread_t, NULL);
+	if(NULL != light_thread_t){
+		pthread_join(*light_thread_t, NULL);
+	}    
 #endif
 
     //stop running thread

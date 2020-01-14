@@ -19,7 +19,7 @@ PLATFORM_AT_DEV					= esp8266
 # 是否打开MQTT通道的总开关
 FEATURE_MQTT_COMM_ENABLED               = y
 
-# 是否打开MQTT通道网关功能
+# 是否打开网关功能
 FEATURE_GATEWAY_ENABLED                 = n
 
 # 是否使能多线程

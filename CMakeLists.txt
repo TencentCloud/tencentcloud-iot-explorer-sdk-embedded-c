@@ -18,8 +18,8 @@ set(PLATFORM 	  "linux")
 #set(COMPILE_TOOLS "MSVC") 
 #set(PLATFORM 	  "windows") 
 
-# 是否打开MQTT通道网关功能
-set(FEATURE_GATEWAY_ENABLED OFF)
+# 是否使能网关功能
+set(FEATURE_GATEWAY_ENABLED ON)
 
 # 是否使能多线程
 set(FEATURE_MULTITHREAD_ENABLED OFF)

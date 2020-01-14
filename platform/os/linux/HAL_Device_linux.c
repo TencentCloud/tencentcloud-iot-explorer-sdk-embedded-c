@@ -315,9 +315,10 @@ exit:
 
 #ifdef GATEWAY_ENABLED
 
-static int iot_get_subdev_from_list(char* devList, DeviceInfo *pDevInfo, int devNum)
+static int iot_get_subdev_from_list(char* devList, DeviceInfo *pDevInfo, int *pDevNum)
 {
 #define MAX_LEN_DEV_INFO    (MAX_SIZE_OF_PRODUCT_ID + MAX_SIZE_OF_DEVICE_NAME + 128)
+	int devNum = *pDevNum;
     int count = 0;
     int ret = QCLOUD_RET_SUCCESS;
     char *pNext;
@@ -332,6 +333,10 @@ static int iot_get_subdev_from_list(char* devList, DeviceInfo *pDevInfo, int dev
         memset(TempBuff, '\0', MAX_LEN_DEV_INFO);
         HAL_Snprintf(TempBuff, MAX_LEN_DEV_INFO, "%s}", pNext);
         char *pos = strchr(TempBuff, '{');
+		if(NULL == pos){
+			*pDevNum = count;
+			break;
+		}
 
         char* productId = LITE_json_value_of(KEY_SUBDEV_PRODUCT_ID, pos);
         if (productId) {
@@ -418,7 +423,7 @@ static int iot_parse_subdevinfo_from_json_file(DeviceInfo *pDevInfo, int *subDev
     /*Get sub info*/
     char* devList = LITE_json_value_of(KEY_SUBDEV_LIST, JsonDoc);
     if (devList) {  //json utils not support array parse currently, we will update json utils
-        ret = iot_get_subdev_from_list(devList, pDevInfo, *subDevNum);
+        ret = iot_get_subdev_from_list(devList, pDevInfo, subDevNum);
         HAL_Free(devList);
     } else {
         Log_e("fail to parse devList");
