@@ -41,6 +41,7 @@ typedef struct {
 
 } OTAHTTPStruct;
 
+#ifdef OTA_USE_HTTPS
 static int is_begin_with(const char * str1, char *str2)
 {
     if (str1 == NULL || str2 == NULL)
@@ -59,7 +60,7 @@ static int is_begin_with(const char * str1, char *str2)
     }
     return 1;
 }
-
+#endif
 
 static char sg_head_content[OTA_HTTP_HEAD_CONTENT_LEN];
 void *ofc_Init(const char *url, uint32_t offset, uint32_t size)

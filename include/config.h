@@ -1,5 +1,5 @@
-#define AUTH_MODE_CERT
-/* #undef AUTH_MODE_KEY */
+/* #undef AUTH_MODE_CERT */
+#define AUTH_MODE_KEY
 /* #undef AUTH_WITH_NOTLS */
 #define GATEWAY_ENABLED
 /* #undef COAP_COMM_ENABLED */
