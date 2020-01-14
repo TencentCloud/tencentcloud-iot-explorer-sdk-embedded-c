@@ -25,10 +25,6 @@
 #define ANSI_COLOR_BLUE    "\x1b[34m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-#ifdef AUTH_MODE_CERT
-static char sg_cert_file[PATH_MAX + 1];      // full path of device cert file
-static char sg_key_file[PATH_MAX + 1];       // full path of device key file
-#endif
 
 static DeviceInfo sg_devInfo;
 static Timer sg_reportTimer;
@@ -459,22 +455,30 @@ static void deal_down_stream_user_logic(void *client, ProductDataDefine *light)
                     ansi_color_name, brightness_bar, light->m_name);
     }
 
-#ifdef EVENT_POST_ENABLED
     if (eCHANGED == get_property_state(&light->m_light_switch)) {
-        if (light->m_light_switch) {
-            *(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 1;
-            memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
-            strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light on");
-        } else {
-            *(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 0;
-            memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
-            strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light off");
-        }
-
-        //switch state changed set EVENT0 flag, the events will be posted by eventPostCheck
-        IOT_Event_setFlag(client, FLAG_EVENT0);
-    }
+#ifdef EVENT_POST_ENABLED		
+				if (light->m_light_switch) {
+					//memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
+					//strcpy(sg_message,"light on");
+					//sg_status = 1;
+					*(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 1;
+					memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
+					strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light on");
+				} else {
+					//memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
+					//strcpy(sg_message,"light off");
+					//sg_status = 0;
+					*(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 0;
+					memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
+					strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light off");
+				}
+		
+				//switch state changed set EVENT0 flag, the events will be posted by eventPostCheck
+				IOT_Event_setFlag(client, FLAG_EVENT0);
+#else
+				Log_d("light switch state changed");
 #endif
+    }
 }
 
 /*example for cycle report, you can delete this for your needs*/

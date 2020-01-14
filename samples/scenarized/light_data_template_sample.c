@@ -504,8 +504,8 @@ static void deal_down_stream_user_logic(void *client, ProductDataDefine *light)
                     ansi_color_name, brightness_bar, light->m_name);
     }
 
-#ifdef EVENT_POST_ENABLED
     if (eCHANGED == get_property_state(&light->m_light_switch)) {
+#ifdef EVENT_POST_ENABLED		
         if (light->m_light_switch) {
             //memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
             //strcpy(sg_message,"light on");
@@ -524,8 +524,14 @@ static void deal_down_stream_user_logic(void *client, ProductDataDefine *light)
 
         //switch state changed set EVENT0 flag, the events will be posted by eventPostCheck
         IOT_Event_setFlag(client, FLAG_EVENT0);
-    }
+#else
+		Log_d("light switch state changed");
 #endif
+    }
+
+
+
+
 }
 
 /*example for cycle report, you can delete this for your needs*/
