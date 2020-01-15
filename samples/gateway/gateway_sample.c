@@ -195,7 +195,7 @@ static int parse_arguments(int argc, char **argv)
  */
 static void *gateway_yield_thread(void *ptr)
 {
-#define THREAD_SLEEP_INTERVAL_MS 1
+
     int rc = QCLOUD_RET_SUCCESS;
     void *pClient = ptr;
 
@@ -203,16 +203,13 @@ static void *gateway_yield_thread(void *ptr)
     while (sg_thread_running) {
         rc = IOT_Gateway_Yield(pClient, 200);
         if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
-            HAL_SleepMs(THREAD_SLEEP_INTERVAL_MS);
             continue;
         } else if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
             Log_e("Something goes error: %d", rc);
             //break;
         }
-        HAL_SleepMs(THREAD_SLEEP_INTERVAL_MS);
     }
     return NULL;
-#undef  THREAD_SLEEP_INTERVAL_MS
 }
 
 /**
@@ -298,14 +295,29 @@ int main(int argc, char **argv)
 
     HAL_SleepMs(1000); /*wait yield_thread start running*/
 
-    //subscribe sub-device data topic for example
+    //subscribe sub-device data_template down stream topic for example
     char topic_filter[MAX_SIZE_OF_TOPIC + 1];
     SubscribeParams sub_param = DEFAULT_SUB_PARAMS;
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
 
-        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);
-        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "%s/%s/data", subDevInfo->product_id, subDevInfo->device_name);
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //show subdev with data template.  
+        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID))
+            && (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
+            light_thread_t = HAL_ThreadCreate(0, 0, "sub_dev1_thread", sub_dev_thread, client);
+            if (light_thread_t == NULL) {
+                Log_e("create sub_dev light thread fail");
+                goto exit;
+            } else {
+                Log_e("create sub_dev light thread success");
+            }
+			continue;
+        }
+#endif        
+
+        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1); 
+		size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/down/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
+
         if (size < 0 || size > MAX_SIZE_OF_TOPIC) {
             Log_e("buf size < topic length!");
             rc = QCLOUD_ERR_FAILURE;
@@ -318,36 +330,30 @@ int main(int argc, char **argv)
             Log_e("IOT_Gateway_Subscribe fail.");
             return rc;
         }
-
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //show subdev with data template.  
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID))
-            && (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
-            light_thread_t = HAL_ThreadCreate(0, 0, "sub_dev1_thread", sub_dev_thread, client);
-            if (light_thread_t == NULL) {
-                Log_e("create sub_dev light thread fail");
-                goto exit;
-            } else {
-                Log_e("create sub_dev light thread success");
-            }
-        }
-#endif
     }
 
-    //publish to sub-device data topic for example
+	HAL_SleepMs(3000); /*wait sub ack*/
+
+    //publish to sub-device data_template up stream topic for example
     PublishParams pub_param = DEFAULT_PUB_PARAMS;
+    pub_param.qos = QOS1;
+    pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err reply wil received\"}}";
+    pub_param.payload_len = strlen(pub_param.payload);	
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
-        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);
-        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "%s/%s/data", subDevInfo->product_id, subDevInfo->device_name);
+
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT   
+        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID))&& (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
+			continue;
+        }
+#endif		
+        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);	
+		size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/up/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
         if (size < 0 || size > MAX_SIZE_OF_TOPIC) {
             Log_e("buf size < topic length!");
             return QCLOUD_ERR_FAILURE;
         }
-
-        pub_param.qos = QOS1;
-        pub_param.payload = "{\"data\":\"test gateway\"}";
-        pub_param.payload_len = sizeof("{\"data\":\"test gateway\"}");
-
+		
         rc = IOT_Gateway_Publish(client, topic_filter, &pub_param);
         if (rc < 0) {
             Log_e("IOT_Gateway_Publish fail.");

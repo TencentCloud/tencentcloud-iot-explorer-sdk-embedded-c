@@ -63,7 +63,7 @@ static void _init_data_template(void)
     memset((void *) & sg_ProductData, 0, sizeof(ProductDataDefine));
 
     sg_ProductData.m_light_switch = 0;
-    sg_DataTemplate[0].data_property.key  = "light_switch";
+    sg_DataTemplate[0].data_property.key  = "power_switch";
     sg_DataTemplate[0].data_property.data = &sg_ProductData.m_light_switch;
     sg_DataTemplate[0].data_property.type = TYPE_TEMPLATE_BOOL;
 

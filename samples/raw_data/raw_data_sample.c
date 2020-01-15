@@ -28,12 +28,12 @@ typedef struct _sTestData_ {
     uint8_t  m_power_switch;
     uint8_t  m_color;
     uint8_t  m_brightness;
-    char     m_name[64 + 1];
 } sTestData;
 
 typedef struct _sRawDataFrame_ {
     uint16_t   magic_head;
     uint8_t    msg_type;
+	uint8_t    res_byte;
     uint32_t   clientId;
     sTestData  data;
 } sRawDataFrame;
@@ -193,22 +193,25 @@ static void HexDump(uint8_t *pData, uint16_t len)
         }
         HAL_Printf(" %02X", pData[i]);
     }
+	HAL_Printf("\n");
 }
 
 // publish raw data msg
 static int _publish_raw_data_msg(void *client, QoS qos)
 {
     sRawDataFrame raw_data;
+   
 
     memset((char *)&raw_data, 0, sizeof(sRawDataFrame));
     raw_data.magic_head = MAGIC_HEAD_NUM;
     raw_data.msg_type = eMSG_REPORT;
     raw_data.clientId = sg_client_id++;
-    raw_data.data.m_power_switch = 1;
-    raw_data.data.m_color = 1;
-    raw_data.data.m_brightness = 50;
-    strcpy(raw_data.data.m_name, sg_devInfo.device_name);
 
+	srand((unsigned)HAL_GetTimeMs());
+    raw_data.data.m_power_switch = 1;
+    raw_data.data.m_color = rand()%3;
+    raw_data.data.m_brightness = rand() % 100;
+   
     char topicName[128] = {0};
     sprintf(topicName, "$thing/up/raw/%s/%s", sg_devInfo.product_id, sg_devInfo.device_name);
 
@@ -232,7 +235,7 @@ static void on_raw_data_message_callback(void *pClient, MQTTMessage *message, vo
     Log_i("Receive Message With topicName:%.*s, payloadlen:%d", (int) message->topic_len, message->ptopic, (int) message->payload_len);
 
     Log_d("raw_data reveived dump:");
-    HexDump((uint8_t *)message->payload, (int)message->payload_len);
+    HexDump((uint8_t *)message->payload, (int)message->payload_len);	
 }
 
 // subscrib MQTT topic
@@ -347,7 +350,7 @@ int main(int argc, char **argv)
         }
 
         if (sg_loop_test)
-            HAL_SleepMs(1000);
+            HAL_SleepMs(5000);
 
     } while (sg_loop_test);
 
