@@ -603,6 +603,7 @@ void* sub_dev1_thread(void *ptr, char *product_id, char *device_name)
     }
 #endif
 
+	HAL_SleepMs(1000); //wait subcrible ack
     //report device info, then you can manager your product by these info, like position
     rc = _get_sys_info(client, sg_data_report_buffer, sg_data_report_buffersize);
     if (QCLOUD_RET_SUCCESS == rc) {

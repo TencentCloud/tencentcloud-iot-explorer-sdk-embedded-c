@@ -337,7 +337,9 @@ int main(int argc, char **argv)
     //publish to sub-device data_template up stream topic for example
     PublishParams pub_param = DEFAULT_PUB_PARAMS;
     pub_param.qos = QOS1;
-    pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err reply wil received\"}}";
+	
+//  pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err reply wil received\"}}"; 
+	pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{}}"; 
     pub_param.payload_len = strlen(pub_param.payload);	
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
