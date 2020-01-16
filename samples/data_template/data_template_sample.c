@@ -424,7 +424,7 @@ int main(int argc, char **argv)
         Log_i("Register data template propertys Success");
     } else {
         Log_e("Register data template propertys Failed: %d", rc);
-        return rc;
+         goto exit;
     }
 
     //register data template actions here
@@ -434,7 +434,7 @@ int main(int argc, char **argv)
         Log_i("Register data template actions Success");
     } else {
         Log_e("Register data template actions Failed: %d", rc);
-        return rc;
+        goto exit;
     }
 #endif
 
@@ -444,7 +444,6 @@ int main(int argc, char **argv)
         rc = IOT_Template_Report_SysInfo_Sync(client, sg_data_report_buffer, sg_data_report_buffersize, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
         if (rc != QCLOUD_RET_SUCCESS) {
             Log_e("Report system info fail, err: %d", rc);
-            goto exit;
         }
     } else {
         Log_e("Get system info fail, err: %d", rc);
@@ -454,7 +453,6 @@ int main(int argc, char **argv)
     rc = IOT_Template_GetStatus_sync(client, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("Get data status fail, err: %d", rc);
-        //goto exit;
     } else {
         Log_d("Get data status success");
     }
@@ -521,8 +519,16 @@ int main(int argc, char **argv)
 
         HAL_SleepMs(3000);
     }
+		   
 exit:
+
     rc = IOT_Template_Destroy(client);
+	
+#ifdef MULTITHREAD_ENABLED
+	if (NULL != yield_thread_t) {
+		HAL_ThreadDestroy((void *)yield_thread_t);
+	}
+#endif
 
     return rc;
 }

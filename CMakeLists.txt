@@ -19,7 +19,7 @@ set(PLATFORM 	  "linux")
 #set(PLATFORM 	  "windows") 
 
 # 是否使能网关功能
-set(FEATURE_GATEWAY_ENABLED ON)
+set(FEATURE_GATEWAY_ENABLED OFF)
 
 # 是否使能多线程
 set(FEATURE_MULTITHREAD_ENABLED OFF)

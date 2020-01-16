@@ -694,9 +694,8 @@ int main(int argc, char **argv)
     rc = _get_sys_info(client, sg_data_report_buffer, sg_data_report_buffersize);
     if (QCLOUD_RET_SUCCESS == rc) {
         rc = IOT_Template_Report_SysInfo_Sync(client, sg_data_report_buffer, sg_data_report_buffersize, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
-        if (rc != QCLOUD_RET_SUCCESS) {
+        if (rc != QCLOUD_RET_SUCCESS) { 
             Log_e("Report system info fail, err: %d", rc);
-            goto exit;
         }
     } else {
         Log_e("Get system info fail, err: %d", rc);
@@ -704,9 +703,8 @@ int main(int argc, char **argv)
 
     //get the property changed during offline
     rc = IOT_Template_GetStatus_sync(client, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
-    if (rc != QCLOUD_RET_SUCCESS) {
+    if (rc != QCLOUD_RET_SUCCESS) { 
         Log_e("Get data status fail, err: %d", rc);
-        goto exit;
     } else {
         Log_d("Get data status success");
     }

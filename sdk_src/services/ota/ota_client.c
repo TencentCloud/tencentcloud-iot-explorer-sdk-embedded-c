@@ -343,7 +343,7 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size)
     OTA_Struct_t *h_ota = (OTA_Struct_t *) handle;
     int Ret;
 
-    h_ota->size_fetched += offset;
+    h_ota->size_fetched = offset;
     h_ota->ch_fetch = ofc_Init(h_ota->purl, offset, size);
     if (NULL == h_ota->ch_fetch) {
         Log_e("Initialize fetch module failed");
