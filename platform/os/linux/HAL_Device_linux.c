@@ -92,7 +92,11 @@ int HAL_SetDevInfoFile(const char *file_name)
 
 #include "lite-utils.h"
 
+#ifdef GATEWAY_ENABLED
+#define MAX_DEV_INFO_FILE_LEN       10*1024
+#else
 #define MAX_DEV_INFO_FILE_LEN       1024
+#endif
 #define MAX_CONFIG_FILE_NAME        256
 
 

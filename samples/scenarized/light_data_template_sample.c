@@ -176,7 +176,7 @@ static void update_events_timestamp(sEvent *pEvents, int count)
 static void event_post_cb(void *pClient, MQTTMessage *msg)
 {
     Log_d("recv event reply, clear event");
-    IOT_Event_clearFlag(pClient, FLAG_EVENT0);
+//    IOT_Event_clearFlag(pClient, FLAG_EVENT0);
 }
 
 //event check and post
@@ -196,6 +196,7 @@ static void eventPostCheck(void *client)
             if ((eflag & (1 << i))&ALL_EVENTS_MASK) {
                 pEventList[EventCont++] = &(g_events[i]);
                 update_events_timestamp(&g_events[i], 1);
+				IOT_Event_clearFlag(client, (1 << i)&ALL_EVENTS_MASK);
             }
         }
 

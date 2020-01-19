@@ -198,7 +198,7 @@ static void *gateway_yield_thread(void *ptr)
 
     int rc = QCLOUD_RET_SUCCESS;
     void *pClient = ptr;
-
+	
     Log_d("gateway yield thread start ...");
     while (sg_thread_running) {
         rc = IOT_Gateway_Yield(pClient, 200);
@@ -261,6 +261,16 @@ int main(int argc, char **argv)
         return QCLOUD_ERR_FAILURE;
     }
 
+    //mqtt_yeild can be called by only one thread when multi-thread run, so do not use sync operation below
+    pthread_t *yield_thread_t = NULL;
+    yield_thread_t = HAL_ThreadCreate(0, 0, "yield_thread", gateway_yield_thread, client);
+    if (yield_thread_t == NULL) {
+        Log_e("create yield thread fail");
+        goto exit;
+    }
+
+    HAL_SleepMs(1000); /*wait yield_thread start running*/
+
     //set GateWay device info
     param.product_id =  gw->gw_info.product_id;
     param.device_name = gw->gw_info.device_name;
@@ -284,24 +294,13 @@ int main(int argc, char **argv)
         Log_e("%d of %d sub devices online fail", errCount, gw->sub_dev_num);
     }
 
-
-    //mqtt_yeild can be called by only one thread when multi-thread run, so do not use sync operation below
-    pthread_t *yield_thread_t = NULL;
-    yield_thread_t = HAL_ThreadCreate(0, 0, "yield_thread", gateway_yield_thread, client);
-    if (yield_thread_t == NULL) {
-        Log_e("create yield thread fail");
-        goto exit;
-    }
-
-    HAL_SleepMs(1000); /*wait yield_thread start running*/
-
     //subscribe sub-device data_template down stream topic for example
     char topic_filter[MAX_SIZE_OF_TOPIC + 1];
     SubscribeParams sub_param = DEFAULT_SUB_PARAMS;
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //show subdev with data template.  
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //subdev with data template example.  
         if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID))
             && (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
             light_thread_t = HAL_ThreadCreate(0, 0, "sub_dev1_thread", sub_dev_thread, client);
@@ -332,20 +331,21 @@ int main(int argc, char **argv)
         }
     }
 
-	HAL_SleepMs(3000); /*wait sub ack*/
+	HAL_SleepMs(2000); /*wait subcribe ack*/
 
-    //publish to sub-device data_template up stream topic for example
+//  publish to sub-device data_template up stream topic for example
     PublishParams pub_param = DEFAULT_PUB_PARAMS;
-    pub_param.qos = QOS1;
+    pub_param.qos = QOS0;
 	
-//  pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err reply wil received\"}}"; 
+//pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err reply wil received\"}}"; 
 	pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{}}"; 
     pub_param.payload_len = strlen(pub_param.payload);	
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT   
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID))&& (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
+        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) 
+				&& (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
 			continue;
         }
 #endif		
@@ -359,19 +359,16 @@ int main(int argc, char **argv)
         rc = IOT_Gateway_Publish(client, topic_filter, &pub_param);
         if (rc < 0) {
             Log_e("IOT_Gateway_Publish fail.");
-        }
+        }		
     }
 
 exit:
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //show subdev with data template.   
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  
 	if(NULL != light_thread_t){
 		pthread_join(*light_thread_t, NULL);
-	}    
-#endif
-
-    //stop running thread
-    sg_thread_running = false;
+	}	 
+#endif	
 
     //set GateWay device info
     param.product_id =  gw->gw_info.product_id;
@@ -391,12 +388,14 @@ exit:
             Log_d("subDev Pid:%s devName:%s offline success.", subDevInfo->product_id, subDevInfo->device_name);
         }
     }
+	
     if (errCount > 0) {
         Log_e("%d of %d sub devices offline fail", errCount, gw->sub_dev_num);
     }
 
+	//stop running thread
+    sg_thread_running = false;
     rc = IOT_Gateway_Destroy(client);
-
     if (NULL != yield_thread_t) {
         HAL_ThreadDestroy((void *)yield_thread_t);
     }

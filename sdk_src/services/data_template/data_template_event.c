@@ -372,7 +372,7 @@ static int _publish_event_to_cloud(void *c, char *pJsonDoc)
     }
 
     PublishParams pubParams = DEFAULT_PUB_PARAMS;
-    pubParams.qos = QOS0;
+    pubParams.qos = QOS1;
     pubParams.payload_len = strlen(pJsonDoc);
     pubParams.payload = (char *) pJsonDoc;
 

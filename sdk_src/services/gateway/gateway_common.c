@@ -83,7 +83,7 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
     cloud_rcv_len = Min(GATEWAY_RECEIVE_BUFFER_LEN - 1, message->payload_len);
     memcpy(cloud_rcv_buf, message->payload, cloud_rcv_len + 1);
     cloud_rcv_buf[cloud_rcv_len] = '\0';    // jsmn_parse relies on a string
-//  Log_d("recv:%s", cloud_rcv_buf);
+//  	Log_d("recv:%s", cloud_rcv_buf);
 
     if (!get_json_type(cloud_rcv_buf, &type)) {
         Log_e("Fail to parse type from msg: %s", cloud_rcv_buf);
@@ -333,8 +333,12 @@ int gateway_publish_sync(Gateway *gateway, char *topic, PublishParams *params, i
             Log_i("loop max count, time out.");
             IOT_FUNC_EXIT_RC(QCLOUD_ERR_GATEWAY_SESSION_TIMEOUT);
         }
-
+		
+#ifndef MULTITHREAD_ENABLED
         IOT_Gateway_Yield(gateway, 200);
+#else
+		HAL_SleepMs(1);
+#endif		
         loop_count++;
     }
 

@@ -52,7 +52,7 @@ static void update_events_timestamp(sEvent *pEvents, int count)
 static void event_post_cb(void *pClient, MQTTMessage *msg)
 {
     Log_d("Reply:%.*s", msg->payload_len, msg->payload);
-    IOT_Event_clearFlag(pClient, FLAG_EVENT0 | FLAG_EVENT1 | FLAG_EVENT2);
+//    IOT_Event_clearFlag(pClient, FLAG_EVENT0 | FLAG_EVENT1 | FLAG_EVENT2); 
 }
 
 //event check and post
@@ -71,7 +71,7 @@ static void eventPostCheck(void *client)
             if ((eflag & (1 << i))&ALL_EVENTS_MASK) {
                 pEventList[event_count++] = &(g_events[i]);
                 update_events_timestamp(&g_events[i], 1);
-                IOT_Event_clearFlag(client, 1 << i);
+				IOT_Event_clearFlag(client, (1 << i)&ALL_EVENTS_MASK);
             }
         }
 

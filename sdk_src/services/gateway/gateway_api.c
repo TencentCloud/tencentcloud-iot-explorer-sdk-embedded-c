@@ -223,7 +223,7 @@ int IOT_Gateway_Subdev_Offline(void *client, GatewayParam* param)
         Log_e("buf size < client_id length!");
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
-    gateway->gateway_data.offline.result = -1;
+    gateway->gateway_data.offline.result = -2;
 
 
 
