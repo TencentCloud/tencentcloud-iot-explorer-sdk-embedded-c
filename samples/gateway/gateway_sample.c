@@ -394,7 +394,9 @@ exit:
     }
 
 	//stop running thread
-    sg_thread_running = false;
+    sg_thread_running = false;	
+	HAL_SleepMs(1000); /*make sure no thread use client before destroy*/
+	
     rc = IOT_Gateway_Destroy(client);
     if (NULL != yield_thread_t) {
         HAL_ThreadDestroy((void *)yield_thread_t);

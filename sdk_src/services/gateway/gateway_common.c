@@ -238,8 +238,9 @@ SubdevSession* subdev_find_session(Gateway *gateway, char *product_id, char *dev
 
     /* session is exist */
     while (session) {
-        if (0 == strncmp(session->product_id, product_id, strlen(product_id)) &&
-            0 == strncmp(session->device_name, device_name, strlen(device_name))) {
+		  if (0 == strcmp(session->product_id, product_id) &&
+				0 == strcmp(session->device_name, device_name)) {
+
             IOT_FUNC_EXIT_RC(session);
         }
         session = session->next;
@@ -295,8 +296,8 @@ int subdev_remove_session(Gateway *gateway, char *product_id, char *device_name)
 
     /* session is exist */
     while (cur_session) {
-        if (0 == strncmp(cur_session->product_id, product_id, strlen(product_id)) &&
-            0 == strncmp(cur_session->device_name, device_name, strlen(device_name)) ) {
+		  if (0 == strcmp(cur_session->product_id, product_id) &&
+				0 == strcmp(cur_session->device_name, device_name) ) {
             if (cur_session == gateway->session_list) {
                 gateway->session_list = cur_session->next;
             } else {
