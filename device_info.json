@@ -15,7 +15,15 @@
     },
 
     "subDev":{
-        "sub_productId":"YOUR_SUBDEV_PRODUCT_ID",
-        "sub_devName":"YOUR_SUBDEV_DEVICE_NAME"
+        "subdev_num":6,
+        "subdev_list":
+        [
+                {"sub_productId": "WPDA0S6S08", "sub_devName": "dev001"},
+                {"sub_productId": "WPDA0S6S08", "sub_devName": "dev002"},
+                {"sub_productId": "WPDA0S6S08", "sub_devName": "dev003"},
+                {"sub_productId": "Y8T6NB8DM0", "sub_devName": "test001"},
+                {"sub_productId": "Y8T6NB8DM0", "sub_devName": "test002"},
+                {"sub_productId": "Y8T6NB8DM0", "sub_devName": "test003"}               
+        ]     
     }
 }
