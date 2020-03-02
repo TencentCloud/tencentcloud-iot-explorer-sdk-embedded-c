@@ -337,19 +337,19 @@ int main(int argc, char **argv)
                 break;
             }
 
-			//finish download but not report state
-			if(offset == size_file) {
-				Log_d("download success last time without report!");
-				upgrade_fetch_success = true;
-			
-			    /* get fw information */			
+            //finish download but not report state
+            if (offset == size_file) {
+                Log_d("download success last time without report!");
+                upgrade_fetch_success = true;
+
+                /* get fw information */
                 IOT_OTA_Ioctl(h_ota, IOT_OTAG_MD5SUM, md5sum, 33);
                 IOT_OTA_Ioctl(h_ota, IOT_OTAG_VERSION, version, 128);
-				size_downloaded = size_file;
-				break;
-			}
+                size_downloaded = size_file;
+                break;
+            }
 
-            /*start http connect*/           
+            /*start http connect*/
             rc = IOT_OTA_StartDownload(h_ota, offset, size_file);
             if (QCLOUD_RET_SUCCESS != rc) {
                 Log_e("OTA download start err,rc:%d", rc);
@@ -357,7 +357,7 @@ int main(int argc, char **argv)
                 break;
             }
 
-			/*cal file md5*/
+            /*cal file md5*/
             //Log_d("Get offset:%d(%x)", offset, offset);
             if (offset > 0) {
                 if (NULL == (fp = fopen("ota.bin", "ab+"))) {
@@ -372,8 +372,8 @@ int main(int argc, char **argv)
                     break;
                 }
 
-				/*set offset*/
-				fseek(fp, offset, SEEK_SET);
+                /*set offset*/
+                fseek(fp, offset, SEEK_SET);
             } else {
                 if (NULL == (fp = fopen("ota.bin", "wb+"))) {
                     Log_e("open file failed");
@@ -381,7 +381,7 @@ int main(int argc, char **argv)
                     break;
                 }
             }
-	
+
 
             do {
                 len = IOT_OTA_FetchYield(h_ota, buf_ota, OTA_BUF_LEN, 1);

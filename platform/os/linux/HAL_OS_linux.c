@@ -133,7 +133,7 @@ void HAL_SleepMs(_IN_ uint32_t ms)
     usleep(1000 * ms);
 }
 
-#ifdef MULTITHREAD_ENABLED
+#if ((defined(MULTITHREAD_ENABLED)) || (defined AT_TCP_ENABLED))
 void * HAL_ThreadCreate(uint16_t stack_size, int priority, char * taskname, void *(*fn)(void*), void* arg)
 {
     pthread_t *thread_t = (pthread_t *)HAL_Malloc(sizeof(unsigned long int));
@@ -144,7 +144,12 @@ int HAL_ThreadDestroy(void* threadId)
 {
     int ret;
 
+    if (NULL == threadId) {
+        return QCLOUD_ERR_FAILURE;
+    }
+
     if (0 == pthread_cancel(*((pthread_t*)threadId))) {
+        pthread_join(*((pthread_t*)threadId), NULL);
         ret = QCLOUD_RET_SUCCESS;
     } else {
         ret = QCLOUD_ERR_FAILURE;

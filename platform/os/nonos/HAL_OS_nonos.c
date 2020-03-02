@@ -68,6 +68,21 @@ void *HAL_Malloc(uint32_t size)
     return malloc(size);
 }
 
+void* HAL_Calloc(uint32_t nelements, uint32_t elementSize)
+{
+    uint32_t size;
+    void *ptr = NULL;
+
+    size = nelements * elementSize;
+    ptr = malloc(size);
+
+    if (ptr) {
+        memset(ptr, 0, size);
+    }
+
+    return ptr;
+}
+
 void *HAL_MutexCreate(void)
 {
     return (void *)1;

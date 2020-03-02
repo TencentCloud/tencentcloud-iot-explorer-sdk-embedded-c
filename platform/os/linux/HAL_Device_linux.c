@@ -50,13 +50,10 @@ static char sg_device_secret[MAX_SIZE_OF_DEVICE_SECRET + 1] = "YOUR_IOT_PSK";
 #endif
 
 #ifdef GATEWAY_ENABLED
-/* sub-device product id  */
-//static char sg_sub_device_product_id[MAX_SIZE_OF_PRODUCT_ID + 1]   = "PRODUCT_ID";
-/* sub-device device name */
-//static char sg_sub_device_name[MAX_SIZE_OF_DEVICE_NAME + 1]  = "YOUR_SUB_DEV_NAME";
 
 #ifdef DEBUG_DEV_INFO_USED
-static const DeviceInfo sg_subdevList[] = {
+/* sub-device list  */
+static DeviceInfo sg_subdevList[] = {
     {.product_id = "WPDA0S6S08", .device_name = "dev001"},
     {.product_id = "WPDA0S6S08", .device_name = "dev002"},
     {.product_id = "WPDA0S6S08", .device_name = "dev003"},
@@ -322,7 +319,7 @@ exit:
 static int iot_get_subdev_from_list(char* devList, DeviceInfo *pDevInfo, int *pDevNum)
 {
 #define MAX_LEN_DEV_INFO    (MAX_SIZE_OF_PRODUCT_ID + MAX_SIZE_OF_DEVICE_NAME + 128)
-	int devNum = *pDevNum;
+    int devNum = *pDevNum;
     int count = 0;
     int ret = QCLOUD_RET_SUCCESS;
     char *pNext;
@@ -337,10 +334,10 @@ static int iot_get_subdev_from_list(char* devList, DeviceInfo *pDevInfo, int *pD
         memset(TempBuff, '\0', MAX_LEN_DEV_INFO);
         HAL_Snprintf(TempBuff, MAX_LEN_DEV_INFO, "%s}", pNext);
         char *pos = strchr(TempBuff, '{');
-		if(NULL == pos){
-			*pDevNum = count;
-			break;
-		}
+        if (NULL == pos) {
+            *pDevNum = count;
+            break;
+        }
 
         char* productId = LITE_json_value_of(KEY_SUBDEV_PRODUCT_ID, pos);
         if (productId) {
@@ -601,10 +598,10 @@ int HAL_GetGwDevInfo(void *pgwDeviceInfo)
 
 #ifdef DEBUG_DEV_INFO_USED
     ret  = HAL_GetDevInfo(&(gwDevInfo->gw_info));//get gw dev info
-    if (sizeof(sg_subdevList[]) / sizeof(sg_subdevList[0]) > MAX_NUM_SUB_DEV) {
+    if (sizeof(sg_subdevList) / sizeof(sg_subdevList[0]) > MAX_NUM_SUB_DEV) {
         gwDevInfo->sub_dev_num = MAX_NUM_SUB_DEV;
     } else {
-        gwDevInfo->sub_dev_num = sizeof(sg_subdevList[]) / sizeof(sg_subdevList[0]);
+        gwDevInfo->sub_dev_num = sizeof(sg_subdevList) / sizeof(sg_subdevList[0]);
     }
 
     for (i = 0; i < gwDevInfo->sub_dev_num; i++) {

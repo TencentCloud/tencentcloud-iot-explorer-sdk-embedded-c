@@ -38,26 +38,26 @@ static char sg_template_clientToken[MAX_SIZE_OF_CLIENT_TOKEN];
 /**
 * @brief unsubsribe topic:  $thing/down/property/{ProductId}/{DeviceName}
 */
-static int _unsubscribe_template_downstream_topic(void* pClient)
-{
-    IOT_FUNC_ENTRY;
-    int rc = QCLOUD_RET_SUCCESS;
+//static int _unsubscribe_template_downstream_topic(void* pClient)
+//{
+//    IOT_FUNC_ENTRY;
+//    int rc = QCLOUD_RET_SUCCESS;
 
-    char downstream_topic[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
-    int size = HAL_Snprintf(downstream_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/property/%s/%s", iot_device_info_get()->product_id, iot_device_info_get()->device_name);
+//    char downstream_topic[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
+//    int size = HAL_Snprintf(downstream_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/property/%s/%s", iot_device_info_get()->product_id, iot_device_info_get()->device_name);
 
-    if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC - 1) {
-        Log_e("buf size < topic length!");
-        IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
-    }
+//    if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC - 1) {
+//        Log_e("buf size < topic length!");
+//        IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+//    }
 
-    IOT_MQTT_Unsubscribe(pClient, downstream_topic);
-    if (rc < 0) {
-        Log_e("unsubscribe topic: %s failed: %d.", downstream_topic, rc);
-    }
+//    IOT_MQTT_Unsubscribe(pClient, downstream_topic);
+//    if (rc < 0) {
+//        Log_e("unsubscribe topic: %s failed: %d.", downstream_topic, rc);
+//    }
 
-    IOT_FUNC_EXIT_RC(rc);
-}
+//    IOT_FUNC_EXIT_RC(rc);
+//}
 
 
 /**
@@ -267,18 +267,27 @@ void qcloud_iot_template_reset(void *pClient)
     POINTER_SANITY_CHECK_RTN(pClient);
 
     Qcloud_IoT_Template *template_client = (Qcloud_IoT_Template *)pClient;
+
+    //_unsubscribe_template_downstream_topic(); //new mem need be malloced whick will leaked
+
     if (template_client->inner_data.property_handle_list) {
         list_destroy(template_client->inner_data.property_handle_list);
+        template_client->inner_data.property_handle_list = NULL;
     }
-
-    _unsubscribe_template_downstream_topic(template_client->mqtt);
 
     if (template_client->inner_data.reply_list) {
         list_destroy(template_client->inner_data.reply_list);
+        template_client->inner_data.reply_list = NULL;
     }
 
     if (template_client->inner_data.event_list) {
         list_destroy(template_client->inner_data.event_list);
+        template_client->inner_data.event_list = NULL;
+    }
+
+    if (NULL != template_client->inner_data.action_handle_list) {
+        list_destroy(template_client->inner_data.action_handle_list);
+        template_client->inner_data.action_handle_list = NULL;
     }
 }
 

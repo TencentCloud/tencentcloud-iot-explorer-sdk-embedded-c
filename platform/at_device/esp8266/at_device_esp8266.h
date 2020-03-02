@@ -21,9 +21,6 @@
 #define ESP8266_SEND_MAX_LEN_ONCE   	(2048)
 #define ESP8266_MAX_SOCKET_NUM			(5)
 
-#define WIFI_SSID						"youga_wifi"//"Honor 8"//
-#define WIFI_PASSWORD					"Iot@2018"//"xy123123"//
-
 int at_device_esp8266_init(void);
 
 #endif /* __AT_DEVICE_ESP8266_H__ */

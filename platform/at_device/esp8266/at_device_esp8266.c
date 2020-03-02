@@ -26,12 +26,15 @@
 #include "at_socket_inf.h"
 #include "at_device_esp8266.h"
 
+char g_WIFI_SSID[20] = "Your_SSID";
+char g_WIFI_PASSWORD[20] = "Your_SSID_PW";
+
+
 #define  WIFI_CONN_FLAG             (1<<0)
 #define  SEND_OK_FLAG               (1<<1)
 #define  SEND_FAIL_FLAG             (1<<2)
 
 static uint8_t sg_SocketBitMap = 0;
-
 static at_evt_cb_t at_evt_cb_table[] = {
     [AT_SOCKET_EVT_RECV] = NULL,
     [AT_SOCKET_EVT_CLOSED] = NULL,
@@ -39,7 +42,6 @@ static at_evt_cb_t at_evt_cb_table[] = {
 
 static int alloc_fd(void)
 {
-
     uint8_t i;
     int fd;
 
@@ -50,7 +52,13 @@ static int alloc_fd(void)
         }
     }
 
-    return (i < ESP8266_MAX_SOCKET_NUM) ? (fd = i) : (fd = UNUSED_SOCKET);
+    if (i < ESP8266_MAX_SOCKET_NUM) {
+        fd = i;
+    } else {
+        fd = UNUSED_SOCKET;
+    }
+
+    return fd;
 }
 
 static void free_fd(int fd)
@@ -64,7 +72,6 @@ static void free_fd(int fd)
 
 static void urc_send_func(const char *data, size_t size)
 {
-
     POINTER_SANITY_CHECK_RTN(data);
 
     if (strstr(data, "SEND OK")) {
@@ -214,7 +221,6 @@ static int esp8266_init(void)
     at_delayms(2000);
 
     /* disable echo */
-
     ret = at_exec_cmd(resp, "ATE0");
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("cmd ATE0 exec err");
@@ -228,6 +234,7 @@ static int esp8266_init(void)
         Log_e("cmd AT+CWMODE=1 exec err");
         //goto exit;
     }
+
 
     at_delayms(100);
     /* get module version */
@@ -245,14 +252,15 @@ static int esp8266_init(void)
     at_delayms(100);
     at_clearFlag(WIFI_CONN_FLAG);
     /* connect to WiFi AP */
-    ret = at_exec_cmd(resp, "AT+CWJAP=\"%s\",\"%s\"", WIFI_SSID, WIFI_PASSWORD);
+    Log_d("Join wifi ap ssid:%s, password:%s", g_WIFI_SSID, g_WIFI_PASSWORD);
+    ret = at_exec_cmd(resp, "AT+CWJAP=\"%s\",\"%s\"", g_WIFI_SSID, g_WIFI_PASSWORD);
 
     if (!at_waitFlag(WIFI_CONN_FLAG, AT_RESP_TIMEOUT_MS)) {
         Log_e("wifi connect timeout");
         ret = QCLOUD_ERR_FAILURE;
         goto __exit;
     }
-
+    at_delayms(1500);
     ret = at_exec_cmd(resp, "AT+CIPMUX=1");
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("cmd AT+CIPMUX=1 exec err");
@@ -264,6 +272,7 @@ __exit:
         at_delete_resp(resp);
     }
 
+    at_delayms(1000);
     return ret;
 }
 
@@ -429,7 +438,7 @@ __exit:
         at_delete_resp(resp);
     }
 
-    return sent_size; //fancyxu
+    return sent_size;
 }
 
 static int esp8266_recv_timeout(int fd, void *buf, size_t len, uint32_t timeout)
@@ -512,7 +521,6 @@ at_device_op_t at_ops_esp8266 = {
 
 int at_device_esp8266_init(void)
 {
-    int i;
     int ret;
     at_client_t p_client;
 
@@ -536,10 +544,11 @@ int at_device_esp8266_init(void)
     /* register URC data execution function  */
     at_set_urc_table(p_client, urc_table, sizeof(urc_table) / sizeof(urc_table[0]));
 
-    Log_d("urc table addr:%p, size:%d", p_client->urc_table, p_client->urc_table_size);
-    for (i = 0; i < p_client->urc_table_size; i++) {
-        Log_d("%s", p_client->urc_table[i].cmd_prefix);
-    }
+//  Log_d("urc table addr:%p, size:%d", p_client->urc_table, p_client->urc_table_size);
+//  for(int i=0; i < p_client->urc_table_size; i++)
+//  {
+//      Log_d("%s",p_client->urc_table[i].cmd_prefix);
+//  }
 
     ret = at_device_op_register(&at_ops_esp8266);
     if (QCLOUD_RET_SUCCESS != ret) {
@@ -558,7 +567,17 @@ exit:
 }
 
 /*at device driver must realize this api which called by HAL_AT_TCP_Init*/
+static bool sg_at_device_init_flag = false;
 int at_device_init(void)
 {
-    return at_device_esp8266_init();
+    int rc = QCLOUD_RET_SUCCESS;
+
+    if (false == sg_at_device_init_flag) {
+        rc = at_device_esp8266_init();
+        if (QCLOUD_RET_SUCCESS == rc) {
+            sg_at_device_init_flag = true;
+        }
+    }
+
+    return rc;
 }

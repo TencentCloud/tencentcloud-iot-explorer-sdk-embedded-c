@@ -70,8 +70,6 @@ void *HAL_MutexCreate(void)
     }
 
     return mutex;
-
-
 }
 
 void HAL_MutexDestroy(_IN_ void *mutex)
@@ -135,5 +133,29 @@ void HAL_SleepMs(_IN_ uint32_t ms)
 {
     (void)rt_thread_delay(rt_tick_from_millisecond(ms));
 }
+
+#if ((defined(MULTITHREAD_ENABLED)) || (defined AT_TCP_ENABLED))
+void * HAL_ThreadCreate(uint16_t stack_size, int priority, char * taskname, void *(*fn)(void*), void* arg)
+{
+#define DEFAULT_TASK_TICK  10
+    rt_thread_t tid;
+    tid = rt_thread_create(taskname, fn, arg, stack_size, priority, DEFAULT_TASK_TICK);
+
+    if (tid != RT_NULL) {
+        rt_thread_startup(tid);
+    }
+
+    return (void *)tid;
+#undef  DEFAULT_TASK_TICK
+}
+
+int HAL_ThreadDestroy(void* threadId)
+{
+    int ret;
+    ret = rt_thread_delete(threadId);
+
+    return ret;
+}
+#endif
 
 

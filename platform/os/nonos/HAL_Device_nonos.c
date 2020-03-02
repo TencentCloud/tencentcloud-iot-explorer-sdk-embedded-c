@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <memory.h>
+#include "string.h"
 
 #include "qcloud_iot_import.h"
 #include "qcloud_iot_export.h"

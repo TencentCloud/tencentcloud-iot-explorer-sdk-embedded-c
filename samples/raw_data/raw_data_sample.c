@@ -33,7 +33,7 @@ typedef struct _sTestData_ {
 typedef struct _sRawDataFrame_ {
     uint16_t   magic_head;
     uint8_t    msg_type;
-	uint8_t    res_byte;
+    uint8_t    res_byte;
     uint32_t   clientId;
     sTestData  data;
 } sRawDataFrame;
@@ -185,33 +185,33 @@ static int _setup_connect_init_params(MQTTInitParams* initParams)
 
 static void HexDump(uint8_t *pData, uint16_t len)
 {
-	int i;
-	
+    int i;
+
     for (i = 0; i < len; i++) {
         if (i % 32 == 0) {
             HAL_Printf("\n");
         }
         HAL_Printf(" %02X", pData[i]);
     }
-	HAL_Printf("\n");
+    HAL_Printf("\n");
 }
 
 // publish raw data msg
 static int _publish_raw_data_msg(void *client, QoS qos)
 {
     sRawDataFrame raw_data;
-   
+
 
     memset((char *)&raw_data, 0, sizeof(sRawDataFrame));
     raw_data.magic_head = MAGIC_HEAD_NUM;
     raw_data.msg_type = eMSG_REPORT;
     raw_data.clientId = sg_client_id++;
 
-	srand((unsigned)HAL_GetTimeMs());
+    srand((unsigned)HAL_GetTimeMs());
     raw_data.data.m_power_switch = 1;
-    raw_data.data.m_color = rand()%3;
+    raw_data.data.m_color = rand() % 3;
     raw_data.data.m_brightness = rand() % 100;
-   
+
     char topicName[128] = {0};
     sprintf(topicName, "$thing/up/raw/%s/%s", sg_devInfo.product_id, sg_devInfo.device_name);
 
@@ -235,7 +235,7 @@ static void on_raw_data_message_callback(void *pClient, MQTTMessage *message, vo
     Log_i("Receive Message With topicName:%.*s, payloadlen:%d", (int) message->topic_len, message->ptopic, (int) message->payload_len);
 
     Log_d("raw_data reveived dump:");
-    HexDump((uint8_t *)message->payload, (int)message->payload_len);	
+    HexDump((uint8_t *)message->payload, (int)message->payload_len);
 }
 
 // subscrib MQTT topic

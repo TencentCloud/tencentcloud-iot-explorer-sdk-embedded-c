@@ -27,7 +27,7 @@ static DeviceInfo sg_devInfo;
 static MQTTEventType sg_subscribe_event_result = MQTT_EVENT_UNDEF;
 static bool sg_control_msg_arrived = false;
 static char sg_data_report_buffer[2048];
-size_t sg_data_report_buffersize = sizeof(sg_data_report_buffer) / sizeof(sg_data_report_buffer[0]);
+static size_t sg_data_report_buffersize = sizeof(sg_data_report_buffer) / sizeof(sg_data_report_buffer[0]);
 
 #ifdef EVENT_POST_ENABLED
 
@@ -52,7 +52,7 @@ static void update_events_timestamp(sEvent *pEvents, int count)
 static void event_post_cb(void *pClient, MQTTMessage *msg)
 {
     Log_d("Reply:%.*s", msg->payload_len, msg->payload);
-//    IOT_Event_clearFlag(pClient, FLAG_EVENT0 | FLAG_EVENT1 | FLAG_EVENT2); 
+//    IOT_Event_clearFlag(pClient, FLAG_EVENT0 | FLAG_EVENT1 | FLAG_EVENT2);
 }
 
 //event check and post
@@ -71,7 +71,7 @@ static void eventPostCheck(void *client)
             if ((eflag & (1 << i))&ALL_EVENTS_MASK) {
                 pEventList[event_count++] = &(g_events[i]);
                 update_events_timestamp(&g_events[i], 1);
-				IOT_Event_clearFlag(client, (1 << i)&ALL_EVENTS_MASK);
+                IOT_Event_clearFlag(client, (1 << i)&ALL_EVENTS_MASK);
             }
         }
 
@@ -424,7 +424,7 @@ int main(int argc, char **argv)
         Log_i("Register data template propertys Success");
     } else {
         Log_e("Register data template propertys Failed: %d", rc);
-         goto exit;
+        goto exit;
     }
 
     //register data template actions here
@@ -519,15 +519,15 @@ int main(int argc, char **argv)
 
         HAL_SleepMs(3000);
     }
-		   
+
 exit:
 
     rc = IOT_Template_Destroy(client);
-	
+
 #ifdef MULTITHREAD_ENABLED
-	if (NULL != yield_thread_t) {
-		HAL_ThreadDestroy((void *)yield_thread_t);
-	}
+    if (NULL != yield_thread_t) {
+        HAL_ThreadDestroy((void *)yield_thread_t);
+    }
 #endif
 
     return rc;
