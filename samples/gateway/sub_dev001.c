@@ -456,27 +456,27 @@ static void deal_down_stream_user_logic(void *client, ProductDataDefine *light)
     }
 
     if (eCHANGED == get_property_state(&light->m_light_switch)) {
-#ifdef EVENT_POST_ENABLED		
-				if (light->m_light_switch) {
-					//memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
-					//strcpy(sg_message,"light on");
-					//sg_status = 1;
-					*(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 1;
-					memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
-					strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light on");
-				} else {
-					//memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
-					//strcpy(sg_message,"light off");
-					//sg_status = 0;
-					*(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 0;
-					memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
-					strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light off");
-				}
-		
-				//switch state changed set EVENT0 flag, the events will be posted by eventPostCheck
-				IOT_Event_setFlag(client, FLAG_EVENT0);
+#ifdef EVENT_POST_ENABLED
+        if (light->m_light_switch) {
+            //memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
+            //strcpy(sg_message,"light on");
+            //sg_status = 1;
+            *(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 1;
+            memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
+            strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light on");
+        } else {
+            //memset(sg_message, 0, MAX_EVENT_STR_MESSAGE_LEN);
+            //strcpy(sg_message,"light off");
+            //sg_status = 0;
+            *(TYPE_DEF_TEMPLATE_BOOL *)g_events[0].pEventData[0].data = 0;
+            memset((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, 0, MAX_EVENT_STR_MESSAGE_LEN);
+            strcpy((TYPE_DEF_TEMPLATE_STRING *)g_events[0].pEventData[1].data, "light off");
+        }
+
+        //switch state changed set EVENT0 flag, the events will be posted by eventPostCheck
+        IOT_Event_setFlag(client, FLAG_EVENT0);
 #else
-				Log_d("light switch state changed");
+        Log_d("light switch state changed");
 #endif
     }
 }
@@ -603,7 +603,7 @@ void* sub_dev1_thread(void *ptr, char *product_id, char *device_name)
     }
 #endif
 
-	HAL_SleepMs(1000); //wait subcrible ack
+    HAL_SleepMs(1000); //wait subcrible ack
     //report device info, then you can manager your product by these info, like position
     rc = _get_sys_info(client, sg_data_report_buffer, sg_data_report_buffersize);
     if (QCLOUD_RET_SUCCESS == rc) {
@@ -629,11 +629,11 @@ void* sub_dev1_thread(void *ptr, char *product_id, char *device_name)
     InitTimer(&sg_reportTimer);
 
     while (IOT_Template_IsConnected(client) || QCLOUD_RET_SUCCESS == rc) {
-		
-		 rc = IOT_Template_Yield_Without_MQTT_Yield(client, 200);
-		 if(QCLOUD_RET_SUCCESS != rc){
-			Log_d("Template Yield without mqtt err, rc:%d", rc);
-		 }
+
+        rc = IOT_Template_Yield_Without_MQTT_Yield(client, 200);
+        if (QCLOUD_RET_SUCCESS != rc) {
+            Log_d("Template Yield without mqtt err, rc:%d", rc);
+        }
 
         /* handle control msg from server */
         if (sg_control_msg_arrived) {
@@ -680,6 +680,6 @@ void* sub_dev1_thread(void *ptr, char *product_id, char *device_name)
         HAL_SleepMs(1000);
     }
 
-	rc = IOT_Template_Destroy_Except_MQTT(client);
+    rc = IOT_Template_Destroy_Except_MQTT(client);
     return NULL;
 }

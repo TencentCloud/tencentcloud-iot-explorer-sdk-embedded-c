@@ -198,7 +198,7 @@ static void *gateway_yield_thread(void *ptr)
 
     int rc = QCLOUD_RET_SUCCESS;
     void *pClient = ptr;
-	
+
     Log_d("gateway yield thread start ...");
     while (sg_thread_running) {
         rc = IOT_Gateway_Yield(pClient, 200);
@@ -310,12 +310,12 @@ int main(int argc, char **argv)
             } else {
                 Log_e("create sub_dev light thread success");
             }
-			continue;
+            continue;
         }
-#endif        
+#endif
 
-        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1); 
-		size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/down/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
+        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);
+        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/down/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
 
         if (size < 0 || size > MAX_SIZE_OF_TOPIC) {
             Log_e("buf size < topic length!");
@@ -331,44 +331,44 @@ int main(int argc, char **argv)
         }
     }
 
-	HAL_SleepMs(2000); /*wait subcribe ack*/
+    HAL_SleepMs(2000); /*wait subcribe ack*/
 
 //  publish to sub-device data_template up stream topic for example
     PublishParams pub_param = DEFAULT_PUB_PARAMS;
     pub_param.qos = QOS0;
-	
-//pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err reply wil received\"}}"; 
-	pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{}}"; 
-    pub_param.payload_len = strlen(pub_param.payload);	
+
+//pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err reply wil received\"}}";
+    pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{}}";
+    pub_param.payload_len = strlen(pub_param.payload);
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT   
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) 
-				&& (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
-			continue;
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
+        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID))
+            && (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
+            continue;
         }
-#endif		
-        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);	
-		size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/up/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
+#endif
+        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);
+        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/up/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
         if (size < 0 || size > MAX_SIZE_OF_TOPIC) {
             Log_e("buf size < topic length!");
             return QCLOUD_ERR_FAILURE;
         }
-		
+
         rc = IOT_Gateway_Publish(client, topic_filter, &pub_param);
         if (rc < 0) {
             Log_e("IOT_Gateway_Publish fail.");
-        }		
+        }
     }
 
 exit:
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  
-	if(NULL != light_thread_t){
-		pthread_join(*light_thread_t, NULL);
-	}	 
-#endif	
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
+    if (NULL != light_thread_t) {
+        pthread_join(*light_thread_t, NULL);
+    }
+#endif
 
     //set GateWay device info
     param.product_id =  gw->gw_info.product_id;
@@ -388,15 +388,15 @@ exit:
             Log_d("subDev Pid:%s devName:%s offline success.", subDevInfo->product_id, subDevInfo->device_name);
         }
     }
-	
+
     if (errCount > 0) {
         Log_e("%d of %d sub devices offline fail", errCount, gw->sub_dev_num);
     }
 
-	//stop running thread
-    sg_thread_running = false;	
-	HAL_SleepMs(1000); /*make sure no thread use client before destroy*/
-	
+    //stop running thread
+    sg_thread_running = false;
+    HAL_SleepMs(1000); /*make sure no thread use client before destroy*/
+
     rc = IOT_Gateway_Destroy(client);
     if (NULL != yield_thread_t) {
         HAL_ThreadDestroy((void *)yield_thread_t);

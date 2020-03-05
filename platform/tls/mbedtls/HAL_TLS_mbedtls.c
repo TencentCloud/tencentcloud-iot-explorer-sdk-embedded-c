@@ -34,6 +34,8 @@ extern "C" {
 #include "mbedtls/net_sockets.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
+#include "mbedtls/debug.h"
+
 
 #include "utils_timer.h"
 
@@ -72,6 +74,17 @@ static void _free_mebedtls(TLSDataParams *pParams)
     HAL_Free(pParams);
 }
 
+#if defined(MBEDTLS_DEBUG_C)
+#define DEBUG_LEVEL 0
+static void _ssl_debug( void *ctx, int level,
+                        const char *file, int line,
+                        const char *str )
+{
+    Log_i("[mbedTLS]:[%s]:[%d]: %s\r\n", file, line, str);
+}
+
+#endif
+
 /**
  * @brief mbedtls SSL client init
  *
@@ -87,6 +100,9 @@ static int _mbedtls_client_init(TLSDataParams *pDataParams, TLSConnectParams *pC
 {
 
     int ret = QCLOUD_RET_SUCCESS;
+
+
+
     mbedtls_net_init(&(pDataParams->socket_fd));
     mbedtls_ssl_init(&(pDataParams->ssl));
     mbedtls_ssl_config_init(&(pDataParams->ssl_conf));
@@ -96,6 +112,13 @@ static int _mbedtls_client_init(TLSDataParams *pDataParams, TLSConnectParams *pC
     mbedtls_pk_init(&(pDataParams->private_key));
 
     mbedtls_entropy_init(&(pDataParams->entropy));
+
+#if defined(MBEDTLS_DEBUG_C)
+    mbedtls_debug_set_threshold( DEBUG_LEVEL );
+    mbedtls_ssl_conf_dbg(&pDataParams->ssl_conf, _ssl_debug, NULL);
+#endif
+
+
     // custom parameter is NULL for now
     if ((ret = mbedtls_ctr_drbg_seed(&(pDataParams->ctr_drbg), mbedtls_entropy_func,
                                      &(pDataParams->entropy), NULL, 0)) != 0) {

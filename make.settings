@@ -38,7 +38,7 @@ FEATURE_AUTH_WITH_NOTLS					= n
 FEATURE_DATA_TEMPLATE_ENABLED           = y
 
 # 是否打开数据模板事件上报功能
-FEATURE_EVENT_POST_ENABLED              = y
+FEATURE_EVENT_POST_ENABLED              = n 
 
 # 是否打开数据模板行为功能
 FEATURE_ACTION_ENABLED            	    = n

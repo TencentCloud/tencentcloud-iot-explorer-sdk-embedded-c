@@ -48,9 +48,8 @@ void HAL_AT_UART_IRQHandler(void)
     uint8_t ch;
     if (__HAL_UART_GET_FLAG(pAtUart, UART_FLAG_RXNE) == SET) {
         ch = (uint8_t) READ_REG(pAtUart->Instance->RDR) & 0xFF;
-        /*this callback for at_client*/
+        /*push data to ringbuffer for at parser*/
         at_client_uart_rx_isr_cb(&ch, 1);
-        HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     }
     __HAL_UART_CLEAR_PEFLAG(pAtUart);
 }

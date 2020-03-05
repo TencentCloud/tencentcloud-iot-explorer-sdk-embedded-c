@@ -83,7 +83,7 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
     cloud_rcv_len = Min(GATEWAY_RECEIVE_BUFFER_LEN - 1, message->payload_len);
     memcpy(cloud_rcv_buf, message->payload, cloud_rcv_len + 1);
     cloud_rcv_buf[cloud_rcv_len] = '\0';    // jsmn_parse relies on a string
-//  	Log_d("recv:%s", cloud_rcv_buf);
+//      Log_d("recv:%s", cloud_rcv_buf);
 
     if (!get_json_type(cloud_rcv_buf, &type)) {
         Log_e("Fail to parse type from msg: %s", cloud_rcv_buf);
@@ -238,8 +238,8 @@ SubdevSession* subdev_find_session(Gateway *gateway, char *product_id, char *dev
 
     /* session is exist */
     while (session) {
-		  if (0 == strcmp(session->product_id, product_id) &&
-				0 == strcmp(session->device_name, device_name)) {
+        if (0 == strcmp(session->product_id, product_id) &&
+            0 == strcmp(session->device_name, device_name)) {
 
             IOT_FUNC_EXIT_RC(session);
         }
@@ -296,8 +296,8 @@ int subdev_remove_session(Gateway *gateway, char *product_id, char *device_name)
 
     /* session is exist */
     while (cur_session) {
-		  if (0 == strcmp(cur_session->product_id, product_id) &&
-				0 == strcmp(cur_session->device_name, device_name) ) {
+        if (0 == strcmp(cur_session->product_id, product_id) &&
+            0 == strcmp(cur_session->device_name, device_name) ) {
             if (cur_session == gateway->session_list) {
                 gateway->session_list = cur_session->next;
             } else {
@@ -334,12 +334,12 @@ int gateway_publish_sync(Gateway *gateway, char *topic, PublishParams *params, i
             Log_i("loop max count, time out.");
             IOT_FUNC_EXIT_RC(QCLOUD_ERR_GATEWAY_SESSION_TIMEOUT);
         }
-		
+
 #ifndef MULTITHREAD_ENABLED
         IOT_Gateway_Yield(gateway, 200);
 #else
-		HAL_SleepMs(1);
-#endif		
+        HAL_SleepMs(1);
+#endif
         loop_count++;
     }
 

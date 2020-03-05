@@ -149,15 +149,30 @@ void HAL_MutexUnlock(_IN_ void *mutex)
 */
 void * HAL_ThreadCreate(uint16_t stack_size, int priority, char * taskname, void *(*fn)(void*), void* arg)
 {
-    osThreadId thread_t = (osThreadId)HAL_Malloc(sizeof(osThreadId));
+#define DEFAULT_STACK_SIZE 1024
 
-    osThreadDef(taskname, (os_pthread)fn, (osPriority)priority, 0, stack_size);
-    thread_t = osThreadCreate(osThread(taskname), arg);
+    osThreadId thread_t;
+    osThreadDef_t thread_def;
+
+    if (NULL == fn) {
+        return NULL;
+    }
+
+    thread_def.name = taskname;
+    thread_def.pthread = (os_pthread)fn;
+    thread_def.tpriority = (osPriority)priority;
+    thread_def.instances = 0;
+    thread_def.stacksize = (stack_size == 0) ? DEFAULT_STACK_SIZE : stack_size;
+
+    thread_t = osThreadCreate(&thread_def, arg);
     if (NULL == thread_t) {
         HAL_Printf("create thread fail\n\r");
     }
 
     return (void *)thread_t;
+
+#undef  DEFAULT_STACK_SIZE
+
 }
 
 int HAL_ThreadDestroy(void* threadId)
