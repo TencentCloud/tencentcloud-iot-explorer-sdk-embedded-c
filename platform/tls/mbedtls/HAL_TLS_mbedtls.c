@@ -74,8 +74,7 @@ static void _free_mebedtls(TLSDataParams *pParams)
     HAL_Free(pParams);
 }
 
-
-
+#if defined(MBEDTLS_DEBUG_C)
 #define DEBUG_LEVEL 0
 static void _ssl_debug( void *ctx, int level,
                         const char *file, int line,
@@ -83,6 +82,8 @@ static void _ssl_debug( void *ctx, int level,
 {
     Log_i("[mbedTLS]:[%s]:[%d]: %s\r\n", file, line, str);
 }
+
+#endif
 
 /**
  * @brief mbedtls SSL client init

@@ -27,7 +27,7 @@
 
 #define SUB_DEV_USE_DATA_TEMPLATE_LIGHT
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-#define LIGHT_SUB_DEV_PRODUCT_ID    "BK7EEF4UIB"
+#define LIGHT_SUB_DEV_PRODUCT_ID    "WPDA0S6S08"
 #define LIGHT_SUB_DEV_NAME          "dev001"
 extern void* sub_dev1_thread(void *ptr, char *product_id, char *device_name);
 #endif
