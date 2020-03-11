@@ -267,18 +267,27 @@ void qcloud_iot_template_reset(void *pClient)
     POINTER_SANITY_CHECK_RTN(pClient);
 
     Qcloud_IoT_Template *template_client = (Qcloud_IoT_Template *)pClient;
+
+    _unsubscribe_template_downstream_topic(template_client->mqtt); 
+
     if (template_client->inner_data.property_handle_list) {
         list_destroy(template_client->inner_data.property_handle_list);
+        template_client->inner_data.property_handle_list = NULL;
     }
-
-    _unsubscribe_template_downstream_topic(template_client->mqtt);
 
     if (template_client->inner_data.reply_list) {
         list_destroy(template_client->inner_data.reply_list);
+        template_client->inner_data.reply_list = NULL;
     }
 
     if (template_client->inner_data.event_list) {
         list_destroy(template_client->inner_data.event_list);
+        template_client->inner_data.event_list = NULL;
+    }
+
+    if (NULL != template_client->inner_data.action_handle_list) {
+        list_destroy(template_client->inner_data.action_handle_list);
+        template_client->inner_data.action_handle_list = NULL;
     }
 }
 

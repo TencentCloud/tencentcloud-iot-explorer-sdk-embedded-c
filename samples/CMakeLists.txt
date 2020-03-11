@@ -61,4 +61,9 @@ if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON")
 	target_link_libraries(ota_mqtt_sample			 ${lib})
 endif()
 
-
+# DYN_REG
+if(${FEATURE_DEV_DYN_REG_ENABLED} STREQUAL "ON")
+	file(GLOB src_dynreg_dev_sample		${PROJECT_SOURCE_DIR}/samples/dynreg_dev/dynreg_dev_sample.c)
+	add_executable(dynreg_dev_sample 		${src_dynreg_dev_sample})
+	target_link_libraries(dynreg_dev_sample 	 ${lib})
+endif()

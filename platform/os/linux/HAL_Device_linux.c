@@ -510,6 +510,12 @@ static int iot_save_devinfo_to_json_file(DeviceInfo *pDevInfo)
 
     Log_d("JsonDoc(%d):%s", MAX_DEV_INFO_FILE_LEN - remain_size, JsonDoc);
 
+	if(eGW_SUB_DEV == pDevInfo->dev_type) {
+		memset(sg_device_info_file, '\0', MAX_SIZE_OF_DEVICE_INFO_FILE);
+		HAL_Snprintf(sg_device_info_file, MAX_SIZE_OF_DEVICE_INFO_FILE, "./%s_%s_device_info.json", \
+															pDevInfo->product_id, pDevInfo->device_name);
+	}
+
     fp = fopen(sg_device_info_file, "w");
     if (NULL == fp) {
         Log_e("open file %s failed", sg_device_info_file);

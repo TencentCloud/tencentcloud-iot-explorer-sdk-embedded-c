@@ -734,6 +734,7 @@ void* IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     Qcloud_IoT_Template *template_client = NULL;
     if ((template_client = (Qcloud_IoT_Template *)HAL_Malloc(sizeof(Qcloud_IoT_Template))) == NULL) {
         Log_e("memory not enough to malloc TemplateClient");
+		return NULL;
     }
 
     MQTTInitParams mqtt_init_params;
@@ -767,6 +768,7 @@ void* IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     rc = qcloud_iot_template_init(template_client);
     if (rc != QCLOUD_RET_SUCCESS) {
         IOT_MQTT_Destroy(&(template_client->mqtt));
+		IOT_Template_Destroy(template_client);
         HAL_Free(template_client);
         goto End;
     }
@@ -795,7 +797,7 @@ void* IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     rc = IOT_Event_Init(template_client);
     if (rc < 0) {
         Log_e("event init failed: %d", rc);
-        IOT_Template_Destroy(&(template_client->mqtt));
+        IOT_Template_Destroy(template_client);
         HAL_Free(template_client);
         goto End;
     }
@@ -805,7 +807,7 @@ void* IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     rc = IOT_Action_Init(template_client);
     if (rc < 0) {
         Log_e("action init failed: %d", rc);
-        IOT_Template_Destroy(&(template_client->mqtt));
+        IOT_Template_Destroy(template_client);
         HAL_Free(template_client);
         goto End;
     }
@@ -824,7 +826,7 @@ int IOT_Template_Destroy(void *handle)
     POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
 
     Qcloud_IoT_Template* template_client = (Qcloud_IoT_Template*)handle;
-    qcloud_iot_template_reset(handle);
+    qcloud_iot_template_reset(template_client);
 
     IOT_MQTT_Destroy(&template_client->mqtt);
 

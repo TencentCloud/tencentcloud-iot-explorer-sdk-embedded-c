@@ -25,6 +25,9 @@ FEATURE_GATEWAY_ENABLED                 = n
 # 是否使能多线程
 FEATURE_MULTITHREAD_ENABLED        		= n
 
+# 是否使能设备动态注册
+FEATURE_DEV_DYN_REG_ENABLED             = y
+
 # 是否打开OTA固件升级总开关
 FEATURE_OTA_COMM_ENABLED                = y
 

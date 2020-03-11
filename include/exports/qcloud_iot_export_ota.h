@@ -148,6 +148,15 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size);
  */
 void IOT_OTA_UpdateClientMd5(void *handle, char * buff, uint32_t size);
 
+
+/**
+ * @brief Reset MD5 of local firmware
+ *
+ * @param handle: OTA module handle
+ *
+ */
+int IOT_OTA_ResetClientMD5(void *handle);
+
 /**
  * @brief Report local firmware version to server
  *        NOTE: do this report before real download

@@ -39,9 +39,9 @@ ifeq ($(FEATURE_AUTH_MODE),CERT)
 CFLAGS += -DAUTH_MODE_CERT
 endif
 
-.PHONY: ota_mqtt_sample data_template_sample gateway_sample  mqtt_sample
+.PHONY: ota_mqtt_sample data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample
 
-all: ota_mqtt_sample data_template_sample	gateway_sample	mqtt_sample
+all: ota_mqtt_sample data_template_sample	gateway_sample	mqtt_sample dynreg_dev_sample
 
 
 ifneq (,$(filter -DOTA_COMM_ENABLED,$(CFLAGS)))
@@ -84,6 +84,15 @@ gateway_sample:
 	$(TOP_Q) \
 	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/gateway/*.c $(LDFLAGS) -o $@
 	
+	$(TOP_Q) \
+	mv $@ $(FINAL_DIR)/bin
+endif
+
+ifneq (,$(filter -DDEV_DYN_REG_ENABLED,$(CFLAGS)))
+dynreg_dev_sample:
+	$(TOP_Q) \
+	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/dynreg_dev/$@.c $(LDFLAGS) -o $@
+
 	$(TOP_Q) \
 	mv $@ $(FINAL_DIR)/bin
 endif

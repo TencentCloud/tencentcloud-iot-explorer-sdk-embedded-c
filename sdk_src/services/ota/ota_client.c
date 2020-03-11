@@ -367,6 +367,21 @@ void IOT_OTA_UpdateClientMd5(void *handle, char * buff, uint32_t size)
     qcloud_otalib_md5_update(h_ota->md5, buff, size);
 }
 
+/*support continuous transmission of breakpoints*/
+int IOT_OTA_ResetClientMD5(void *handle)
+{
+    OTA_Struct_t *h_ota = (OTA_Struct_t *) handle;
+    
+    qcloud_otalib_md5_deinit(h_ota->md5);
+    h_ota->md5 = qcloud_otalib_md5_init();
+    if (NULL == h_ota->md5) {
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    return QCLOUD_RET_SUCCESS;
+}
+
+
 int IOT_OTA_ReportVersion(void *handle, const char *version)
 {
 #define MSG_INFORM_LEN  (128)

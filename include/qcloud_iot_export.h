@@ -54,6 +54,12 @@ extern "C" {
 #define MAX_NUM_SUB_DEV                           					(50)
 
 /**************** QCloud IoT C-SDK constants end *************************/
+typedef enum{
+	eCOMMON_DEV = 0, 	//common dev 	
+	eGW_DEV		= 1,	//Gateway dev
+	eGW_SUB_DEV = 2,	//sub dev of Gateway
+	eDEFAULT_DEV 	
+}eDevType;
 
 typedef struct {
 	char	product_id[MAX_SIZE_OF_PRODUCT_ID + 1];
@@ -70,6 +76,7 @@ typedef struct {
 #ifdef DEV_DYN_REG_ENABLED
 	char	product_secret[MAX_SIZE_OF_PRODUCT_SECRET + 1];
 #endif  	
+	eDevType dev_type;
 } DeviceInfo;
 
 #ifdef GATEWAY_ENABLED
@@ -88,6 +95,8 @@ typedef struct {
 #include "qcloud_iot_export_data_template.h"
 #include "qcloud_iot_export_ota.h"
 #include "qcloud_iot_export_gateway.h"
+#include "qcloud_iot_export_dynreg.h"
+
 
 
 
