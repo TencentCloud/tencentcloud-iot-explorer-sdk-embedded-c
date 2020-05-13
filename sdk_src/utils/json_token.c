@@ -20,7 +20,6 @@
  */
 
 #include "json_parser.h"
-
 #include "lite-utils.h"
 #include "qcloud_iot_export_error.h"
 
@@ -32,29 +31,28 @@
 #define SCNu8 "hhu"
 #endif
 
-
 char *LITE_json_value_of(char *key, char *src)
 {
-    char       *value = NULL;
-    int         value_len = -1;
-    char       *ret = NULL;
+    char *value     = NULL;
+    int   value_len = -1;
+    char *ret       = NULL;
 
-    char       *delim = NULL;
-    char       *key_iter;
-    char       *key_next;
-    int         key_len;
-    char       *src_iter;
+    char *delim = NULL;
+    char *key_iter;
+    char *key_next;
+    int   key_len;
+    char *src_iter;
 
     src_iter = src;
     key_iter = key;
 
     do {
         if ((delim = strchr(key_iter, '.')) != NULL) {
-            key_len = delim - key_iter;
+            key_len  = delim - key_iter;
             key_next = HAL_Malloc(key_len + 1);
             strncpy(key_next, key_iter, key_len);
             key_next[key_len] = '\0';
-            value = json_get_value_by_name(src_iter, strlen(src_iter), key_next, &value_len, 0);
+            value             = json_get_value_by_name(src_iter, strlen(src_iter), key_next, &value_len, 0);
 
             if (value == NULL) {
                 HAL_Free(key_next);
@@ -81,10 +79,10 @@ char *LITE_json_value_of(char *key, char *src)
 
 list_head_t *LITE_json_keys_of(char *src, char *prefix)
 {
-    static              LIST_HEAD(keylist);
+    static LIST_HEAD(keylist);
 
-    char    *pos = 0, *key = 0, *val = 0;
-    int     klen = 0, vlen = 0, vtype = 0;
+    char *pos = 0, *key = 0, *val = 0;
+    int   klen = 0, vlen = 0, vtype = 0;
 
     if (src == NULL || prefix == NULL) {
         return NULL;
@@ -94,10 +92,10 @@ list_head_t *LITE_json_keys_of(char *src, char *prefix)
         INIT_LIST_HEAD(&keylist);
     }
 
-    json_object_for_each_kv(src, pos, key, klen, val, vlen, vtype) {
+    json_object_for_each_kv(src, pos, key, klen, val, vlen, vtype)
+    {
         if (key && klen && val && vlen) {
-
-            json_key_t     *entry = NULL;
+            json_key_t *entry = NULL;
 
             entry = HAL_Malloc(sizeof(json_key_t));
             memset(entry, 0, sizeof(json_key_t));
@@ -115,7 +113,7 @@ list_head_t *LITE_json_keys_of(char *src, char *prefix)
     }
 
     if (!strcmp("", prefix)) {
-        json_key_t     *entry = NULL;
+        json_key_t *entry = NULL;
 
         entry = HAL_Malloc(sizeof(json_key_t));
         memset(entry, 0, sizeof(json_key_t));
@@ -129,9 +127,10 @@ list_head_t *LITE_json_keys_of(char *src, char *prefix)
 
 void LITE_json_keys_release(list_head_t *keylist)
 {
-    json_key_t         *pos, *tmp;
+    json_key_t *pos, *tmp;
 
-    list_for_each_entry_safe(pos, tmp, keylist, list, json_key_t) {
+    list_for_each_entry_safe(pos, tmp, keylist, list, json_key_t)
+    {
         if (pos->key) {
             HAL_Free(pos->key);
         }
@@ -139,7 +138,6 @@ void LITE_json_keys_release(list_head_t *keylist)
         HAL_Free(pos);
     }
 }
-
 
 static void _strip_transfer(char *src)
 {
@@ -154,17 +152,15 @@ static void _strip_transfer(char *src)
     }
 }
 
-char *  LITE_json_string_value_strip_transfer(char *key, char *src)
+char *LITE_json_string_value_strip_transfer(char *key, char *src)
 {
-    char * str = LITE_json_value_of(key, src);
+    char *str = LITE_json_value_of(key, src);
 
     if (NULL != str) {
         _strip_transfer(str);
     }
     return str;
 }
-
-
 
 int LITE_get_int32(int32_t *value, char *src)
 {
@@ -217,18 +213,16 @@ int LITE_get_boolean(bool *value, char *src)
     return QCLOUD_RET_SUCCESS;
 }
 
-int LITE_get_string(int8_t        *value, char *src, uint16_t max_len)
+int LITE_get_string(int8_t *value, char *src, uint16_t max_len)
 {
     int rc;
 
     if (NULL != strncpy((char *)value, src, max_len)) {
         value[Min(strlen(src), max_len)] = '\0';
-        rc = QCLOUD_RET_SUCCESS;
+        rc                               = QCLOUD_RET_SUCCESS;
     } else {
         rc = QCLOUD_ERR_FAILURE;
     }
 
     return rc;
 }
-
-

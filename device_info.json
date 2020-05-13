@@ -25,5 +25,7 @@
                 {"sub_productId": "Y8T6NB8DM0", "sub_devName": "test002"},
                 {"sub_productId": "Y8T6NB8DM0", "sub_devName": "test003"}               
         ]     
-    }
+    },
+	
+    "region":"china"
 }

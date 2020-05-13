@@ -1,14 +1,19 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
  * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
@@ -20,8 +25,8 @@
 extern "C" {
 #endif
 
-#include <sys/types.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 #include "qcloud_iot_export_ota.h"
 
@@ -48,9 +53,7 @@ int qcloud_otalib_get_report_version_result(const char *json);
  * @param fileSize      parsed file size
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int qcloud_otalib_get_params(const char *json, char **type, char **url, char **version, char *md5,
-                     uint32_t *fileSize);
-
+int qcloud_otalib_get_params(const char *json, char **type, char **url, char **version, char *md5, uint32_t *fileSize);
 
 /**
  * @brief Generate firmware info from id and version
@@ -63,7 +66,6 @@ int qcloud_otalib_get_params(const char *json, char **type, char **url, char **v
  */
 int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, const char *version);
 
-
 /**
  * @brief Generate firmware report
  *
@@ -75,7 +77,8 @@ int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, const char
  * @param reportType    report type
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const char *version, int progress, IOT_OTAReportType reportType);
+int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const char *version, int progress,
+                                 IOT_OTAReportType reportType);
 
 #ifdef __cplusplus
 }

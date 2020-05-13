@@ -1,14 +1,20 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
- * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
+ * Copyright (C) 2018-2020 THL A29 Limited, a Tencent company. All rights
+ reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
@@ -17,12 +23,10 @@
 extern "C" {
 #endif
 
-#include <time.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "qcloud_iot_import.h"
-
-static char now_time_str[20] = {0};
 
 bool HAL_Timer_expired(Timer *timer)
 {
@@ -58,21 +62,22 @@ int HAL_Timer_remain(Timer *timer)
 
 void HAL_Timer_init(Timer *timer)
 {
-    timer->end_time = (struct timeval) {
-        0, 0
-    };
+    timer->end_time = (struct timeval){0, 0};
 }
 
-char* HAL_Timer_current(void)
+char *HAL_Timer_current(char *time_str)
 {
+    if (time_str == NULL)
+        return " ";
+
     struct timeval tv;
     gettimeofday(&tv, NULL);
     time_t now_time = tv.tv_sec;
 
     struct tm tm_tmp = *localtime(&now_time);
-    strftime(now_time_str, 20, "%F %T", &tm_tmp);
+    strftime(time_str, TIME_FORMAT_STR_LEN, "%F %T", &tm_tmp);
 
-    return now_time_str;
+    return time_str;
 }
 
 long HAL_Timer_current_sec(void)

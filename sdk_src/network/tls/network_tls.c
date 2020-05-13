@@ -1,14 +1,19 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
  * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
@@ -55,7 +60,7 @@ int network_tls_write(Network *pNetwork, unsigned char *data, size_t datalen, ui
 {
     POINTER_SANITY_CHECK(pNetwork, QCLOUD_ERR_INVAL);
 
-    int rc =  HAL_TLS_Write(pNetwork->handle, data, datalen, timeout_ms, written_len);
+    int rc = HAL_TLS_Write(pNetwork->handle, data, datalen, timeout_ms, written_len);
 
     return rc;
 }
@@ -96,7 +101,7 @@ void network_dtls_disconnect(Network *pNetwork)
     HAL_DTLS_Disconnect(pNetwork->handle);
     pNetwork->handle = 0;
 
-    return ;
+    return;
 }
 
 int network_dtls_connect(Network *pNetwork)

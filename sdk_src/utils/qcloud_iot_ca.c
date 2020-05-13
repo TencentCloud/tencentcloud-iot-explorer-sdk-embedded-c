@@ -1,14 +1,19 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
  * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
@@ -18,43 +23,64 @@ extern "C" {
 #endif
 
 #include "qcloud_iot_ca.h"
-#include "qcloud_iot_import.h"
-
 
 #include <stdlib.h>
 
-#ifndef AUTH_WITH_NOTLS
-static const char *iot_ca_crt = \
-{
-    "-----BEGIN CERTIFICATE-----\r\n"
-    "MIIDxTCCAq2gAwIBAgIJALM1winYO2xzMA0GCSqGSIb3DQEBCwUAMHkxCzAJBgNV\r\n" \
-    "BAYTAkNOMRIwEAYDVQQIDAlHdWFuZ0RvbmcxETAPBgNVBAcMCFNoZW5aaGVuMRAw\r\n" \
-    "DgYDVQQKDAdUZW5jZW50MRcwFQYDVQQLDA5UZW5jZW50IElvdGh1YjEYMBYGA1UE\r\n" \
-    "AwwPd3d3LnRlbmNlbnQuY29tMB4XDTE3MTEyNzA0MjA1OVoXDTMyMTEyMzA0MjA1\r\n" \
-    "OVoweTELMAkGA1UEBhMCQ04xEjAQBgNVBAgMCUd1YW5nRG9uZzERMA8GA1UEBwwI\r\n" \
-    "U2hlblpoZW4xEDAOBgNVBAoMB1RlbmNlbnQxFzAVBgNVBAsMDlRlbmNlbnQgSW90\r\n" \
-    "aHViMRgwFgYDVQQDDA93d3cudGVuY2VudC5jb20wggEiMA0GCSqGSIb3DQEBAQUA\r\n" \
-    "A4IBDwAwggEKAoIBAQDVxwDZRVkU5WexneBEkdaKs4ehgQbzpbufrWo5Lb5gJ3i0\r\n" \
-    "eukbOB81yAaavb23oiNta4gmMTq2F6/hAFsRv4J2bdTs5SxwEYbiYU1teGHuUQHO\r\n" \
-    "iQsZCdNTJgcikga9JYKWcBjFEnAxKycNsmqsq4AJ0CEyZbo//IYX3czEQtYWHjp7\r\n" \
-    "FJOlPPd1idKtFMVNG6LGXEwS/TPElE+grYOxwB7Anx3iC5ZpE5lo5tTioFTHzqbT\r\n" \
-    "qTN7rbFZRytAPk/JXMTLgO55fldm4JZTP3GQsPzwIh4wNNKhi4yWG1o2u3hAnZDv\r\n" \
-    "UVFV7al2zFdOfuu0KMzuLzrWrK16SPadRDd9eT17AgMBAAGjUDBOMB0GA1UdDgQW\r\n" \
-    "BBQrr48jv4FxdKs3r0BkmJO7zH4ALzAfBgNVHSMEGDAWgBQrr48jv4FxdKs3r0Bk\r\n" \
-    "mJO7zH4ALzAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQDRSjXnBc3T\r\n" \
-    "d9VmtTCuALXrQELY8KtM+cXYYNgtodHsxmrRMpJofsPGiqPfb82klvswpXxPK8Xx\r\n" \
-    "SuUUo74Fo+AEyJxMrRKlbJvlEtnpSilKmG6rO9+bFq3nbeOAfat4lPl0DIscWUx3\r\n" \
-    "ajXtvMCcSwTlF8rPgXbOaSXZidRYNqSyUjC2Q4m93Cv+KlyB+FgOke8x4aKAkf5p\r\n" \
-    "XR8i1BN1OiMTIRYhGSfeZbVRq5kTdvtahiWFZu9DGO+hxDZObYGIxGHWPftrhBKz\r\n" \
-    "RT16Amn780rQLWojr70q7o7QP5tO0wDPfCdFSc6CQFq/ngOzYag0kJ2F+O5U6+kS\r\n" \
-    "QVrcRBDxzx/G\r\n" \
-    "-----END CERTIFICATE-----"
+#include "qcloud_iot_common.h"
+#include "qcloud_iot_import.h"
+
+typedef struct _RegionDomain_ {
+    const char *region;
+    const char *domain;
+} RegionDomain;
+
+/*mqtt domain*/
+static RegionDomain sg_iot_mqtt_domain[] = {
+    {.region = "china", .domain = QCLOUD_IOT_MQTT_DIRECT_DOMAIN},    /* China */
+    {.region = "us-east", .domain = QCLOUD_IOT_MQTT_US_EAST_DOMAIN}, /* Eastern US*/
 };
+
+/*dynreg domain*/
+static RegionDomain sg_iot_dyn_reg_domain[] = {
+    {.region = "china", .domain = DYN_REG_SERVER_URL},           /* China */
+    {.region = "us-east", .domain = DYN_REG_SERVER_US_EAST_URL}, /* Eastern US*/
+};
+
+/*log domain*/
+static RegionDomain sg_iot_log_domain[] = {
+    {.region = "china", .domain = LOG_UPLOAD_SERVER_DOMAIN},           /* China */
+    {.region = "us-east", .domain = LOG_UPLOAD_SERVER_US_EAST_DOMAIN}, /* Eastern US*/
+};
+
+#ifndef AUTH_WITH_NOTLS
+static const char *iot_ca_crt = {
+    "-----BEGIN CERTIFICATE-----\r\n"
+    "MIIDxTCCAq2gAwIBAgIJALM1winYO2xzMA0GCSqGSIb3DQEBCwUAMHkxCzAJBgNV\r\n"
+    "BAYTAkNOMRIwEAYDVQQIDAlHdWFuZ0RvbmcxETAPBgNVBAcMCFNoZW5aaGVuMRAw\r\n"
+    "DgYDVQQKDAdUZW5jZW50MRcwFQYDVQQLDA5UZW5jZW50IElvdGh1YjEYMBYGA1UE\r\n"
+    "AwwPd3d3LnRlbmNlbnQuY29tMB4XDTE3MTEyNzA0MjA1OVoXDTMyMTEyMzA0MjA1\r\n"
+    "OVoweTELMAkGA1UEBhMCQ04xEjAQBgNVBAgMCUd1YW5nRG9uZzERMA8GA1UEBwwI\r\n"
+    "U2hlblpoZW4xEDAOBgNVBAoMB1RlbmNlbnQxFzAVBgNVBAsMDlRlbmNlbnQgSW90\r\n"
+    "aHViMRgwFgYDVQQDDA93d3cudGVuY2VudC5jb20wggEiMA0GCSqGSIb3DQEBAQUA\r\n"
+    "A4IBDwAwggEKAoIBAQDVxwDZRVkU5WexneBEkdaKs4ehgQbzpbufrWo5Lb5gJ3i0\r\n"
+    "eukbOB81yAaavb23oiNta4gmMTq2F6/hAFsRv4J2bdTs5SxwEYbiYU1teGHuUQHO\r\n"
+    "iQsZCdNTJgcikga9JYKWcBjFEnAxKycNsmqsq4AJ0CEyZbo//IYX3czEQtYWHjp7\r\n"
+    "FJOlPPd1idKtFMVNG6LGXEwS/TPElE+grYOxwB7Anx3iC5ZpE5lo5tTioFTHzqbT\r\n"
+    "qTN7rbFZRytAPk/JXMTLgO55fldm4JZTP3GQsPzwIh4wNNKhi4yWG1o2u3hAnZDv\r\n"
+    "UVFV7al2zFdOfuu0KMzuLzrWrK16SPadRDd9eT17AgMBAAGjUDBOMB0GA1UdDgQW\r\n"
+    "BBQrr48jv4FxdKs3r0BkmJO7zH4ALzAfBgNVHSMEGDAWgBQrr48jv4FxdKs3r0Bk\r\n"
+    "mJO7zH4ALzAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQDRSjXnBc3T\r\n"
+    "d9VmtTCuALXrQELY8KtM+cXYYNgtodHsxmrRMpJofsPGiqPfb82klvswpXxPK8Xx\r\n"
+    "SuUUo74Fo+AEyJxMrRKlbJvlEtnpSilKmG6rO9+bFq3nbeOAfat4lPl0DIscWUx3\r\n"
+    "ajXtvMCcSwTlF8rPgXbOaSXZidRYNqSyUjC2Q4m93Cv+KlyB+FgOke8x4aKAkf5p\r\n"
+    "XR8i1BN1OiMTIRYhGSfeZbVRq5kTdvtahiWFZu9DGO+hxDZObYGIxGHWPftrhBKz\r\n"
+    "RT16Amn780rQLWojr70q7o7QP5tO0wDPfCdFSc6CQFq/ngOzYag0kJ2F+O5U6+kS\r\n"
+    "QVrcRBDxzx/G\r\n"
+    "-----END CERTIFICATE-----"};
 
 #ifdef OTA_USE_HTTPS
 
-static const char *iot_https_ca_crt = \
-{
+static const char *iot_https_ca_crt = {
     "-----BEGIN CERTIFICATE-----\r\n"
     "MIIDdTCCAl2gAwIBAgILBAAAAAABFUtaw5QwDQYJKoZIhvcNAQEFBQAwVzELMAkG\r\n"
     "A1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExEDAOBgNVBAsTB1Jv\r\n"
@@ -101,8 +127,7 @@ static const char *iot_https_ca_crt = \
     "30JAZGSGvip2CTFvHST0mdCF/vIhCPnG9vHQWe3WVjwIKANnuvD58ZAWR65n5ryA\r\n"
     "SOlCdjSXVWkkDoPWoC209fN5ikkodBpBocLTJIg1MGCUF7ThBCIxPTsvFwayuJ2G\r\n"
     "K1pp74P1S8SqtCr4fKGxhZSM9AyHDPSsQPhZSZg=\r\n"
-    "-----END CERTIFICATE-----"
-};
+    "-----END CERTIFICATE-----"};
 #endif
 
 #endif
@@ -125,8 +150,78 @@ const char *iot_https_ca_get()
 #endif
 }
 
+const char *iot_get_mqtt_domain(char *region)
+{
+    const char *pDomain = NULL;
+    int         i;
+
+    if (!region) {
+        goto end;
+    }
+
+    for (i = 0; i < sizeof(sg_iot_mqtt_domain) / sizeof(sg_iot_mqtt_domain[0]); i++) {
+        if (0 == strcmp(region, sg_iot_mqtt_domain[i].region)) {
+            pDomain = sg_iot_mqtt_domain[i].domain;
+            break;
+        }
+    }
+
+end:
+    if (!pDomain) {
+        pDomain = sg_iot_mqtt_domain[0].domain;
+    }
+
+    return pDomain;
+}
+
+const char *iot_get_dyn_reg_domain(char *region)
+{
+    const char *pDomain = NULL;
+    int         i;
+
+    if (!region) {
+        goto end;
+    }
+
+    for (i = 0; i < sizeof(sg_iot_dyn_reg_domain) / sizeof(sg_iot_dyn_reg_domain[0]); i++) {
+        if (0 == strcmp(region, sg_iot_dyn_reg_domain[i].region)) {
+            pDomain = sg_iot_dyn_reg_domain[i].domain;
+            break;
+        }
+    }
+
+end:
+    if (!pDomain) {
+        pDomain = sg_iot_dyn_reg_domain[0].domain;
+    }
+
+    return pDomain;
+}
+
+const char *iot_get_log_domain(char *region)
+{
+    const char *pDomain = NULL;
+    int         i;
+
+    if (!region) {
+        goto end;
+    }
+
+    for (i = 0; i < sizeof(sg_iot_log_domain) / sizeof(sg_iot_log_domain[0]); i++) {
+        if (0 == strcmp(region, sg_iot_log_domain[i].region)) {
+            pDomain = sg_iot_log_domain[i].domain;
+            break;
+        }
+    }
+
+end:
+    if (!pDomain) {
+        pDomain = sg_iot_log_domain[0].domain;
+    }
+
+    return pDomain;
+}
+
 #ifdef __cplusplus
 }
 #endif
-
-

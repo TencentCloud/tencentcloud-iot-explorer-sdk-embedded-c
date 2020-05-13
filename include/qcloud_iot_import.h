@@ -1,14 +1,20 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
- * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
+ * Copyright (C) 2018-2020 THL A29 Limited, a Tencent company. All rights
+ reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
@@ -19,25 +25,25 @@
 extern "C" {
 #endif
 
+#include <inttypes.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "config.h"
 #include "platform.h"
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdarg.h>
-#include <inttypes.h>
+#define _IN_ /* indicate an input parameter */
+#define _OU_ /* indicate a output parameter */
 
-#define _IN_            /* indicate an input parameter */
-#define _OU_            /* indicate a output parameter */
+#define IOT_TRUE  (1) /* indicate boolean value true */
+#define IOT_FALSE (0) /* indicate boolean value false */
 
-#define IOT_TRUE    (1)     /* indicate boolean value true */
-#define IOT_FALSE   (0)     /* indicate boolean value false */
-
-#define Max(a,b) ((a) > (b) ? (a) : (b))
-#define Min(a,b) ((a) < (b) ? (a) : (b))
-
+#define Max(a, b) ((a) > (b) ? (a) : (b))
+#define Min(a, b) ((a) < (b) ? (a) : (b))
 
 /**********************************************************************
  * QCloud IoT C-SDK Hardware Abstraction Layer
@@ -46,17 +52,24 @@ extern "C" {
  * Require porting when adapt SDK to new platform/OS
  *********************************************************************/
 
+typedef void (*ThreadRunFunc)(void *arg);
+
+typedef struct ThreadParams {
+    char *        thread_name;
+    size_t        thread_id;
+    ThreadRunFunc thread_func;
+    void *        user_arg;
+    uint16_t      priority;
+    uint32_t      stack_size;
+} ThreadParams;
+
 /**
  * @brief Create a thread/task
  *
- * @param stack_size    thread stack size    
- * @param priority      thread priority
- * @param taskname      task name
- * @param fn            thread runtime function callback
- * @param arg           thread function context
- * @return a valid thread handle when success, or NULL otherwise
+ * @param params    thread parameters
+ * @return 0 when success, or error code otherwise
  */
-void * HAL_ThreadCreate(uint16_t stack_size, int priority, char * taskname,void *(*fn)(void*), void* arg);
+int HAL_ThreadCreate(ThreadParams *params);
 
 /**
  * @brief Destroy a thread/task
@@ -211,6 +224,15 @@ int HAL_SetDevInfo(void *pdevInfo);
  */
 int HAL_GetDevInfo(void *pdevInfo);
 
+/**
+ * @brief Get device info from a JSON file
+ *
+ * @param file_name JSON file path
+ * @param pdevInfo reference to device info
+ * @return         QCLOUD_RET_SUCCESS for success, or err code for failure
+ */
+int HAL_GetDevInfoFromFile(const char *file_name, void *dev_info);
+
 #ifdef GATEWAY_ENABLED
 /**
  * @brief Get gateway device info from NVS(flash/files)
@@ -221,7 +243,6 @@ int HAL_GetDevInfo(void *pdevInfo);
 int HAL_GetGwDevInfo(void *pgwDeviceInfo);
 #endif
 
-
 /**
  * @brief Set the name of file which contain device info
  *
@@ -230,15 +251,14 @@ int HAL_GetGwDevInfo(void *pgwDeviceInfo);
  */
 int HAL_SetDevInfoFile(const char *file_name);
 
-
 /**
  * Define timer structure, platform dependant
  */
 struct Timer {
 #if defined(__linux__) && defined(__GLIBC__)
-	struct timeval end_time;
+    struct timeval end_time;
 #else
-	uintptr_t end_time;
+    uintptr_t end_time;
 #endif
 };
 
@@ -283,12 +303,13 @@ int HAL_Timer_remain(Timer *timer);
  */
 void HAL_Timer_init(Timer *timer);
 
+#define TIME_FORMAT_STR_LEN (20)
 /**
- * @brief Get local time in format: %Y-%m-%d %z %H:%M:%S
+ * @brief Get local time in format: %y-%m-%d %H:%M:%S
  *
  * @return string of formatted time
  */
-char* HAL_Timer_current(void);
+char *HAL_Timer_current(char *time_str);
 
 /**
  * @brief Get timestamp in second
@@ -298,10 +319,10 @@ char* HAL_Timer_current(void);
 long HAL_Timer_current_sec(void);
 
 #ifdef AT_TCP_ENABLED
-int HAL_AT_TCP_Init(void);
+int       HAL_AT_TCP_Init(void);
 uintptr_t HAL_AT_TCP_Connect(const char *host, uint16_t port);
-int HAL_AT_TCP_Disconnect(uintptr_t fd);
-int HAL_AT_TCP_Write(uintptr_t fd, const unsigned char *buf, uint32_t len, uint32_t timeout_ms, size_t *written_len);	
+int       HAL_AT_TCP_Disconnect(uintptr_t fd);
+int HAL_AT_TCP_Write(uintptr_t fd, const unsigned char *buf, uint32_t len, uint32_t timeout_ms, size_t *written_len);
 int HAL_AT_TCP_Read(uintptr_t fd, uint8_t *buf, uint32_t len, uint32_t timeout_ms, uint32_t *read_len);
 int at_device_init(void);
 int HAL_AT_Uart_Init(void);
@@ -309,7 +330,6 @@ int HAL_AT_Uart_Deinit(void);
 int HAL_AT_Uart_Send(void *data, uint32_t size);
 int HAL_AT_Uart_Recv(void *data, uint32_t expect_size, uint32_t *recv_size, uint32_t timeout);
 #endif
-
 
 /********** TLS/DTLS network sturcture and operations **********/
 
@@ -319,29 +339,28 @@ int HAL_AT_Uart_Recv(void *data, uint32_t expect_size, uint32_t *recv_size, uint
  *
  */
 typedef struct {
-    const char		 *ca_crt;
-    uint16_t 		 ca_crt_len;
+    const char *ca_crt;
+    uint16_t    ca_crt_len;
 
 #ifdef AUTH_MODE_CERT
-	/**
-	 * Device with certificate
-	 */
-    const char       *cert_file;            // public certificate file
-    const char       *key_file;             // pravite certificate file
+    /**
+     * Device with certificate
+     */
+    const char *cert_file;  // public certificate file
+    const char *key_file;   // pravite certificate file
 #else
     /**
      * Device with PSK
      */
-    const char       *psk;                  // PSK string
-    const char       *psk_id;               // PSK ID
+    const char *psk;     // PSK string
+    const char *psk_id;  // PSK ID
 #endif
 
-    size_t           psk_length;            // PSK length
+    size_t psk_length;  // PSK length
 
-    unsigned int     timeout_ms;            // SSL handshake timeout in millisecond
+    unsigned int timeout_ms;  // SSL handshake timeout in millisecond
 
 } SSLConnectParams;
-
 
 typedef SSLConnectParams TLSConnectParams;
 
@@ -372,8 +391,7 @@ void HAL_TLS_Disconnect(uintptr_t handle);
  * @param written_len   length of data written successfully
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int HAL_TLS_Write(uintptr_t handle, unsigned char *data, size_t totalLen, uint32_t timeout_ms,
-                                 size_t *written_len);
+int HAL_TLS_Write(uintptr_t handle, unsigned char *data, size_t totalLen, uint32_t timeout_ms, size_t *written_len);
 
 /**
  * @brief Read data via TLS connection
@@ -385,8 +403,7 @@ int HAL_TLS_Write(uintptr_t handle, unsigned char *data, size_t totalLen, uint32
  * @param read_len      length of data read successfully
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int HAL_TLS_Read(uintptr_t handle, unsigned char *data, size_t totalLen, uint32_t timeout_ms,
-                                size_t *read_len);
+int HAL_TLS_Read(uintptr_t handle, unsigned char *data, size_t totalLen, uint32_t timeout_ms, size_t *read_len);
 
 /********** DTLS network **********/
 #ifdef COAP_COMM_ENABLED
@@ -431,12 +448,10 @@ int HAL_DTLS_Write(uintptr_t handle, const unsigned char *data, size_t datalen, 
  * @param read_len      length of data read successfully
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int HAL_DTLS_Read(uintptr_t handle, unsigned char *data, size_t datalen, uint32_t timeout_ms,
-                  size_t *read_len);
+int HAL_DTLS_Read(uintptr_t handle, unsigned char *data, size_t datalen, uint32_t timeout_ms, size_t *read_len);
 
-#endif //COAP_COMM_ENABLED
-#endif //AUTH_WITH_NOTLS
-
+#endif  // COAP_COMM_ENABLED
+#endif  // AUTH_WITH_NOTLS
 
 /********** TCP network **********/
 /**
@@ -466,8 +481,7 @@ int HAL_TCP_Disconnect(uintptr_t fd);
  * @param written_len   length of data written successfully
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int HAL_TCP_Write(uintptr_t fd, const unsigned char *data, uint32_t len, uint32_t timeout_ms,
-                size_t *written_len);
+int HAL_TCP_Write(uintptr_t fd, const unsigned char *data, uint32_t len, uint32_t timeout_ms, size_t *written_len);
 
 /**
  * @brief Read data via TCP connection
@@ -479,8 +493,7 @@ int HAL_TCP_Write(uintptr_t fd, const unsigned char *data, uint32_t len, uint32_
  * @param read_len      length of data read successfully
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int HAL_TCP_Read(uintptr_t fd, unsigned char *data, uint32_t len, uint32_t timeout_ms,
-                size_t *read_len);
+int HAL_TCP_Read(uintptr_t fd, unsigned char *data, uint32_t len, uint32_t timeout_ms, size_t *read_len);
 
 /********** UDP network **********/
 #ifdef COAP_COMM_ENABLED
@@ -507,7 +520,8 @@ void HAL_UDP_Disconnect(uintptr_t fd);
  * @param fd            UDP socket handle
  * @param data          source data to write
  * @param len           length of data
- * @return              length of data written when success, or err code for failure
+ * @return              length of data written when success, or err code for
+ * failure
  */
 int HAL_UDP_Write(uintptr_t fd, const unsigned char *data, unsigned int len);
 
@@ -517,7 +531,8 @@ int HAL_UDP_Write(uintptr_t fd, const unsigned char *data, unsigned int len);
  * @param fd            UDP socket handle
  * @param data          destination data buffer where to put data
  * @param len           length of data
- * @return              length of data read when success, or err code for failure
+ * @return              length of data read when success, or err code for
+ * failure
  */
 int HAL_UDP_Read(uintptr_t fd, unsigned char *data, unsigned int len);
 
@@ -528,13 +543,15 @@ int HAL_UDP_Read(uintptr_t fd, unsigned char *data, unsigned int len);
  * @param data          destination data buffer where to put data
  * @param len           length of data
  * @param timeout_ms    timeout value in millisecond
- * @return              length of data read when success, or err code for failure
+ * @return              length of data read when success, or err code for
+ * failure
  */
 int HAL_UDP_ReadTimeout(uintptr_t fd, unsigned char *p_data, unsigned int datalen, unsigned int timeout_ms);
-#endif //COAP_COMM_ENABLED
+#endif  // COAP_COMM_ENABLED
 
 #ifdef LOG_UPLOAD
-/* Functions for saving/reading logs into/from NVS(files/FLASH) after log upload fail/recover */
+/* Functions for saving/reading logs into/from NVS(files/FLASH) after log upload
+ * fail/recover */
 /**
  * @brief Functions for saving logs into NVS(files/FLASH) after log upload fail
  * @param log           source log buffer
@@ -548,13 +565,13 @@ size_t HAL_Log_Save(const char *log, size_t len);
  * @param buf           destination log buffer
  * @param len           length of log to read
  * @return              length of data read when success, or 0 for failure
- */ 
+ */
 size_t HAL_Log_Read(char *buf, size_t len);
 
 /**
- * @brief Functions for deleting logs in NVS(files/FLASH). 
+ * @brief Functions for deleting logs in NVS(files/FLASH).
  * @return              0 when success
- */ 
+ */
 int HAL_Log_Del(void);
 
 /**
@@ -567,4 +584,4 @@ size_t HAL_Log_Get_Size(void);
 #if defined(__cplusplus)
 }
 #endif
-#endif  /* QCLOUD_IOT_IMPORT_H_ */
+#endif /* QCLOUD_IOT_IMPORT_H_ */

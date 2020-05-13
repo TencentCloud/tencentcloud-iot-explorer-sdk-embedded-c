@@ -1,41 +1,46 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
  * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
 
+#include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
-#include <signal.h>
 
-#include "utils_getopt.h"
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
+#include "utils_getopt.h"
 
-#define MAGIC_HEAD_NUM              0x55aa
+#define MAGIC_HEAD_NUM 0x55aa
 typedef struct _sTestData_ {
-    uint8_t  m_power_switch;
-    uint8_t  m_color;
-    uint8_t  m_brightness;
+    uint8_t m_power_switch;
+    uint8_t m_color;
+    uint8_t m_brightness;
 } sTestData;
 
 typedef struct _sRawDataFrame_ {
-    uint16_t   magic_head;
-    uint8_t    msg_type;
-    uint8_t    res_byte;
-    uint32_t   clientId;
-    sTestData  data;
+    uint16_t  magic_head;
+    uint8_t   msg_type;
+    uint8_t   res_byte;
+    uint32_t  clientId;
+    sTestData data;
 } sRawDataFrame;
 
 typedef enum {
@@ -45,21 +50,18 @@ typedef enum {
 } eMsgType;
 
 static uint32_t sg_client_id = 0;
-static bool sg_loop_test = false;
-
+static bool     sg_loop_test = false;
 
 #ifdef AUTH_MODE_CERT
-static char sg_cert_file[PATH_MAX + 1];      // full path of device cert file
-static char sg_key_file[PATH_MAX + 1];       // full path of device key file
+static char sg_cert_file[PATH_MAX + 1];  // full path of device cert file
+static char sg_key_file[PATH_MAX + 1];   // full path of device key file
 #endif
 
-
 static DeviceInfo sg_devInfo;
-static int sg_sub_packet_id = -1;
-
+static int        sg_sub_packet_id = -1;
 
 // user's log print callback
-static bool log_handler(const char* message)
+static bool log_handler(const char *message)
 {
     // return true if print success
     return false;
@@ -68,8 +70,8 @@ static bool log_handler(const char* message)
 // MQTT event callback
 static void _mqtt_event_handler(void *pclient, void *handle_context, MQTTEventMsg *msg)
 {
-    MQTTMessage* mqtt_messge = (MQTTMessage*)msg->msg;
-    uintptr_t packet_id = (uintptr_t)msg->msg;
+    MQTTMessage *mqtt_messge = (MQTTMessage *)msg->msg;
+    uintptr_t    packet_id   = (uintptr_t)msg->msg;
 
     switch (msg->event_type) {
         case MQTT_EVENT_UNDEF:
@@ -85,11 +87,10 @@ static void _mqtt_event_handler(void *pclient, void *handle_context, MQTTEventMs
             break;
 
         case MQTT_EVENT_PUBLISH_RECVEIVED:
-            Log_i("topic message arrived but without any related handle: topic=%.*s, topic_msg=%.*s",
-                  mqtt_messge->topic_len,
-                  mqtt_messge->ptopic,
-                  mqtt_messge->payload_len,
-                  mqtt_messge->payload);
+            Log_i(
+                "topic message arrived but without any related handle: topic=%.*s, "
+                "topic_msg=%.*s",
+                mqtt_messge->topic_len, mqtt_messge->ptopic, mqtt_messge->payload_len, mqtt_messge->payload);
             break;
         case MQTT_EVENT_SUBCRIBE_SUCCESS:
             Log_i("subscribe success, packet-id=%u", (unsigned int)packet_id);
@@ -135,9 +136,8 @@ static void _mqtt_event_handler(void *pclient, void *handle_context, MQTTEventMs
     }
 }
 
-
 // Setup MQTT construct parameters
-static int _setup_connect_init_params(MQTTInitParams* initParams)
+static int _setup_connect_init_params(MQTTInitParams *initParams)
 {
     int ret;
 
@@ -146,12 +146,13 @@ static int _setup_connect_init_params(MQTTInitParams* initParams)
         return ret;
     }
 
+    initParams->region      = sg_devInfo.region;
     initParams->device_name = sg_devInfo.device_name;
-    initParams->product_id = sg_devInfo.product_id;
+    initParams->product_id  = sg_devInfo.product_id;
 
 #ifdef AUTH_MODE_CERT
-    char certs_dir[PATH_MAX + 1] = "certs";
-    char current_path[PATH_MAX + 1];
+    char  certs_dir[PATH_MAX + 1] = "certs";
+    char  current_path[PATH_MAX + 1];
     char *cwd = getcwd(current_path, sizeof(current_path));
 
     if (cwd == NULL) {
@@ -168,16 +169,16 @@ static int _setup_connect_init_params(MQTTInitParams* initParams)
 #endif
 
     initParams->cert_file = sg_cert_file;
-    initParams->key_file = sg_key_file;
+    initParams->key_file  = sg_key_file;
 #else
     initParams->device_secret = sg_devInfo.device_secret;
 #endif
 
-    initParams->command_timeout = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
+    initParams->command_timeout        = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
     initParams->keep_alive_interval_ms = QCLOUD_IOT_MQTT_KEEP_ALIVE_INTERNAL;
 
-    initParams->auto_connect_enable = 1;
-    initParams->event_handle.h_fp = _mqtt_event_handler;
+    initParams->auto_connect_enable  = 1;
+    initParams->event_handle.h_fp    = _mqtt_event_handler;
     initParams->event_handle.context = NULL;
 
     return QCLOUD_RET_SUCCESS;
@@ -201,24 +202,23 @@ static int _publish_raw_data_msg(void *client, QoS qos)
 {
     sRawDataFrame raw_data;
 
-
     memset((char *)&raw_data, 0, sizeof(sRawDataFrame));
     raw_data.magic_head = MAGIC_HEAD_NUM;
-    raw_data.msg_type = eMSG_REPORT;
-    raw_data.clientId = sg_client_id++;
+    raw_data.msg_type   = eMSG_REPORT;
+    raw_data.clientId   = sg_client_id++;
 
     srand((unsigned)HAL_GetTimeMs());
     raw_data.data.m_power_switch = 1;
-    raw_data.data.m_color = rand() % 3;
-    raw_data.data.m_brightness = rand() % 100;
+    raw_data.data.m_color        = rand() % 3;
+    raw_data.data.m_brightness   = rand() % 100;
 
     char topicName[128] = {0};
     sprintf(topicName, "$thing/up/raw/%s/%s", sg_devInfo.product_id, sg_devInfo.device_name);
 
     PublishParams pub_params = DEFAULT_PUB_PARAMS;
-    pub_params.qos = qos;
-    pub_params.payload = &raw_data;
-    pub_params.payload_len = sizeof(raw_data);
+    pub_params.qos           = qos;
+    pub_params.payload       = &raw_data;
+    pub_params.payload_len   = sizeof(raw_data);
 
     Log_d("raw_data published dump:");
     HexDump((uint8_t *)&raw_data, sizeof(raw_data));
@@ -232,7 +232,8 @@ static void on_raw_data_message_callback(void *pClient, MQTTMessage *message, vo
     if (message == NULL) {
         return;
     }
-    Log_i("Receive Message With topicName:%.*s, payloadlen:%d", (int) message->topic_len, message->ptopic, (int) message->payload_len);
+    Log_i("Receive Message With topicName:%.*s, payloadlen:%d", (int)message->topic_len, message->ptopic,
+          (int)message->payload_len);
 
     Log_d("raw_data reveived dump:");
     HexDump((uint8_t *)message->payload, (int)message->payload_len);
@@ -242,14 +243,15 @@ static void on_raw_data_message_callback(void *pClient, MQTTMessage *message, vo
 static int _subscribe_raw_data_topic(void *client, QoS qos)
 {
     static char topic_name[128] = {0};
-    int size = HAL_Snprintf(topic_name, sizeof(topic_name), "$thing/down/raw/%s/%s", sg_devInfo.product_id, sg_devInfo.device_name);
+    int         size = HAL_Snprintf(topic_name, sizeof(topic_name), "$thing/down/raw/%s/%s", sg_devInfo.product_id,
+                            sg_devInfo.device_name);
 
     if (size < 0 || size > sizeof(topic_name) - 1) {
         Log_e("topic content length not enough! content size:%d  buf size:%d", size, (int)sizeof(topic_name));
         return QCLOUD_ERR_FAILURE;
     }
-    SubscribeParams sub_params = DEFAULT_SUB_PARAMS;
-    sub_params.qos = qos;
+    SubscribeParams sub_params    = DEFAULT_SUB_PARAMS;
+    sub_params.qos                = qos;
     sub_params.on_message_handler = on_raw_data_message_callback;
     return IOT_MQTT_Subscribe(client, topic_name, &sub_params);
 }
@@ -257,8 +259,7 @@ static int _subscribe_raw_data_topic(void *client, QoS qos)
 static int parse_arguments(int argc, char **argv)
 {
     int c;
-    while ((c = utils_getopt(argc, argv, "c:l")) != EOF)
-        switch (c) {
+    while ((c = utils_getopt(argc, argv, "c:l")) != EOF) switch (c) {
             case 'c':
                 if (HAL_SetDevInfoFile(utils_optarg))
                     return -1;
@@ -269,10 +270,11 @@ static int parse_arguments(int argc, char **argv)
                 break;
 
             default:
-                HAL_Printf("usage: %s [options]\n"
-                           "  [-c <config file for DeviceInfo>] \n"
-                           "  [-l ] loop test or not\n"
-                           , argv[0]);
+                HAL_Printf(
+                    "usage: %s [options]\n"
+                    "  [-c <config file for DeviceInfo>] \n"
+                    "  [-l ] loop test or not\n",
+                    argv[0]);
                 return -1;
         }
     return 0;
@@ -281,7 +283,7 @@ static int parse_arguments(int argc, char **argv)
 int main(int argc, char **argv)
 {
     int rc;
-    //init log level
+    // init log level
     IOT_Log_Set_Level(eLOG_DEBUG);
     IOT_Log_Set_MessageHandler(log_handler);
 
@@ -292,9 +294,9 @@ int main(int argc, char **argv)
         return rc;
     }
 
-    //init connection
+    // init connection
     MQTTInitParams init_params = DEFAULT_MQTTINIT_PARAMS;
-    rc = _setup_connect_init_params(&init_params);
+    rc                         = _setup_connect_init_params(&init_params);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("init params error, rc = %d", rc);
         return rc;
@@ -321,7 +323,7 @@ int main(int argc, char **argv)
     }
 #endif
 
-    //subscribe normal topics here
+    // subscribe normal topics here
     rc = _subscribe_raw_data_topic(client, QOS1);
     if (rc < 0) {
         Log_e("Client Subscribe raw data topic Failed: %d", rc);
@@ -332,7 +334,6 @@ int main(int argc, char **argv)
     IOT_MQTT_Yield(client, 500);
 
     do {
-
         if (sg_sub_packet_id > 0) {
             rc = _publish_raw_data_msg(client, QOS0);
             if (rc < 0) {

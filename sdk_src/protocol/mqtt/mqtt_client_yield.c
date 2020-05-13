@@ -11,17 +11,17 @@
  *   http://www.eclipse.org/org/documents/edl-v10.php.
  *
  * Contributors:
- *    Allan Stockdill-Mander/Ian Craggs - initial API and implementation and/or initial documentation
+ *    Allan Stockdill-Mander/Ian Craggs - initial API and implementation and/or
+ *initial documentation
  *******************************************************************************/
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "mqtt_client.h"
 #include "log_upload.h"
+#include "mqtt_client.h"
 #include "qcloud_iot_import.h"
-
 
 static uint32_t _get_random_interval(void)
 {
@@ -30,25 +30,23 @@ static uint32_t _get_random_interval(void)
     return (rand() % 100 + 100) * 10;
 }
 
-
 static void _iot_disconnect_callback(Qcloud_IoT_Client *pClient)
 {
-
     if (NULL != pClient->event_handle.h_fp) {
         MQTTEventMsg msg;
         msg.event_type = MQTT_EVENT_DISCONNECT;
-        msg.msg = NULL;
+        msg.msg        = NULL;
 
         pClient->event_handle.h_fp(pClient, pClient->event_handle.context, &msg);
     }
 }
 
-static void _reconnect_callback(Qcloud_IoT_Client* pClient)
+static void _reconnect_callback(Qcloud_IoT_Client *pClient)
 {
     if (NULL != pClient->event_handle.h_fp) {
         MQTTEventMsg msg;
         msg.event_type = MQTT_EVENT_RECONNECT;
-        msg.msg = NULL;
+        msg.msg        = NULL;
 
         pClient->event_handle.h_fp(pClient, pClient->event_handle.context, &msg);
     }
@@ -96,7 +94,7 @@ static int _handle_reconnect(Qcloud_IoT_Client *pClient)
     IOT_FUNC_ENTRY;
 
     int8_t isPhysicalLayerConnected = 1;
-    int rc = QCLOUD_RET_MQTT_RECONNECTED;
+    int    rc                       = QCLOUD_RET_MQTT_RECONNECTED;
 
     // reconnect control by delay timer (increase interval exponentially )
     if (!expired(&(pClient->reconnect_delay_timer))) {
@@ -104,7 +102,8 @@ static int _handle_reconnect(Qcloud_IoT_Client *pClient)
     }
 
     if (NULL != pClient->network_stack.is_connected) {
-        isPhysicalLayerConnected = (int8_t) pClient->network_stack.is_connected(&(pClient->network_stack)); // always return 1
+        isPhysicalLayerConnected =
+            (int8_t)pClient->network_stack.is_connected(&(pClient->network_stack));  // always return 1
     }
 
     if (isPhysicalLayerConnected) {
@@ -145,12 +144,12 @@ static int _handle_reconnect(Qcloud_IoT_Client *pClient)
  */
 static int _mqtt_keep_alive(Qcloud_IoT_Client *pClient)
 {
-#define MQTT_PING_RETRY_TIMES   2
+#define MQTT_PING_RETRY_TIMES 2
 
     IOT_FUNC_ENTRY;
 
-    int rc;
-    Timer timer;
+    int      rc;
+    Timer    timer;
     uint32_t serialized_len = 0;
 
     if (0 == pClient->options.keep_alive_interval) {
@@ -162,7 +161,8 @@ static int _mqtt_keep_alive(Qcloud_IoT_Client *pClient)
     }
 
     if (pClient->is_ping_outstanding >= MQTT_PING_RETRY_TIMES) {
-        //Reaching here means we haven't received any MQTT packet for a long time (keep_alive_interval)
+        // Reaching here means we haven't received any MQTT packet for a long time
+        // (keep_alive_interval)
         Log_e("Fail to recv MQTT msg. Something wrong with the connection.");
         rc = _handle_disconnect(pClient);
         IOT_FUNC_EXIT_RC(rc);
@@ -186,7 +186,9 @@ static int _mqtt_keep_alive(Qcloud_IoT_Client *pClient)
 
     if (QCLOUD_RET_SUCCESS != rc) {
         HAL_MutexUnlock(pClient->lock_write_buf);
-        //If sending a PING fails, propably the connection is not OK and we decide to disconnect and begin reconnection attempts
+        // If sending a PING fails, propably the connection is not OK and we decide
+        // to disconnect and begin reconnection
+        // attempts
         Log_e("Fail to send PING request. Something wrong with the connection.");
         rc = _handle_disconnect(pClient);
         IOT_FUNC_EXIT_RC(rc);
@@ -204,19 +206,22 @@ static int _mqtt_keep_alive(Qcloud_IoT_Client *pClient)
 }
 
 /**
- * @brief Check connection and keep alive state, read/handle MQTT message in synchronized way
+ * @brief Check connection and keep alive state, read/handle MQTT message in
+ * synchronized way
  *
  * @param pClient    handle to MQTT client
  * @param timeout_ms timeout value (unit: ms) for this operation
  *
- * @return QCLOUD_RET_SUCCESS when success, QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT when try reconnecing, or err code for failure
+ * @return QCLOUD_RET_SUCCESS when success, QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT
+ * when try reconnecing, or err code for
+ * failure
  */
 int qcloud_iot_mqtt_yield(Qcloud_IoT_Client *pClient, uint32_t timeout_ms)
 {
     IOT_FUNC_ENTRY;
 
-    int rc = QCLOUD_RET_SUCCESS;
-    Timer timer;
+    int     rc = QCLOUD_RET_SUCCESS;
+    Timer   timer;
     uint8_t packet_type;
 
     POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
@@ -237,7 +242,6 @@ int qcloud_iot_mqtt_yield(Qcloud_IoT_Client *pClient, uint32_t timeout_ms)
 
     // 3. main loop for packet reading/handling and keep alive maintainance
     while (!expired(&timer)) {
-
         if (!get_client_conn_state(pClient)) {
             if (pClient->current_reconnect_wait_interval > MAX_RECONNECT_WAIT_INTERVAL) {
                 rc = QCLOUD_ERR_MQTT_RECONNECT_TIMEOUT;
@@ -251,10 +255,12 @@ int qcloud_iot_mqtt_yield(Qcloud_IoT_Client *pClient, uint32_t timeout_ms)
         rc = cycle_for_read(pClient, &timer, &packet_type, QOS0);
 
         if (rc == QCLOUD_RET_SUCCESS) {
-            /* check list of wait publish ACK to remove node that is ACKED or timeout */
+            /* check list of wait publish ACK to remove node that is ACKED or timeout
+             */
             qcloud_iot_mqtt_pub_info_proc(pClient);
 
-            /* check list of wait subscribe(or unsubscribe) ACK to remove node that is ACKED or timeout */
+            /* check list of wait subscribe(or unsubscribe) ACK to remove node that is
+             * ACKED or timeout */
             qcloud_iot_mqtt_sub_info_proc(pClient);
 
             rc = _mqtt_keep_alive(pClient);
@@ -296,7 +302,6 @@ int qcloud_iot_mqtt_pub_info_proc(Qcloud_IoT_Client *pClient)
 
     POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
 
-
     HAL_MutexLock(pClient->lock_list_pub);
     do {
         if (0 == pClient->list_pub_wait_ack->len) {
@@ -304,8 +309,8 @@ int qcloud_iot_mqtt_pub_info_proc(Qcloud_IoT_Client *pClient)
         }
 
         ListIterator *iter;
-        ListNode *node = NULL;
-        ListNode *temp_node = NULL;
+        ListNode *    node      = NULL;
+        ListNode *    temp_node = NULL;
 
         if (NULL == (iter = list_iterator_new(pClient->list_pub_wait_ack, LIST_TAIL))) {
             Log_e("new list failed");
@@ -324,7 +329,7 @@ int qcloud_iot_mqtt_pub_info_proc(Qcloud_IoT_Client *pClient)
                 break; /* end of list */
             }
 
-            QcloudIotPubInfo *repubInfo = (QcloudIotPubInfo *) node->val;
+            QcloudIotPubInfo *repubInfo = (QcloudIotPubInfo *)node->val;
             if (NULL == repubInfo) {
                 Log_e("node's value is invalid!");
                 temp_node = node;
@@ -358,7 +363,7 @@ int qcloud_iot_mqtt_pub_info_proc(Qcloud_IoT_Client *pClient)
             if (NULL != pClient->event_handle.h_fp) {
                 MQTTEventMsg msg;
                 msg.event_type = MQTT_EVENT_PUBLISH_TIMEOUT;
-                msg.msg = (void *)(uintptr_t)repubInfo->msg_id;
+                msg.msg        = (void *)(uintptr_t)repubInfo->msg_id;
                 pClient->event_handle.h_fp(pClient, pClient->event_handle.context, &msg);
             }
         }
@@ -394,10 +399,10 @@ int qcloud_iot_mqtt_sub_info_proc(Qcloud_IoT_Client *pClient)
         }
 
         ListIterator *iter;
-        ListNode *node = NULL;
-        ListNode *temp_node = NULL;
-        uint16_t packet_id = 0;
-        MessageTypes msg_type;
+        ListNode *    node      = NULL;
+        ListNode *    temp_node = NULL;
+        uint16_t      packet_id = 0;
+        MessageTypes  msg_type;
 
         if (NULL == (iter = list_iterator_new(pClient->list_sub_wait_ack, LIST_TAIL))) {
             Log_e("new list failed");
@@ -417,7 +422,7 @@ int qcloud_iot_mqtt_sub_info_proc(Qcloud_IoT_Client *pClient)
                 break; /* end of list */
             }
 
-            QcloudIotSubInfo *sub_info = (QcloudIotSubInfo *) node->val;
+            QcloudIotSubInfo *sub_info = (QcloudIotSubInfo *)node->val;
             if (NULL == sub_info) {
                 Log_e("node's value is invalid!");
                 temp_node = node;
@@ -441,7 +446,7 @@ int qcloud_iot_mqtt_sub_info_proc(Qcloud_IoT_Client *pClient)
 
             /* When arrive here, it means timeout to wait ACK */
             packet_id = sub_info->msg_id;
-            msg_type = sub_info->type;
+            msg_type  = sub_info->type;
 
             /* Wait MQTT SUBSCRIBE ACK timeout */
             if (NULL != pClient->event_handle.h_fp) {
@@ -450,17 +455,17 @@ int qcloud_iot_mqtt_sub_info_proc(Qcloud_IoT_Client *pClient)
                 if (SUBSCRIBE == msg_type) {
                     /* subscribe timeout */
                     msg.event_type = MQTT_EVENT_SUBCRIBE_TIMEOUT;
-                    msg.msg = (void *)(uintptr_t)packet_id;
+                    msg.msg        = (void *)(uintptr_t)packet_id;
 
                     /* notify this event to topic subscriber */
                     if (NULL != sub_info->handler.sub_event_handler)
-                        sub_info->handler.sub_event_handler(pClient,
-                                                            MQTT_EVENT_SUBCRIBE_TIMEOUT, sub_info->handler.handler_user_data);
+                        sub_info->handler.sub_event_handler(pClient, MQTT_EVENT_SUBCRIBE_TIMEOUT,
+                                                            sub_info->handler.handler_user_data);
 
                 } else {
                     /* unsubscribe timeout */
                     msg.event_type = MQTT_EVENT_UNSUBCRIBE_TIMEOUT;
-                    msg.msg = (void *)(uintptr_t)packet_id;
+                    msg.msg        = (void *)(uintptr_t)packet_id;
                 }
 
                 pClient->event_handle.h_fp(pClient, pClient->event_handle.context, &msg);

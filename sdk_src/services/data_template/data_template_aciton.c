@@ -1,14 +1,19 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
  * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
@@ -16,10 +21,10 @@
 #include "config.h"
 
 #if defined(ACTION_ENABLED)
-#include <string.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "utils_param_check.h"
 #include "lite-utils.h"
@@ -28,14 +33,14 @@
 #include "data_template_client_json.h"
 #include "qcloud_iot_export_data_template.h"
 
-//Action Subscribe
+// Action Subscribe
 static int _parse_action_input(DeviceAction *pAction, char *pInput)
 {
-    int i;
-    char *temp;
+    int             i;
+    char *          temp;
     DeviceProperty *pActionInput = pAction->pInput;
 
-    //check and copy
+    // check and copy
     for (i = 0; i < pAction->input_num; i++) {
         if (JSTRING == pActionInput[i].type) {
             pActionInput[i].data = LITE_json_value_of(pActionInput[i].key, pInput);
@@ -55,14 +60,14 @@ static int _parse_action_input(DeviceAction *pAction, char *pInput)
                     Log_e("parse code failed, errCode: %d", QCLOUD_ERR_JSON_PARSE);
                     return -1;
                 }
-            } else if ( JFLOAT == pActionInput[i].type) {
+            } else if (JFLOAT == pActionInput[i].type) {
                 if (sscanf(temp, "%f", (float *)pActionInput[i].data) != 1) {
                     HAL_Free(temp);
                     Log_e("parse code failed, errCode: %d", QCLOUD_ERR_JSON_PARSE);
                     return -1;
                 }
-            } else if ( JUINT32 == pActionInput[i].type) {
-                if (sscanf(temp, "%" SCNu32, (uint32_t *) pActionInput[i].data) != 1) {
+            } else if (JUINT32 == pActionInput[i].type) {
+                if (sscanf(temp, "%" SCNu32, (uint32_t *)pActionInput[i].data) != 1) {
                     HAL_Free(temp);
                     Log_e("parse code failed, errCode: %d", QCLOUD_ERR_JSON_PARSE);
                     return -1;
@@ -75,7 +80,8 @@ static int _parse_action_input(DeviceAction *pAction, char *pInput)
     return 0;
 }
 
-static void _handle_aciton(Qcloud_IoT_Template *pTemplate, List *list, const char *pClientToken, const char *pActionId, uint32_t timestamp, char *pInput)
+static void _handle_aciton(Qcloud_IoT_Template *pTemplate, List *list, const char *pClientToken, const char *pActionId,
+                           uint32_t timestamp, char *pInput)
 {
     IOT_FUNC_ENTRY;
 
@@ -83,7 +89,7 @@ static void _handle_aciton(Qcloud_IoT_Template *pTemplate, List *list, const cha
 
     if (list->len) {
         ListIterator *iter;
-        ListNode *node = NULL;
+        ListNode *    node = NULL;
 
         if (NULL == (iter = list_iterator_new(list, LIST_TAIL))) {
             HAL_MutexUnlock(pTemplate->mutex);
@@ -101,13 +107,13 @@ static void _handle_aciton(Qcloud_IoT_Template *pTemplate, List *list, const cha
                 continue;
             }
 
-            ActionHandler *pActionHandle =  (ActionHandler *)node->val;
+            ActionHandler *pActionHandle = (ActionHandler *)node->val;
 
             // check action id and call callback
-            if (0 == strcmp(pActionId, ((DeviceAction*)pActionHandle->action)->pActionId)) {
+            if (0 == strcmp(pActionId, ((DeviceAction *)pActionHandle->action)->pActionId)) {
                 if (NULL != pActionHandle->callback) {
                     if (!_parse_action_input(pActionHandle->action, pInput)) {
-                        ((DeviceAction*)pActionHandle->action)->timestamp = timestamp;
+                        ((DeviceAction *)pActionHandle->action)->timestamp = timestamp;
                         pActionHandle->callback(pTemplate, pClientToken, pActionHandle->action);
                     }
                 }
@@ -122,20 +128,21 @@ static void _handle_aciton(Qcloud_IoT_Template *pTemplate, List *list, const cha
 static void _on_action_handle_callback(void *pClient, MQTTMessage *message, void *pUserData)
 {
     POINTER_SANITY_CHECK_RTN(message);
-//  Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
-//  Qcloud_IoT_Template *template_client = (Qcloud_IoT_Template*)mqtt_client->event_handle.context;
+    //  Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
+    //  Qcloud_IoT_Template *template_client =
+    //  (Qcloud_IoT_Template*)mqtt_client->event_handle.context;
     Qcloud_IoT_Template *template_client = (Qcloud_IoT_Template *)pUserData;
 
-    char *type_str = NULL;
-    char* client_token = NULL;
-    char* action_id = NULL;
-    char *pInput = NULL;
-    int timestamp = 0;
+    char *type_str     = NULL;
+    char *client_token = NULL;
+    char *action_id    = NULL;
+    char *pInput       = NULL;
+    int   timestamp    = 0;
 
-    Log_d("recv:%.*s", (int) message->payload_len, (char *) message->payload);
+    Log_d("recv:%.*s", (int)message->payload_len, (char *)message->payload);
 
     // prase_method
-    if (!parse_template_method_type((char *) message->payload, &type_str)) {
+    if (!parse_template_method_type((char *)message->payload, &type_str)) {
         Log_e("Fail to parse method!");
         goto EXIT;
     }
@@ -145,32 +152,33 @@ static void _on_action_handle_callback(void *pClient, MQTTMessage *message, void
     }
 
     // prase client Token
-    if (!parse_client_token((char *) message->payload, &client_token)) {
+    if (!parse_client_token((char *)message->payload, &client_token)) {
         Log_e("fail to parse client token!");
         goto EXIT;
     }
 
     // prase action ID
-    if (!parse_action_id((char *) message->payload, &action_id)) {
+    if (!parse_action_id((char *)message->payload, &action_id)) {
         Log_e("fail to parse action id!");
         goto EXIT;
     }
 
     // prase timestamp
-    if (!parse_time_stamp((char *) message->payload, &timestamp)) {
+    if (!parse_time_stamp((char *)message->payload, &timestamp)) {
         Log_e("fail to parse timestamp!");
         goto EXIT;
     }
 
     // prase action input
-    if (!parse_action_input((char *) message->payload, &pInput)) {
+    if (!parse_action_input((char *)message->payload, &pInput)) {
         Log_e("fail to parse action input!");
         goto EXIT;
     }
 
-    //find action ID in register list and call handle
+    // find action ID in register list and call handle
     if (template_client != NULL)
-        _handle_aciton(template_client, template_client->inner_data.action_handle_list, client_token, action_id, timestamp, pInput);
+        _handle_aciton(template_client, template_client->inner_data.action_handle_list, client_token, action_id,
+                       timestamp, pInput);
 
 EXIT:
     HAL_Free(type_str);
@@ -181,25 +189,27 @@ EXIT:
 
 int IOT_Action_Init(void *c)
 {
-    Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)c;
-    static char topic_name[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
+    Qcloud_IoT_Template *pTemplate                           = (Qcloud_IoT_Template *)c;
+    static char          topic_name[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
 
-    int size = HAL_Snprintf(topic_name, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/action/%s/%s", iot_device_info_get()->product_id, iot_device_info_get()->device_name);
+    int size = HAL_Snprintf(topic_name, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/action/%s/%s",
+                            pTemplate->device_info.product_id, pTemplate->device_info.device_name);
 
     if (size < 0 || size > sizeof(topic_name) - 1) {
         Log_e("topic content length not enough! content size:%d  buf size:%d", size, (int)sizeof(topic_name));
         return QCLOUD_ERR_FAILURE;
     }
 
-    SubscribeParams sub_params = DEFAULT_SUB_PARAMS;
+    SubscribeParams sub_params    = DEFAULT_SUB_PARAMS;
     sub_params.on_message_handler = _on_action_handle_callback;
-    sub_params.user_data = pTemplate;
+    sub_params.user_data          = pTemplate;
 
     return IOT_MQTT_Subscribe(pTemplate->mqtt, topic_name, &sub_params);
 }
 
-//Action register
-static int _add_action_handle_to_template_list(Qcloud_IoT_Template *pTemplate, DeviceAction *pAction, OnActionHandleCallback callback)
+// Action register
+static int _add_action_handle_to_template_list(Qcloud_IoT_Template *pTemplate, DeviceAction *pAction,
+                                               OnActionHandleCallback callback)
 {
     IOT_FUNC_ENTRY;
 
@@ -210,7 +220,7 @@ static int _add_action_handle_to_template_list(Qcloud_IoT_Template *pTemplate, D
     }
 
     action_handle->callback = callback;
-    action_handle->action = pAction;
+    action_handle->action   = pAction;
 
     ListNode *node = list_node_new(action_handle);
     if (NULL == node) {
@@ -274,23 +284,26 @@ int IOT_Action_Remove(void *pTemplate, DeviceAction *pAction)
     return rc;
 }
 
-//Action post to server
-static int _iot_action_json_init(void *handle, char *jsonBuffer, size_t sizeOfBuffer, const char *pClientToken, DeviceAction *pAction)
+// Action post to server
+static int _iot_action_json_init(void *handle, char *jsonBuffer, size_t sizeOfBuffer, const char *pClientToken,
+                                 DeviceAction *pAction)
 {
     POINTER_SANITY_CHECK(jsonBuffer, QCLOUD_ERR_INVAL);
     int32_t rc_of_snprintf;
     memset(jsonBuffer, 0, sizeOfBuffer);
-    rc_of_snprintf = HAL_Snprintf(jsonBuffer, sizeOfBuffer, "{\"method\":\"%s\", \"clientToken\":\"%s\", ", REPORT_ACTION, pClientToken);
+    rc_of_snprintf = HAL_Snprintf(jsonBuffer, sizeOfBuffer, "{\"method\":\"%s\", \"clientToken\":\"%s\", ",
+                                  REPORT_ACTION, pClientToken);
 
     return check_snprintf_return(rc_of_snprintf, sizeOfBuffer);
 }
 
-static int _iot_construct_action_json(void *handle, char *jsonBuffer, size_t sizeOfBuffer, const char *pClientToken, DeviceAction *pAction, sReplyPara *replyPara)
+static int _iot_construct_action_json(void *handle, char *jsonBuffer, size_t sizeOfBuffer, const char *pClientToken,
+                                      DeviceAction *pAction, sReplyPara *replyPara)
 {
-    size_t remain_size = 0;
-    int32_t rc_of_snprintf = 0;
-    uint8_t i;
-    Qcloud_IoT_Template* ptemplate = (Qcloud_IoT_Template *)handle;
+    size_t               remain_size    = 0;
+    int32_t              rc_of_snprintf = 0;
+    uint8_t              i;
+    Qcloud_IoT_Template *ptemplate = (Qcloud_IoT_Template *)handle;
 
     POINTER_SANITY_CHECK(ptemplate, QCLOUD_ERR_INVAL);
     POINTER_SANITY_CHECK(jsonBuffer, QCLOUD_ERR_INVAL);
@@ -307,9 +320,9 @@ static int _iot_construct_action_json(void *handle, char *jsonBuffer, size_t siz
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
-
-    rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"code\":%d, \"status\":\"%s\", \"response\":{", \
-                                  replyPara->code, replyPara->status_msg);
+    rc_of_snprintf =
+        HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"code\":%d, \"status\":\"%s\", \"response\":{",
+                     replyPara->code, replyPara->status_msg);
 
     rc = check_snprintf_return(rc_of_snprintf, remain_size);
     if (rc != QCLOUD_RET_SUCCESS) {
@@ -338,14 +351,14 @@ static int _iot_construct_action_json(void *handle, char *jsonBuffer, size_t siz
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
-    rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "}" );
+    rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "}");
 
     rc = check_snprintf_return(rc_of_snprintf, remain_size);
     if (rc != QCLOUD_RET_SUCCESS) {
         return rc;
     }
 
-    //finish json
+    // finish json
     if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) < 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
@@ -357,27 +370,29 @@ static int _iot_construct_action_json(void *handle, char *jsonBuffer, size_t siz
 static int _publish_action_to_cloud(void *c, char *pJsonDoc)
 {
     IOT_FUNC_ENTRY;
-    int rc = QCLOUD_RET_SUCCESS;
-    char topic[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
-    Qcloud_IoT_Template *ptemplate = (Qcloud_IoT_Template *)c;
+    int                  rc                             = QCLOUD_RET_SUCCESS;
+    char                 topic[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
+    Qcloud_IoT_Template *ptemplate                      = (Qcloud_IoT_Template *)c;
 
-    int size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/up/action/%s/%s", iot_device_info_get()->product_id, iot_device_info_get()->device_name);
+    int size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/up/action/%s/%s", ptemplate->device_info.product_id,
+                            ptemplate->device_info.device_name);
     if (size < 0 || size > sizeof(topic) - 1) {
         Log_e("topic content length not enough! content size:%d  buf size:%d", size, (int)sizeof(topic));
         return QCLOUD_ERR_FAILURE;
     }
 
     PublishParams pubParams = DEFAULT_PUB_PARAMS;
-    pubParams.qos = QOS1;
-    pubParams.payload_len = strlen(pJsonDoc);
-    pubParams.payload = (char *) pJsonDoc;
+    pubParams.qos           = QOS1;
+    pubParams.payload_len   = strlen(pJsonDoc);
+    pubParams.payload       = (char *)pJsonDoc;
 
     rc = IOT_MQTT_Publish(ptemplate->mqtt, topic, &pubParams);
 
     IOT_FUNC_EXIT_RC(rc);
 }
 
-int IOT_ACTION_REPLY(void *pClient, const char *pClientToken, char *pJsonDoc, size_t sizeOfBuffer, DeviceAction *pAction, sReplyPara *replyPara)
+int IOT_ACTION_REPLY(void *pClient, const char *pClientToken, char *pJsonDoc, size_t sizeOfBuffer,
+                     DeviceAction *pAction, sReplyPara *replyPara)
 {
     int rc;
 

@@ -6,7 +6,7 @@
     },
     "properties":[
         {
-            "id":"light_switch",
+            "id":"power_switch",
             "name":"电灯开关",
             "desc":"控制电灯开灭",
             "required":true,
@@ -194,7 +194,7 @@
                     "id":"err_code",
                     "name":"code",
                     "define":{
-                        "type":"bool",
+                        "type":"int",
                         "mapping":{
                             "0":"ok",
                             "1":"failed"

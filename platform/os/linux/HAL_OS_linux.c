@@ -1,38 +1,42 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
- * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
+ * Copyright (C) 2018-2020 THL A29 Limited, a Tencent company. All rights
+ reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
+#include <errno.h>
 #include <memory.h>
-
 #include <pthread.h>
 #include <semaphore.h>
-#include <errno.h>
-
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "qcloud_iot_export_error.h"
 #include "qcloud_iot_import.h"
-#include "qcloud_iot_export.h"
-
 
 void *HAL_MutexCreate(void)
 {
-    int err_num;
+#ifdef MULTITHREAD_ENABLED
+    int              err_num;
     pthread_mutex_t *mutex = (pthread_mutex_t *)HAL_Malloc(sizeof(pthread_mutex_t));
     if (NULL == mutex) {
         return NULL;
@@ -45,38 +49,56 @@ void *HAL_MutexCreate(void)
     }
 
     return mutex;
+#else
+    return (void *)0xFFFFFFFF;
+#endif
 }
 
 void HAL_MutexDestroy(_IN_ void *mutex)
 {
+#ifdef MULTITHREAD_ENABLED
     int err_num;
     if (0 != (err_num = pthread_mutex_destroy((pthread_mutex_t *)mutex))) {
         HAL_Printf("%s: destroy mutex failed\n", __FUNCTION__);
     }
 
     HAL_Free(mutex);
+#else
+    return;
+#endif
 }
 
 void HAL_MutexLock(_IN_ void *mutex)
 {
+#ifdef MULTITHREAD_ENABLED
     int err_num;
     if (0 != (err_num = pthread_mutex_lock((pthread_mutex_t *)mutex))) {
         HAL_Printf("%s: lock mutex failed\n", __FUNCTION__);
     }
+#else
+    return;
+#endif
 }
 
 int HAL_MutexTryLock(_IN_ void *mutex)
 {
+#ifdef MULTITHREAD_ENABLED
     return pthread_mutex_trylock((pthread_mutex_t *)mutex);
-    //return 0;
+#else
+    return 0;
+#endif
 }
 
 void HAL_MutexUnlock(_IN_ void *mutex)
 {
+#ifdef MULTITHREAD_ENABLED
     int err_num;
     if (0 != (err_num = pthread_mutex_unlock((pthread_mutex_t *)mutex))) {
         HAL_Printf("%s: unlock mutex failed\n", __FUNCTION__);
     }
+#else
+    return;
+#endif
 }
 
 void *HAL_Malloc(_IN_ uint32_t size)
@@ -86,7 +108,8 @@ void *HAL_Malloc(_IN_ uint32_t size)
 
 void HAL_Free(_IN_ void *ptr)
 {
-    free(ptr);
+    if (ptr)
+        free(ptr);
 }
 
 void HAL_Printf(_IN_ const char *fmt, ...)
@@ -103,7 +126,7 @@ void HAL_Printf(_IN_ const char *fmt, ...)
 int HAL_Snprintf(_IN_ char *str, const int len, const char *fmt, ...)
 {
     va_list args;
-    int rc;
+    int     rc;
 
     va_start(args, fmt);
     rc = vsnprintf(str, len, fmt, args);
@@ -120,7 +143,7 @@ int HAL_Vsnprintf(_IN_ char *str, _IN_ const int len, _IN_ const char *format, v
 uint32_t HAL_GetTimeMs(void)
 {
     struct timeval time_val = {0};
-    uint32_t time_ms;
+    uint32_t       time_ms;
 
     gettimeofday(&time_val, NULL);
     time_ms = time_val.tv_sec * 1000 + time_val.tv_usec / 1000;
@@ -134,13 +157,34 @@ void HAL_SleepMs(_IN_ uint32_t ms)
 }
 
 #if ((defined(MULTITHREAD_ENABLED)) || (defined AT_TCP_ENABLED))
-void * HAL_ThreadCreate(uint16_t stack_size, int priority, char * taskname, void *(*fn)(void*), void* arg)
+// platform-dependant thread routine/entry function
+static void *_HAL_thread_func_wrapper_(void *ptr)
 {
-    pthread_t *thread_t = (pthread_t *)HAL_Malloc(sizeof(unsigned long int));
-    return pthread_create(thread_t, NULL, fn, arg) ? NULL  : (void*)thread_t;
+    ThreadParams *params = (ThreadParams *)ptr;
+
+    params->thread_func(params->user_arg);
+
+    pthread_detach(pthread_self());
+    pthread_exit(0);
+    return NULL;
 }
 
-int HAL_ThreadDestroy(void* threadId)
+// platform-dependant thread create function
+int HAL_ThreadCreate(ThreadParams *params)
+{
+    if (params == NULL)
+        return QCLOUD_ERR_INVAL;
+
+    int ret = pthread_create((pthread_t *)&params->thread_id, NULL, _HAL_thread_func_wrapper_, (void *)params);
+    if (ret) {
+        HAL_Printf("%s: pthread_create failed: %d\n", __FUNCTION__, ret);
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    return QCLOUD_RET_SUCCESS;
+}
+
+int HAL_ThreadDestroy(void *threadId)
 {
     int ret;
 
@@ -148,8 +192,8 @@ int HAL_ThreadDestroy(void* threadId)
         return QCLOUD_ERR_FAILURE;
     }
 
-    if (0 == pthread_cancel(*((pthread_t*)threadId))) {
-        pthread_join(*((pthread_t*)threadId), NULL);
+    if (0 == pthread_cancel(*((pthread_t *)threadId))) {
+        pthread_join(*((pthread_t *)threadId), NULL);
         ret = QCLOUD_RET_SUCCESS;
     } else {
         ret = QCLOUD_ERR_FAILURE;
@@ -158,6 +202,7 @@ int HAL_ThreadDestroy(void* threadId)
     HAL_Free(threadId);
     return ret;
 }
+
 #endif
 
 #ifdef AT_TCP_ENABLED
@@ -202,7 +247,7 @@ int HAL_SemaphoreWait(void *sem, uint32_t timeout_ms)
         return QCLOUD_RET_SUCCESS;
     } else {
         struct timespec ts;
-        int s;
+        int             s;
         /* Restart if interrupted by handler */
         do {
             if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
@@ -222,7 +267,7 @@ int HAL_SemaphoreWait(void *sem, uint32_t timeout_ms)
 
         return s ? QCLOUD_ERR_FAILURE : QCLOUD_RET_SUCCESS;
     }
-#undef  PLATFORM_WAIT_INFINITE
+#undef PLATFORM_WAIT_INFINITE
 }
 
 #endif

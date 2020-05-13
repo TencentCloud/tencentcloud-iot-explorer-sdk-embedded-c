@@ -1,78 +1,81 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
  * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 
-#include "utils_getopt.h"
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
+#include "utils_getopt.h"
 
 #ifdef AUTH_MODE_CERT
 /* NULL cert file */
-#define QCLOUD_IOT_NULL_CERT_FILENAME          "YOUR_DEVICE_CERT_FILE_NAME"
+#define QCLOUD_IOT_NULL_CERT_FILENAME "YOUR_DEVICE_CERT_FILE_NAME"
 /* NULL key file */
-#define QCLOUD_IOT_NULL_KEY_FILENAME           "YOUR_DEVICE_PRIVATE_KEY_FILE_NAME"
+#define QCLOUD_IOT_NULL_KEY_FILENAME "YOUR_DEVICE_PRIVATE_KEY_FILE_NAME"
 #else
 /* NULL device secret */
-#define QCLOUD_IOT_NULL_DEVICE_SECRET          "YOUR_IOT_PSK"
+#define QCLOUD_IOT_NULL_DEVICE_SECRET "YOUR_IOT_PSK"
 #endif
-
 
 int main(int argc, char **argv)
 {
     int c;
-    while ((c = utils_getopt(argc, argv, "c:")) != EOF)
-        switch (c) {
+    while ((c = utils_getopt(argc, argv, "c:")) != EOF) switch (c) {
             case 'c':
                 if (HAL_SetDevInfoFile(utils_optarg))
                     return -1;
                 break;
 
             default:
-                HAL_Printf("usage: %s [options]\n"
-                           "  [-c <config file for DeviceInfo>] \n"
-                           , argv[0]);
+                HAL_Printf(
+                    "usage: %s [options]\n"
+                    "  [-c <config file for DeviceInfo>] \n",
+                    argv[0]);
 
                 return -1;
         }
 
-
-    //init log level
+    // init log level
     IOT_Log_Set_Level(eLOG_DEBUG);
 
-    int ret;
+    int        ret;
     DeviceInfo sDevInfo;
-    bool infoNullFlag = false;
+    bool       infoNullFlag = false;
 
     memset((char *)&sDevInfo, 0, sizeof(DeviceInfo));
 
     ret = HAL_GetDevInfo(&sDevInfo);
-	
+
 #ifndef GATEWAY_ENABLED
-	sDevInfo.dev_type = eCOMMON_DEV;
-#else	
-	sDevInfo.dev_type = eGW_SUB_DEV;
+    sDevInfo.dev_type = eCOMMON_DEV;
+#else
+    sDevInfo.dev_type = eGW_SUB_DEV;
 #endif
-	
-#ifdef  AUTH_MODE_CERT
+
+#ifdef AUTH_MODE_CERT
     /* just demo the cert/key files are empty */
-    if (!strcmp(sDevInfo.dev_cert_file_name, QCLOUD_IOT_NULL_CERT_FILENAME)
-        || !strcmp(sDevInfo.dev_key_file_name, QCLOUD_IOT_NULL_KEY_FILENAME)) {
+    if (!strcmp(sDevInfo.dev_cert_file_name, QCLOUD_IOT_NULL_CERT_FILENAME) ||
+        !strcmp(sDevInfo.dev_key_file_name, QCLOUD_IOT_NULL_KEY_FILENAME)) {
         Log_d("dev Cert not exist!");
         infoNullFlag = true;
     } else {
@@ -95,12 +98,16 @@ int main(int argc, char **argv)
             if (QCLOUD_RET_SUCCESS != ret) {
                 Log_e("devices info save fail");
             } else {
-#ifdef  AUTH_MODE_CERT
-                Log_d("dynamic register success, productID: %s, devName: %s, CertFile: %s, KeyFile: %s", \
-                      sDevInfo.product_id, sDevInfo.device_name, sDevInfo.dev_cert_file_name, sDevInfo.dev_key_file_name);
+#ifdef AUTH_MODE_CERT
+                Log_d(
+                    "dynamic register success, productID: %s, devName: %s, CertFile: "
+                    "%s, KeyFile: %s",
+                    sDevInfo.product_id, sDevInfo.device_name, sDevInfo.dev_cert_file_name, sDevInfo.dev_key_file_name);
 #else
-                Log_d("dynamic register success,productID: %s, devName: %s, device_secret: %s", \
-                      sDevInfo.product_id, sDevInfo.device_name, sDevInfo.device_secret);
+                Log_d(
+                    "dynamic register success,productID: %s, devName: %s, "
+                    "device_secret: %s",
+                    sDevInfo.product_id, sDevInfo.device_name, sDevInfo.device_secret);
 #endif
             }
         } else {
