@@ -41,6 +41,8 @@ extern "C" {
 #define TYPE_TEMPLATE_STRING  JSTRING
 #define TYPE_TEMPLATE_TIME    JUINT32
 #define TYPE_TEMPLATE_JOBJECT JOBJECT
+#define TEMPLATE_TRUE         1
+#define TEMPLATE_FALSE        0
 
 typedef int32_t  TYPE_DEF_TEMPLATE_INT;
 typedef int32_t  TYPE_DEF_TEMPLATE_ENUM;
@@ -70,7 +72,8 @@ typedef void *   TYPE_DEF_TEMPLATE_OBJECT;
 #define FLAG_EVENT8 (1U << 8)
 #define FLAG_EVENT9 (1U << 9)
 
-#define ALL_EVENTS_MASK (0xFFFFFFFF)
+#define ALL_EVENTS_MASK    (0xFFFFFFFF)
+#define EVENT_FLAG(eEvent) (FLAG_EVENT0 + eEvent)
 
 typedef struct _sEvent_ {
     char *          event_name;    // event name

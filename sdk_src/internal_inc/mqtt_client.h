@@ -45,7 +45,11 @@ extern "C" {
 #define MAX_CONN_ID_LEN (6)
 
 /* Max number of topic subscribed */
+#ifndef GATEWAY_ENABLED
 #define MAX_MESSAGE_HANDLERS (10)
+#else
+#define MAX_MESSAGE_HANDLERS (50)
+#endif
 
 /* Max number in repub list */
 #define MAX_REPUB_NUM (20)

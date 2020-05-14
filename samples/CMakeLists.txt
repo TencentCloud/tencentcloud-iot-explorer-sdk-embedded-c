@@ -29,11 +29,11 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
 
 
 # data_template
-file(GLOB src_data_template_sample 			${PROJECT_SOURCE_DIR}/samples/data_template/data_template_sample.c)
+file(GLOB src_data_template_sample 			${PROJECT_SOURCE_DIR}/samples/data_template/*.c)
 add_executable(data_template_sample 		${src_data_template_sample})
 target_link_libraries(data_template_sample 	 	 ${lib})
 
-file(GLOB src_light_data_template_sample	${PROJECT_SOURCE_DIR}/samples/scenarized/light_data_template_sample.c)
+file(GLOB src_light_data_template_sample	${PROJECT_SOURCE_DIR}/samples/scenarized/*.c)
 add_executable(light_data_template_sample 	${src_light_data_template_sample})
 target_link_libraries(light_data_template_sample ${lib})
 	

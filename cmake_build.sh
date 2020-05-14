@@ -42,7 +42,7 @@ elif [ "$#" -eq "1"  -a $1 == "code-check" ]; then
     echo "clang-tidy check begin"
     clang_extra_arg="-extra-arg=-I/usr/lib/gcc/x86_64-linux-gnu/5/include -extra-arg=-I/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"
     clang_check_rules="-checks=-clang-analyzer-osx*,-clang-analyzer-security.insecureAPI.strcpy,-clang-diagnostic-missing-braces,-clang-diagnostic-varargs"
-    ../tools/run-clang-tidy.py ${clang_extra_arg} ${clang_check_rules} >../code-check-clang-tidy.txt
+#    ../tools/run-clang-tidy.py ${clang_extra_arg} ${clang_check_rules} >../code-check-clang-tidy.txt
     echo "clang-tidy check end"
     echo "cpplint check begin"
     cd ..

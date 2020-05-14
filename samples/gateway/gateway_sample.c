@@ -34,7 +34,13 @@
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
 #define LIGHT_SUB_DEV_PRODUCT_ID "BK7EEF4UIB"
 #define LIGHT_SUB_DEV_NAME       "dev001"
-extern void *sub_dev1_thread(void *ptr, char *product_id, char *device_name);
+
+typedef struct _LightThreadData_ {
+    void *      client;
+    DeviceInfo *subDevInfo;
+} LightThreadData;
+
+extern void sub_light_thread(void *user_arg, char *product_id, char *device_name);
 #endif
 
 static int               sg_sub_packet_id = -1;
@@ -194,11 +200,12 @@ static int parse_arguments(int argc, char **argv)
 /**
  * sub dev thread runner
  */
-
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  // show subdev with data template.
 static void sub_dev_thread(void *user_arg)
 {
-    sub_dev1_thread(user_arg, LIGHT_SUB_DEV_PRODUCT_ID, LIGHT_SUB_DEV_NAME);
+    LightThreadData *thread_data = (LightThreadData *)user_arg;
+
+    sub_light_thread(thread_data->client, thread_data->subDevInfo->product_id, thread_data->subDevInfo->device_name);
 }
 #endif
 
@@ -215,7 +222,7 @@ int main(int argc, char **argv)
     DeviceInfo *       subDevInfo;
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-    ThreadParams sub_dev1_thread_params = {0};
+    ThreadParams sub_light_thread_params = {0};
 #endif
 
     IOT_Log_Set_Level(eLOG_DEBUG);
@@ -276,19 +283,23 @@ int main(int argc, char **argv)
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  // subdev with data template example.
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) &&
-            (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
-            sub_dev1_thread_params.thread_func = sub_dev_thread;
-            sub_dev1_thread_params.thread_name = "sub_dev1_thread";
-            sub_dev1_thread_params.user_arg    = client;
-            sub_dev1_thread_params.stack_size  = 4096;
-            sub_dev1_thread_params.priority    = 1;
+        if (0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) {
+            LightThreadData thread_data;
+            thread_data.client     = client;
+            thread_data.subDevInfo = subDevInfo;
 
-            int rc = HAL_ThreadCreate(&sub_dev1_thread_params);
+            sub_light_thread_params.thread_func = sub_dev_thread;
+            sub_light_thread_params.thread_name = "sub_light_product_thread";
+            sub_light_thread_params.user_arg    = &thread_data;
+            sub_light_thread_params.stack_size  = 4096;
+            sub_light_thread_params.priority    = 1;
+
+            rc = HAL_ThreadCreate(&sub_light_thread_params);
             if (rc) {
-                Log_e("create sub_dev1_thread fail: %d", rc);
+                Log_e("create sub_%s_%s_thread fail: %d", subDevInfo->product_id, subDevInfo->device_name, rc);
                 return QCLOUD_ERR_FAILURE;
             }
+            HAL_SleepMs(500);
             continue;
         }
 #endif
@@ -325,8 +336,7 @@ int main(int argc, char **argv)
         subDevInfo = &gw->sub_dev_info[i];
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) &&
-            (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
+        if (0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) {
             continue;
         }
 #endif
@@ -347,8 +357,8 @@ int main(int argc, char **argv)
 exit:
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-    if (0 != sub_dev1_thread_params.thread_id) {
-        pthread_join(sub_dev1_thread_params.thread_id, NULL);
+    if (0 != sub_light_thread_params.thread_id) {
+        pthread_join(sub_light_thread_params.thread_id, NULL);
     }
 #endif
 
@@ -380,8 +390,8 @@ exit:
     rc = IOT_Gateway_Destroy(client);
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  // show subdev with data template.
-    if (0 != sub_dev1_thread_params.thread_id) {
-        HAL_ThreadDestroy((void *)&sub_dev1_thread_params.thread_id);
+    if (0 != sub_light_thread_params.thread_id) {
+        HAL_ThreadDestroy((void *)&sub_light_thread_params.thread_id);
     }
 #endif
 

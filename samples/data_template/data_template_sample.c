@@ -1,21 +1,24 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Tencent is pleased to support the open source community by making IoT Hub
+ available.
  * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file except in
+ * Licensed under the MIT License (the "License"); you may not use this file
+ except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND,
+ * either express or implied. See the License for the specific language
+ governing permissions and
  * limitations under the License.
  *
  */
-#include "qcloud_iot_export.h"
-#include "qcloud_iot_import.h"
+#include "data_template_config.h"
 #include "lite-utils.h"
-#include "data_config.c"
 
 #ifdef AUTH_MODE_CERT
 static char sg_cert_file[PATH_MAX + 1];  // full path of device cert file
@@ -29,25 +32,6 @@ static char          sg_data_report_buffer[2048];
 static size_t        sg_data_report_buffersize = sizeof(sg_data_report_buffer) / sizeof(sg_data_report_buffer[0]);
 
 #ifdef EVENT_POST_ENABLED
-
-#include "events_config.c"
-static void update_events_timestamp(sEvent *pEvents, int count)
-{
-    int i;
-
-    for (i = 0; i < count; i++) {
-        if (NULL == (&pEvents[i])) {
-            Log_e("null event pointer");
-            return;
-        }
-#ifdef EVENT_TIMESTAMP_USED
-        pEvents[i].timestamp = time(NULL);  // should be UTC and accurate
-#else
-        pEvents[i].timestamp = 0;
-#endif
-    }
-}
-
 static void event_post_cb(void *pClient, MQTTMessage *msg)
 {
     Log_d("Reply:%.*s", msg->payload_len, msg->payload);
@@ -55,39 +39,37 @@ static void event_post_cb(void *pClient, MQTTMessage *msg)
 }
 
 // event check and post
-static void eventPostCheck(void *client)
+static void eventPostCheck(void *pClient)
 {
-    int      i;
-    int      rc;
-    uint32_t eflag;
-    uint8_t  event_count;
-    sEvent * pEventList[EVENT_COUNTS];
+    int           i;
+    int           rc;
+    uint32_t      eflag;
+    uint8_t       event_count;
+    sEvent *      pEventList[TOTAL_EVENT_COUNTS];
+    DataTemplate *pTemplateData = IOT_Template_Get_DataTemplate(pClient);
 
-    eflag = IOT_Event_getFlag(client);
-    if ((EVENT_COUNTS > 0) && (eflag > 0)) {
+    eflag = IOT_Event_getFlag(pClient);
+    if ((TOTAL_EVENT_COUNTS > 0) && (eflag > 0)) {
         event_count = 0;
-        for (i = 0; i < EVENT_COUNTS; i++) {
+        for (i = 0; i < TOTAL_EVENT_COUNTS; i++) {
             if ((eflag & (1 << i)) & ALL_EVENTS_MASK) {
-                pEventList[event_count++] = &(g_events[i]);
-                update_events_timestamp(&g_events[i], 1);
-                IOT_Event_clearFlag(client, (1 << i) & ALL_EVENTS_MASK);
+                pEventList[event_count++] = &pTemplateData->events[i];
+                pTemplateData->method.set_event_timestamp(pClient, i);
+                IOT_Event_clearFlag(pClient, (1 << i) & ALL_EVENTS_MASK);
             }
         }
-
-        rc = IOT_Post_Event(client, sg_data_report_buffer, sg_data_report_buffersize, event_count, pEventList,
+        rc = IOT_Post_Event(pClient, sg_data_report_buffer, sg_data_report_buffersize, event_count, pEventList,
                             event_post_cb);
         if (rc < 0) {
             Log_e("events post failed: %d", rc);
         }
     }
 }
-
 #endif
 
 #ifdef ACTION_ENABLED
-#include "action_config.c"
-
-// action : regist action and set the action handle callback, add your aciton logic here
+// action : regist action and set the action handle callback, add your aciton
+// logic here
 static void OnActionCallback(void *pClient, const char *pClientToken, DeviceAction *pAction)
 {
     int        i;
@@ -114,32 +96,36 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
     memset((char *)&replyPara, 0, sizeof(sReplyPara));
     replyPara.code       = eDEAL_SUCCESS;
     replyPara.timeout_ms = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
-    strcpy(replyPara.status_msg, "action execute success!");  // add the message about the action resault
+    strcpy(replyPara.status_msg,
+           "action execute success!");  // add the message about the action resault
 
     DeviceProperty *pActionOutnput = pAction->pOutput;
     (void)pActionOutnput;  // elimate warning
-    // TO DO: add your aciont logic here and set output properties which will be reported by action_reply
+    // TO DO: add your aciont logic here and set output properties which will be
+    // reported by action_reply
 
     IOT_ACTION_REPLY(pClient, pClientToken, sg_data_report_buffer, sg_data_report_buffersize, pAction, &replyPara);
 }
 
-static int _register_data_template_action(void *pTemplate_client)
+static int register_data_template_action(void *pClient)
 {
-    int i, rc;
+    int           i, rc;
+    DataTemplate *pTemplateData = IOT_Template_Get_DataTemplate(pClient);
 
     for (i = 0; i < TOTAL_ACTION_COUNTS; i++) {
-        rc = IOT_Template_Register_Action(pTemplate_client, &g_actions[i], OnActionCallback);
+        rc = IOT_Template_Register_Action(pClient, &pTemplateData->actions[i], OnActionCallback);
         if (rc != QCLOUD_RET_SUCCESS) {
-            rc = IOT_Template_Destroy(pTemplate_client);
+            rc = IOT_Template_Destroy(pClient);
             Log_e("register device data template action failed, err: %d", rc);
             return rc;
         } else {
-            Log_i("data template action=%s registered.", g_actions[i].pActionId);
+            Log_i("data template action=%s registered.", pTemplateData->actions[i].pActionId);
         }
     }
 
     return QCLOUD_RET_SUCCESS;
 }
+
 #endif
 
 static void event_handler(void *pclient, void *handle_context, MQTTEventMsg *msg)
@@ -207,6 +193,7 @@ static int _setup_connect_init_params(TemplateInitParams *initParams)
         return ret;
     }
 
+    initParams->region      = sg_devInfo.region;
     initParams->device_name = sg_devInfo.device_name;
     initParams->product_id  = sg_devInfo.product_id;
 
@@ -239,15 +226,20 @@ static int _setup_connect_init_params(TemplateInitParams *initParams)
 static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, uint32_t valueLength,
                                  DeviceProperty *pProperty)
 {
-    int i = 0;
+    int           i             = 0;
+    DataTemplate *pTemplateData = IOT_Template_Get_DataTemplate(pClient);
 
-    for (i = 0; i < TOTAL_PROPERTY_COUNT; i++) {
-        /* handle self defined string/json here. Other properties are dealed in _handle_delta()*/
-        if (strcmp(sg_DataTemplate[i].data_property.key, pProperty->key) == 0) {
-            sg_DataTemplate[i].state = eCHANGED;
-            Log_i("Property=%s changed", pProperty->key);
-            sg_control_msg_arrived = true;
-            return;
+    if (pTemplateData) {
+        for (i = 0; i < TOTAL_PROPERTY_COUNTS; i++) {
+            /* handle self defined string/json here. Other properties are dealed in
+             * _handle_delta()*/
+            sDataPoint *pDataPoint = pTemplateData->method.get_property_data_point(pClient, i);
+            if (strcmp(pDataPoint->data_property.key, pProperty->key) == 0) {
+                pDataPoint->state = eCHANGED;
+                Log_i("Property=%s changed", pProperty->key);
+                sg_control_msg_arrived = true;
+                return;
+            }
         }
     }
 
@@ -261,75 +253,61 @@ static void OnReportReplyCallback(void *pClient, Method method, ReplyAck replyAc
 }
 
 // register data template properties
-static int _register_data_template_property(void *pTemplate_client)
+static int register_data_template_property(void *pClient)
 {
-    int i, rc;
+    int           i, rc;
+    DataTemplate *pTemplateData = IOT_Template_Get_DataTemplate(pClient);
 
-    for (i = 0; i < TOTAL_PROPERTY_COUNT; i++) {
-        rc = IOT_Template_Register_Property(pTemplate_client, &sg_DataTemplate[i].data_property, OnControlMsgCallback);
-        if (rc != QCLOUD_RET_SUCCESS) {
-            rc = IOT_Template_Destroy(pTemplate_client);
-            Log_e("register device data template property failed, err: %d", rc);
-            return rc;
-        } else {
-            Log_i("data template property=%s registered.", sg_DataTemplate[i].data_property.key);
+    if (pTemplateData) {
+        for (i = 0; i < TOTAL_PROPERTY_COUNTS; i++) {
+            sDataPoint *pDataPoint = pTemplateData->method.get_property_data_point(pClient, i);
+            rc = IOT_Template_Register_Property(pClient, &pDataPoint->data_property, OnControlMsgCallback);
+            if (rc != QCLOUD_RET_SUCCESS) {
+                Log_e("register device data template property failed, err: %d", rc);
+                break;
+            } else {
+                Log_i("data template property=%s registered.", pDataPoint->data_property.key);
+            }
         }
+    } else {
+        rc = QCLOUD_ERR_INVAL;
     }
 
-    return QCLOUD_RET_SUCCESS;
+    return rc;
 }
 
-// when control msg received, data_template's properties has been parsed in pData
+// when control msg received, data_template's properties has been parsed in
+// pData
 // you should add your logic how to use pData
-void deal_down_stream_user_logic(void *client, ProductDataDefine *pData)
+void deal_down_stream_user_logic(void *pClient)
 {
     Log_d("someting about your own product logic wait to be done");
 
 #ifdef EVENT_POST_ENABLED
-    // IOT_Event_setFlag(client, FLAG_EVENT0);  //set the events flag when the evnts your defined occured, see
-    // events_config.c
+// IOT_Event_setFlag(client, FLAG_EVENT0);  //set the events flag when the evnts
+// your defined occured, see events_config.c
 #endif
 }
 
-/*get local property data, like sensor data*/
-static void _refresh_local_property(void)
-{
-    // add your local property refresh logic
-}
-
-/*find propery need report*/
-static int find_wait_report_property(DeviceProperty *pReportDataList[])
-{
-    int i, j;
-
-    for (i = 0, j = 0; i < TOTAL_PROPERTY_COUNT; i++) {
-        if (eCHANGED == sg_DataTemplate[i].state) {
-            pReportDataList[j++]     = &(sg_DataTemplate[i].data_property);
-            sg_DataTemplate[i].state = eNOCHANGE;
-        }
-    }
-
-    return j;
-}
-
 // demo for up-stream
-// add changed properties to pReportDataList, then the changed properties would be reported
+// add changed properties to pReportDataList, then the changed properties would
+// be reported
 // you should add your own logic for how to get the changed properties
-int deal_up_stream_user_logic(DeviceProperty *pReportDataList[], int *pCount)
+int deal_up_stream_user_logic(void *pClient, DeviceProperty *pReportDataList[], int *pCount)
 {
-    // refresh local property
-    _refresh_local_property();
+    DataTemplate *pTemplateData = IOT_Template_Get_DataTemplate(pClient);
 
     /*find propery need report*/
-    *pCount = find_wait_report_property(pReportDataList);
+    *pCount = pTemplateData->method.find_wait_report_property(pClient, pReportDataList);
 
     return (*pCount > 0) ? QCLOUD_RET_SUCCESS : QCLOUD_ERR_FAILURE;
 }
 
 /*You should get the real info for your device, here just for example*/
-static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
+static int get_sys_info(void *pClient, char *pJsonDoc, size_t sizeOfBuffer)
 {
-    /*platform info has at least one of module_hardinfo/module_softinfo/fw_ver property*/
+    /*platform info has at least one of module_hardinfo/module_softinfo/fw_ver
+     * property*/
     DeviceProperty plat_info[] = {
         {.key = "module_hardinfo", .type = TYPE_TEMPLATE_STRING, .data = "ESP8266"},
         {.key = "module_softinfo", .type = TYPE_TEMPLATE_STRING, .data = "V1.0"},
@@ -345,15 +323,16 @@ static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
         {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"}, {NULL, NULL, 0}  // end
     };
 
-    return IOT_Template_JSON_ConstructSysInfo(handle, pJsonDoc, sizeOfBuffer, plat_info, self_info);
+    return IOT_Template_JSON_ConstructSysInfo(pClient, pJsonDoc, sizeOfBuffer, plat_info, self_info);
 }
 
 int main(int argc, char **argv)
 {
     int             rc;
     sReplyPara      replyPara;
-    DeviceProperty *pReportDataList[TOTAL_PROPERTY_COUNT];
+    DeviceProperty *pReportDataList[TOTAL_PROPERTY_COUNTS];
     int             ReportCont;
+    DataTemplate *  pTemplateData = NULL;
 
     // init log level
     IOT_Log_Set_Level(eLOG_DEBUG);
@@ -385,10 +364,15 @@ int main(int argc, char **argv)
     _usr_init();
 
     // init data template
-    _init_data_template();
+    pTemplateData = init_data_template();
+    if (NULL == pTemplateData) {
+        Log_e("init data template fail");
+        goto exit;
+    }
+    IOT_Template_Set_DataTemplate(client, pTemplateData, deinit_data_template);
 
     // register data template propertys here
-    rc = _register_data_template_property(client);
+    rc = register_data_template_property(client);
     if (rc == QCLOUD_RET_SUCCESS) {
         Log_i("Register data template propertys Success");
     } else {
@@ -396,9 +380,9 @@ int main(int argc, char **argv)
         goto exit;
     }
 
-    // register data template actions here
+// register data template actions here
 #ifdef ACTION_ENABLED
-    rc = _register_data_template_action(client);
+    rc = register_data_template_action(client);
     if (rc == QCLOUD_RET_SUCCESS) {
         Log_i("Register data template actions Success");
     } else {
@@ -407,8 +391,9 @@ int main(int argc, char **argv)
     }
 #endif
 
-    // report device info, then you can manager your product by these info, like position
-    rc = _get_sys_info(client, sg_data_report_buffer, sg_data_report_buffersize);
+    // report device info, then you can manager your product by these info, like
+    // position
+    rc = get_sys_info(client, sg_data_report_buffer, sg_data_report_buffersize);
     if (QCLOUD_RET_SUCCESS == rc) {
         rc = IOT_Template_Report_SysInfo_Sync(client, sg_data_report_buffer, sg_data_report_buffersize,
                                               QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
@@ -438,12 +423,12 @@ int main(int argc, char **argv)
             Log_e("Exit loop caused of errCode: %d", rc);
         }
 #endif
+
         /* handle control msg from server */
         if (sg_control_msg_arrived) {
-            deal_down_stream_user_logic(client, &sg_ProductData);
-
-            /* control msg should reply, otherwise server treat device didn't receive and retain the msg which would be
-             * get by  get status*/
+            deal_down_stream_user_logic(client);
+            /* control msg should reply, otherwise server treat device didn't receive
+             * and retain the msg which would be get by  get status*/
             memset((char *)&replyPara, 0, sizeof(sReplyPara));
             replyPara.code          = eDEAL_SUCCESS;
             replyPara.timeout_ms    = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
@@ -462,7 +447,7 @@ int main(int argc, char **argv)
 
         /*report msg to server*/
         /*report the lastest properties's status*/
-        if (QCLOUD_RET_SUCCESS == deal_up_stream_user_logic(pReportDataList, &ReportCont)) {
+        if (QCLOUD_RET_SUCCESS == deal_up_stream_user_logic(client, pReportDataList, &ReportCont)) {
             rc = IOT_Template_JSON_ConstructReportArray(client, sg_data_report_buffer, sg_data_report_buffersize,
                                                         ReportCont, pReportDataList);
             if (rc == QCLOUD_RET_SUCCESS) {
@@ -480,9 +465,11 @@ int main(int argc, char **argv)
         } else {
             // Log_d("no data need to be reported or someting goes wrong");
         }
+
 #ifdef EVENT_POST_ENABLED
         eventPostCheck(client);
 #endif
+
         HAL_SleepMs(3000);
     }
 
