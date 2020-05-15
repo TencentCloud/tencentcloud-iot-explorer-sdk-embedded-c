@@ -33,8 +33,6 @@
 #define SUB_DEV_USE_DATA_TEMPLATE_LIGHT
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
 #define LIGHT_SUB_DEV_PRODUCT_ID "BK7EEF4UIB"
-#define LIGHT_SUB_DEV_NAME       "dev001"
-
 typedef struct _LightThreadData_ {
     void *      client;
     DeviceInfo *subDevInfo;

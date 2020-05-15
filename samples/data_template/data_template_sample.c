@@ -68,8 +68,7 @@ static void eventPostCheck(void *pClient)
 #endif
 
 #ifdef ACTION_ENABLED
-// action : regist action and set the action handle callback, add your aciton
-// logic here
+// action : regist action and set the action handle callback, add your aciton logic here
 static void OnActionCallback(void *pClient, const char *pClientToken, DeviceAction *pAction)
 {
     int        i;
@@ -96,9 +95,8 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
     memset((char *)&replyPara, 0, sizeof(sReplyPara));
     replyPara.code       = eDEAL_SUCCESS;
     replyPara.timeout_ms = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
-    strcpy(replyPara.status_msg,
-           "action execute success!");  // add the message about the action resault
-
+    strcpy(replyPara.status_msg,"action execute success!");  // add the message about the action resault
+    
     DeviceProperty *pActionOutnput = pAction->pOutput;
     (void)pActionOutnput;  // elimate warning
     // TO DO: add your aciont logic here and set output properties which will be

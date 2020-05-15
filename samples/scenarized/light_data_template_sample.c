@@ -47,7 +47,6 @@ typedef enum {
     eCOLOR_BLUE  = 2,
 } eColor;
 
-/*-----------------event config start  -------------------*/
 #ifdef EVENT_POST_ENABLED
 static void event_post_cb(void *pClient, MQTTMessage *msg)
 {
