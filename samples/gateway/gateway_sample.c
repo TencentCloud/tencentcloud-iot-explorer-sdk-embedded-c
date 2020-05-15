@@ -355,9 +355,15 @@ int main(int argc, char **argv)
 exit:
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
+#ifndef WIN32
     if (0 != sub_light_thread_params.thread_id) {
         pthread_join(sub_light_thread_params.thread_id, NULL);
     }
+#else
+	while(1){
+		HAL_SleepMs(500);
+	}
+#endif
 #endif
 
     // set GateWay device info

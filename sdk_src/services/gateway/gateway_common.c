@@ -346,7 +346,15 @@ int gateway_publish_sync(Gateway *gateway, char *topic, PublishParams *params, i
             Log_i("loop max count, time out.");
             IOT_FUNC_EXIT_RC(QCLOUD_ERR_GATEWAY_SESSION_TIMEOUT);
         }
-        IOT_Gateway_Yield(gateway, 200);
+#ifdef MULTITHREAD_ENABLED		
+        if((gateway->yield_thread_running)){
+            HAL_SleepMs(200);
+        }else
+#endif        
+        {
+            IOT_Gateway_Yield(gateway, 200);
+		}
+        
         loop_count++;
     }
 

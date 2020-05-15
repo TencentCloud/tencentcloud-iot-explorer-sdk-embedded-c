@@ -779,7 +779,8 @@ void IOT_Template_Set_Yield_Status(void *pClient, bool running_state, int code)
     POINTER_SANITY_CHECK_RTN(pClient);
 
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)pClient;
-    pTemplate->yield_thread_running = false;
+    pTemplate->yield_thread_running = running_state;
+    pTemplate->yield_thread_exit_code = code;
 
     return;
 }

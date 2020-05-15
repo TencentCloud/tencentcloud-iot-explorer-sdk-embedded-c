@@ -154,6 +154,11 @@ int HAL_ThreadCreate(ThreadParams *params)
     return QCLOUD_RET_SUCCESS;
 }
 
+int HAL_ThreadDestroy(void *threadId)
+{
+	return QCLOUD_RET_SUCCESS;
+}
+
 #endif
 
 #ifdef AT_TCP_ENABLED

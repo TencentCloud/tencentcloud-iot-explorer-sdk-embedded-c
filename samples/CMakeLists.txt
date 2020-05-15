@@ -36,7 +36,7 @@ target_link_libraries(data_template_sample 	 	 ${lib})
 file(GLOB src_light_data_template_sample	${PROJECT_SOURCE_DIR}/samples/scenarized/*.c)
 add_executable(light_data_template_sample 	${src_light_data_template_sample})
 target_link_libraries(light_data_template_sample ${lib})
-	
+
 # MQTT
 file(GLOB src_mqtt_sample 					${PROJECT_SOURCE_DIR}/samples/mqtt/mqtt_sample.c)
 add_executable(mqtt_sample 					${src_mqtt_sample})

@@ -199,7 +199,6 @@ int HAL_ThreadDestroy(void *threadId)
         ret = QCLOUD_ERR_FAILURE;
     }
 
-    HAL_Free(threadId);
     return ret;
 }
 

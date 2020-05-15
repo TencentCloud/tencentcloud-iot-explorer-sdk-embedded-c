@@ -5,8 +5,8 @@
 /* #undef COAP_COMM_ENABLED */
 #define OTA_MQTT_CHANNEL
 /* #undef SYSTEM_COMM */
-#define EVENT_POST_ENABLED
-#define ACTION_ENABLED
+/* #undef EVENT_POST_ENABLED */
+/* #undef ACTION_ENABLED */
 #define DEV_DYN_REG_ENABLED
 /* #undef LOG_UPLOAD */
 /* #undef IOT_DEBUG */
