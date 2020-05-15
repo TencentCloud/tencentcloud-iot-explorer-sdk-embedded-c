@@ -91,6 +91,7 @@ int HAL_SetDevInfoFile(const char *file_name)
 #define MAX_DEV_INFO_FILE_LEN 1024
 #define MAX_CONFIG_FILE_NAME  256
 
+#define KEY_REGION            "region"
 #define KEY_AUTH_MODE         "auth_mode"
 #define KEY_PRODUCT_ID        "productId"
 #define KEY_PRODUCT_SECRET    "productSecret"
@@ -98,8 +99,12 @@ int HAL_SetDevInfoFile(const char *file_name)
 #define KEY_DEV_SECRET        "key_deviceinfo.deviceSecret"
 #define KEY_DEV_CERT          "cert_deviceinfo.devCertFile"
 #define KEY_DEV_PRIVATE_KEY   "cert_deviceinfo.devPrivateKeyFile"
-#define KEY_SUBDEV_PRODUCT_ID "subDev.sub_productId"
-#define KEY_SUBDEV_NAME       "subDev.sub_devName"
+
+#define KEY_SUBDEV_PRODUCT_ID "sub_productId"
+#define KEY_SUBDEV_NAME       "sub_devName"
+#define KEY_SUBDEV_NUM        "subDev.subdev_num"
+#define KEY_SUBDEV_LIST       "subDev.subdev_list"
+
 
 #define STR_DEV_INFO      "key_deviceinfo"
 #define STR_DEV_SECRET    "deviceSecret"
@@ -138,7 +143,7 @@ int HAL_GetDevInfoFromFile(const char *file_name, void *dev_info)
     int         ret       = QCLOUD_RET_SUCCESS;
     DeviceInfo *pDevInfo  = (DeviceInfo *)dev_info;
 
-    fp = fopen(file_name, "r");
+    fp = fopen(file_name, "rb");
     if (NULL == fp) {
         Log_e("open device info file \"%s\" failed", file_name);
         ret = QCLOUD_ERR_FAILURE;
@@ -263,6 +268,61 @@ exit:
 }
 
 #ifdef GATEWAY_ENABLED
+static int iot_get_subdev_from_list(char *devList, DeviceInfo *pDevInfo, int *pDevNum)
+{
+#define MAX_LEN_DEV_INFO (MAX_SIZE_OF_PRODUCT_ID + MAX_SIZE_OF_DEVICE_NAME + 128)
+    int   devNum = *pDevNum;
+    int   count  = 0;
+    int   ret    = QCLOUD_RET_SUCCESS;
+    char *pNext;
+    char  TempBuff[MAX_LEN_DEV_INFO];
+
+    if (devList == NULL || pDevInfo == NULL || devNum == 0) {
+        return QCLOUD_ERR_INVAL;
+    }
+
+    pNext = (char *)strtok(devList, "}");
+    while (pNext != NULL) {
+        memset(TempBuff, '\0', MAX_LEN_DEV_INFO);
+        HAL_Snprintf(TempBuff, MAX_LEN_DEV_INFO, "%s}", pNext);
+        char *pos = strchr(TempBuff, '{');
+        if (NULL == pos) {
+            *pDevNum = count;
+            break;
+        }
+
+        char *productId = LITE_json_value_of(KEY_SUBDEV_PRODUCT_ID, pos);
+        if (productId) {
+            strncpy(pDevInfo[count].product_id, productId, MAX_SIZE_OF_PRODUCT_ID);
+            HAL_Free(productId);
+            productId = NULL;
+        } else {
+            ret = QCLOUD_ERR_INVAL;
+            break;
+        }
+
+        char *devName = LITE_json_value_of(KEY_SUBDEV_NAME, pos);
+        if (devName) {
+            strncpy(pDevInfo[count].device_name, devName, MAX_SIZE_OF_DEVICE_NAME);
+            HAL_Free(devName);
+            devName = NULL;
+        } else {
+            ret = QCLOUD_ERR_INVAL;
+            break;
+        }
+
+        count++;
+        pNext = (char *)strtok(NULL, "}");
+
+        if (count > (devNum - 1)) {
+            break;
+        }
+    }
+
+    return ret;
+#undef MAX_LEN_DEV_INFO
+}
+
 static int iot_parse_subdevinfo_from_json_file(DeviceInfo *pDevInfo, int *subDevNum)
 {
     FILE *   fp;
@@ -271,7 +331,7 @@ static int iot_parse_subdevinfo_from_json_file(DeviceInfo *pDevInfo, int *subDev
     char *   JsonDoc = NULL;
     int      ret     = QCLOUD_RET_SUCCESS;
 
-    fp = fopen(sg_device_info_file, "r");
+    fp = fopen(sg_device_info_file, "rb");
     if (NULL == fp) {
         Log_e("open device info file \"%s\" failed", sg_device_info_file);
         ret = QCLOUD_ERR_FAILURE;
@@ -336,7 +396,6 @@ exit:
 
     return ret;
 }
-
 #endif
 
 static int iot_save_devinfo_to_json_file(DeviceInfo *pDevInfo)
@@ -485,38 +544,52 @@ int HAL_GetDevInfo(void *pdevInfo)
 #ifdef GATEWAY_ENABLED
 int HAL_GetGwDevInfo(void *pgwDeviceInfo)
 {
-    POINTER_SANITY_CHECK(pgwDeviceInfo, QCLOUD_ERR_DEV_INFO);
-    int                ret;
-    GatewayDeviceInfo *gwDevInfo = (GatewayDeviceInfo *)pgwDeviceInfo;
-    memset((char *)gwDevInfo, 0, sizeof(GatewayDeviceInfo));
+	POINTER_SANITY_CHECK(pgwDeviceInfo, QCLOUD_ERR_DEV_INFO);
+	int ret;
+	int i;
+
+	GatewayDeviceInfo *gwDevInfo = (GatewayDeviceInfo *)pgwDeviceInfo;
+	memset((char *)gwDevInfo, 0, sizeof(GatewayDeviceInfo));
 
 #ifdef DEBUG_DEV_INFO_USED
-    ret = HAL_GetDevInfo(&(gwDevInfo->gw_info));  // get gw dev info
-    // only one sub-device is supported now
-    gwDevInfo->sub_dev_num  = 1;
-    gwDevInfo->sub_dev_info = (DeviceInfo *)HAL_Malloc(sizeof(DeviceInfo) * (gwDevInfo->sub_dev_num));
-    memset((char *)gwDevInfo->sub_dev_info, '\0', sizeof(DeviceInfo));
-    // copy sub dev info
-    ret = device_info_copy(gwDevInfo->sub_dev_info->product_id, sg_sub_device_product_id, MAX_SIZE_OF_PRODUCT_ID);
-    ret |= device_info_copy(gwDevInfo->sub_dev_info->device_name, sg_sub_device_name, MAX_SIZE_OF_DEVICE_NAME);
+	ret = HAL_GetDevInfo(&(gwDevInfo->gw_info));  // get gw dev info
+	if (sizeof(sg_subdevList) / sizeof(sg_subdevList[0]) > MAX_NUM_SUB_DEV) {
+		gwDevInfo->sub_dev_num = MAX_NUM_SUB_DEV;
+	} else {
+		gwDevInfo->sub_dev_num = sizeof(sg_subdevList) / sizeof(sg_subdevList[0]);
+	}
+
+	for (i = 0; i < gwDevInfo->sub_dev_num; i++) {
+		// copy sub dev info
+		ret = device_info_copy(gwDevInfo->sub_dev_info[i].product_id, sg_subdevList[i].product_id,
+							   MAX_SIZE_OF_PRODUCT_ID);
+		ret |= device_info_copy(gwDevInfo->sub_dev_info[i].device_name, sg_subdevList[i].device_name,
+								MAX_SIZE_OF_DEVICE_NAME);
+	}
 
 #else
-    ret = HAL_GetDevInfoFromFile(sg_device_info_file, &(gwDevInfo->gw_info));
-    if (ret != QCLOUD_RET_SUCCESS) {
-        return QCLOUD_ERR_FAILURE;
-    }
-    // only one sub-device is supported now
-    gwDevInfo->sub_dev_num  = 1;
-    gwDevInfo->sub_dev_info = (DeviceInfo *)HAL_Malloc(sizeof(DeviceInfo) * (gwDevInfo->sub_dev_num));
-    memset((char *)gwDevInfo->sub_dev_info, '\0', sizeof(DeviceInfo));
-    // copy sub dev info
-    ret = iot_parse_subdevinfo_from_json_file(gwDevInfo->sub_dev_info);
+	ret = HAL_GetDevInfoFromFile(sg_device_info_file, &(gwDevInfo->gw_info));
+	if (ret != QCLOUD_RET_SUCCESS) {
+		return QCLOUD_ERR_FAILURE;
+	}
+
+	// copy sub dev info
+	memset((char *)gwDevInfo->sub_dev_info, '\0', MAX_NUM_SUB_DEV * sizeof(DeviceInfo));
+	ret = iot_parse_subdevinfo_from_json_file(gwDevInfo->sub_dev_info, &(gwDevInfo->sub_dev_num));
+
 #endif
 
-    if (QCLOUD_RET_SUCCESS != ret) {
-        Log_e("Get gateway device info err");
-        ret = QCLOUD_ERR_DEV_INFO;
-    }
-    return ret;
+	if (QCLOUD_RET_SUCCESS != ret) {
+		Log_e("Get gateway device info err");
+		ret = QCLOUD_ERR_DEV_INFO;
+	} else {
+		Log_d("sub device num:%d", gwDevInfo->sub_dev_num);
+		for (i = 0; i < gwDevInfo->sub_dev_num; i++) {
+			Log_d("%dth subDevPid:%s subDevName:%s", i, gwDevInfo->sub_dev_info[i].product_id,
+				  gwDevInfo->sub_dev_info[i].device_name);
+		}
+	}
+	return ret;
 }
+
 #endif
