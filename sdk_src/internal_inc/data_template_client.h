@@ -80,7 +80,7 @@ int qcloud_iot_template_init(Qcloud_IoT_Template *pTemplate);
  * @param pClient   data template client
  */
 
-void qcloud_iot_template_reset(void *pClient);
+void qcloud_iot_template_reset(Qcloud_IoT_Template *pTemplate);
 
 /**
  * @brief deal upstream msg wait for reply timeout

@@ -286,9 +286,13 @@ bool update_value_if_key_match(char *pJsonDoc, DeviceProperty *pProperty)
 
     char *property_data = LITE_json_value_of(pProperty->key, pJsonDoc);
     if ((property_data == NULL) || !(strncmp(property_data, "null", 4)) || !(strncmp(property_data, "NULL", 4))) {
+        ret = false;
     } else {
         _direct_update_value(property_data, pProperty);
         ret = true;
+    }
+
+    if(property_data) {
         HAL_Free(property_data);
     }
 

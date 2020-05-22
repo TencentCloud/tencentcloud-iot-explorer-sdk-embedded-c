@@ -187,7 +187,7 @@ int HAL_GetDevInfoFromFile(const char *file_name, void *dev_info)
     /*Get region*/
     destValue = LITE_json_value_of(KEY_REGION, JsonDoc);
     if (NULL == destValue) {
-        Log_e("read authcode from json file failed!");
+        Log_e("read region from json file failed!");
         ret = QCLOUD_ERR_FAILURE;
         goto exit;
     } else {

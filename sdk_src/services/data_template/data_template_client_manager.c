@@ -268,32 +268,29 @@ char *get_control_clientToken(void)
     return sg_template_clientToken;
 }
 
-void qcloud_iot_template_reset(void *pClient)
+void qcloud_iot_template_reset(Qcloud_IoT_Template *pTemplate)
 {
-    POINTER_SANITY_CHECK_RTN(pClient);
+    POINTER_SANITY_CHECK_RTN(pTemplate);
 
-    Qcloud_IoT_Template *template_client = (Qcloud_IoT_Template *)pClient;
-
-    _unsubscribe_template_downstream_topic(template_client);
-
-    if (template_client->inner_data.property_handle_list) {
-        list_destroy(template_client->inner_data.property_handle_list);
-        template_client->inner_data.property_handle_list = NULL;
+    _unsubscribe_template_downstream_topic(pTemplate);
+    if (pTemplate->inner_data.property_handle_list) {
+        list_destroy(pTemplate->inner_data.property_handle_list);
+        pTemplate->inner_data.property_handle_list = NULL;
     }
 
-    if (template_client->inner_data.reply_list) {
-        list_destroy(template_client->inner_data.reply_list);
-        template_client->inner_data.reply_list = NULL;
+    if (pTemplate->inner_data.reply_list) {
+        list_destroy(pTemplate->inner_data.reply_list);
+        pTemplate->inner_data.reply_list = NULL;
     }
 
-    if (template_client->inner_data.event_list) {
-        list_destroy(template_client->inner_data.event_list);
-        template_client->inner_data.event_list = NULL;
+    if (pTemplate->inner_data.event_list) {
+        list_destroy(pTemplate->inner_data.event_list);
+        pTemplate->inner_data.event_list = NULL;
     }
 
-    if (NULL != template_client->inner_data.action_handle_list) {
-        list_destroy(template_client->inner_data.action_handle_list);
-        template_client->inner_data.action_handle_list = NULL;
+    if (NULL != pTemplate->inner_data.action_handle_list) {
+        list_destroy(pTemplate->inner_data.action_handle_list);
+        pTemplate->inner_data.action_handle_list = NULL;
     }
 }
 
@@ -485,10 +482,6 @@ static void _on_template_downstream_topic_handler(void *pClient, MQTTMessage *me
 
     POINTER_SANITY_CHECK_RTN(pClient);
     POINTER_SANITY_CHECK_RTN(message);
-
-    //    Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
-    //    Qcloud_IoT_Template *template_client =
-    //    (Qcloud_IoT_Template*)mqtt_client->event_handle.context;
     Qcloud_IoT_Template *template_client = (Qcloud_IoT_Template *)pUserdata;
 
     const char *topic     = message->ptopic;
@@ -509,7 +502,7 @@ static void _on_template_downstream_topic_handler(void *pClient, MQTTMessage *me
     memset(sg_template_cloud_rcv_buf, 0, sizeof(sg_template_cloud_rcv_buf));
     memcpy(sg_template_cloud_rcv_buf, message->payload, cloud_rcv_len + 1);
     sg_template_cloud_rcv_buf[cloud_rcv_len] = '\0';  // jsmn_parse relies on a string
-    Log_d("recv:%s", sg_template_cloud_rcv_buf);
+//    Log_d("recv:%s", sg_template_cloud_rcv_buf);
 
     // parse the message type from topic $thing/down/property
     if (!parse_template_method_type(sg_template_cloud_rcv_buf, &type_str)) {

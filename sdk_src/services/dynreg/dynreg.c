@@ -96,7 +96,7 @@ void srand_d(unsigned int i)
     _seed = i;
 }
 
-static int _get_json_resault_code(char *json)
+static int _get_json_result_code(char *json)
 {
     int   resault = -1;
     char *v       = LITE_json_value_of(CODE_RESAULT, json);
@@ -238,7 +238,7 @@ static int _parse_devinfo(char *jdoc, DeviceInfo *pDevInfo)
 
     Log_d("recv: %s", jdoc);
 
-    ret = _get_json_resault_code(jdoc);
+    ret = _get_json_result_code(jdoc);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("response err, ret:%d", ret);
         goto exit;

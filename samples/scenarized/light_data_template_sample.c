@@ -441,7 +441,7 @@ static eDataState get_property_state(void *pProperyData)
 }
 
 /*set property state, changed or no change*/
-static void set_propery_state(void *pProperyData, eDataState state)
+static void set_property_state(void *pProperyData, eDataState state)
 {
     int i;
 
@@ -527,7 +527,7 @@ static void cycle_report(Timer *reportTimer)
 
     if (expired(reportTimer)) {
         for (i = 0; i < TOTAL_PROPERTY_COUNT; i++) {
-            set_propery_state(sg_DataTemplate[i].data_property.data, eCHANGED);
+            set_property_state(sg_DataTemplate[i].data_property.data, eCHANGED);
             countdown_ms(reportTimer, 5000);
         }
     }

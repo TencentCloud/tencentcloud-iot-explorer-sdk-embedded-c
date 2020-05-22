@@ -379,11 +379,5 @@ exit:
     IOT_Gateway_Stop_Yield_Thread(client);
     rc = IOT_Gateway_Destroy(client);
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  // show subdev with data template.
-    if (0 != sub_dev1_thread_params.thread_id) {
-        HAL_ThreadDestroy((void *)&sub_dev1_thread_params.thread_id);
-    }
-#endif
-
     return rc;
 }

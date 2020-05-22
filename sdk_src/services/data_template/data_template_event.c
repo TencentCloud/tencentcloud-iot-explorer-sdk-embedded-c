@@ -117,6 +117,7 @@ static void _on_event_reply_callback(void *pClient, MQTTMessage *message, void *
 
     // parse code from payload
     if (!parse_code_return((char *)message->payload, &code)) {
+        HAL_Free(client_token);
         Log_e("fail to parse code");
         return;
     }
@@ -141,7 +142,7 @@ static void _on_event_reply_callback(void *pClient, MQTTMessage *message, void *
  * @brief create event reply struct and add to event_list
  */
 static sEventReply *_create_event_add_to_list(Qcloud_IoT_Template *pTemplate, OnEventReplyCallback replyCb,
-                                              uint32_t reply_timeout_ms)
+        uint32_t reply_timeout_ms)
 {
     IOT_FUNC_ENTRY;
 

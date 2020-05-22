@@ -279,8 +279,7 @@ static int _register_data_template_property(void *pTemplate_client)
     return QCLOUD_RET_SUCCESS;
 }
 
-// when control msg received, data_template's properties has been parsed in pData
-// you should add your logic how to use pData
+// when control msg received, data_template's properties has been parsed in pData you should add your logic how to use pData
 void deal_down_stream_user_logic(void *client, ProductDataDefine *pData)
 {
     Log_d("someting about your own product logic wait to be done");
