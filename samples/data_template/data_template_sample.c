@@ -229,8 +229,7 @@ static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, ui
 
     if (pTemplateData) {
         for (i = 0; i < TOTAL_PROPERTY_COUNTS; i++) {
-            /* handle self defined string/json here. Other properties are dealed in
-             * _handle_delta()*/
+            /* handle self defined string/json here. Other properties are dealed in _handle_delta()*/
             sDataPoint *pDataPoint = pTemplateData->method.get_property_data_point(pClient, i);
             if (strcmp(pDataPoint->data_property.key, pProperty->key) == 0) {
                 pDataPoint->state = eCHANGED;
@@ -274,22 +273,18 @@ static int register_data_template_property(void *pClient)
     return rc;
 }
 
-// when control msg received, data_template's properties has been parsed in
-// pData
-// you should add your logic how to use pData
+//add your down steam logic here
 void deal_down_stream_user_logic(void *pClient)
 {
     Log_d("someting about your own product logic wait to be done");
 
 #ifdef EVENT_POST_ENABLED
-// IOT_Event_setFlag(client, FLAG_EVENT0);  //set the events flag when the evnts
-// your defined occured, see events_config.c
+// IOT_Event_setFlag(pClient, EVENT_FLAG(eEVENT_STATUS_REPORT)); //set the events flag when the evnts your defined occured
 #endif
 }
 
 // demo for up-stream
-// add changed properties to pReportDataList, then the changed properties would
-// be reported
+// add changed properties to pReportDataList, then the changed properties would be reported
 // you should add your own logic for how to get the changed properties
 int deal_up_stream_user_logic(void *pClient, DeviceProperty *pReportDataList[], int *pCount)
 {
