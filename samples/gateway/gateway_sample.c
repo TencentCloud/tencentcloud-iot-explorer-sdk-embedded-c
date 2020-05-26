@@ -194,13 +194,72 @@ static int parse_arguments(int argc, char **argv)
 /**
  * sub dev thread runner
  */
-
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  // show subdev with data template.
 static void sub_dev_thread(void *user_arg)
 {
     sub_dev1_thread(user_arg, LIGHT_SUB_DEV_PRODUCT_ID, LIGHT_SUB_DEV_NAME);
 }
 #endif
+
+
+/**
+ * show gateway dynamic bind/unbind sub-devices
+ */
+#ifdef GATEWAY_DYN_BIND_SUBDEV_ENABLED
+#define WAIT_BIND_SUB_DEV001_INFO_FILE      "wait_bind_sub_dev001_info.json"
+static int add_new_binded_sub_dev(GatewayDeviceInfo *pGateway, DeviceInfo *pNewSubDev)
+{
+    int ret;
+    if(pGateway->sub_dev_num < MAX_NUM_SUB_DEV) {
+        memcpy((char *)&pGateway->sub_dev_info[pGateway->sub_dev_num], (char *)pNewSubDev, sizeof(DeviceInfo));
+        pGateway->sub_dev_num++;
+        ret = QCLOUD_RET_SUCCESS; //you can save gateway info to local flash for persistent storage
+    } else {
+        ret = QCLOUD_ERR_FAILURE;
+    }
+
+    return ret;
+}
+
+static int show_subdev_bind_unbind(void *client, GatewayParam *param)
+{
+    int rc;
+
+    //Get wait bind sub dev info
+    DeviceInfo subDev;
+    memset((char *)&subDev, 0, sizeof(DeviceInfo));
+    rc = HAL_GetDevInfoFromFile(WAIT_BIND_SUB_DEV001_INFO_FILE, &subDev);
+    if(QCLOUD_RET_SUCCESS != rc) {
+        Log_e("get subdev info from file %s fail,pls check file exist. rc:%d", WAIT_BIND_SUB_DEV001_INFO_FILE, rc);
+        return rc;
+    }
+    Log_d("bind subdev %s/%s", subDev.product_id, subDev.device_name);
+
+    //bind sub dev
+    rc = IOT_Gateway_Subdev_Bind(client, param, &subDev);
+    if(QCLOUD_ERR_BIND_REPEATED_REQ == rc) {
+        Log_d("%s/%s has been binded", subDev.product_id, subDev.device_name);
+        rc = IOT_Gateway_Subdev_Unbind(client, param, &subDev);
+        if(QCLOUD_RET_SUCCESS != rc) {
+            Log_e("unbind %s/%s fail,rc:%d", subDev.product_id, subDev.device_name, rc);
+        } else {
+            Log_d("unbind %s/%s success", subDev.product_id, subDev.device_name);
+            rc = IOT_Gateway_Subdev_Bind(client, param, &subDev);
+        }
+    }
+
+    if(QCLOUD_RET_SUCCESS == rc) {
+        Log_d("bind %s/%s success", subDev.product_id, subDev.device_name);
+        add_new_binded_sub_dev(&sg_GWdevInfo, &subDev);
+    } else {
+        Log_e("bind %s/%s fail,rc:%d", subDev.product_id, subDev.device_name, rc);
+    }
+
+    return rc;
+}
+
+#endif
+
 
 /*Gateway should enable multithread*/
 int main(int argc, char **argv)
@@ -250,6 +309,12 @@ int main(int argc, char **argv)
     // set GateWay device info
     param.product_id  = gw->gw_info.product_id;
     param.device_name = gw->gw_info.device_name;
+
+
+#ifdef GATEWAY_DYN_BIND_SUBDEV_ENABLED
+    //show gateway dynamic bind/unbind sub-devices
+    show_subdev_bind_unbind(client, &param);
+#endif
 
     // make sub-device online
     for (i = 0; i < gw->sub_dev_num; i++) {
@@ -316,7 +381,7 @@ int main(int argc, char **argv)
     PublishParams pub_param = DEFAULT_PUB_PARAMS;
     pub_param.qos           = QOS0;
 
-    //	pub_param.payload =
+    //  pub_param.payload =
     //"{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err
     // reply wil received\"}}";
     pub_param.payload     = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{}}";

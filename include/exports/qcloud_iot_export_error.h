@@ -126,6 +126,16 @@ typedef enum {
     QCLOUD_ERR_SSL_READ_TIMEOUT    = -707,  // TLS/SSL read timeout
     QCLOUD_ERR_SSL_READ            = -708,  // TLS/SSL read error
     QCLOUD_ERR_SSL_NOTHING_TO_READ = -709,  // TLS/SSL nothing to read
+
+    QCLOUD_ERR_BIND_PARA_ERR        = -801,  // bind sub device param error
+    QCLOUD_ERR_BIND_SUBDEV_ERR      = -802,  // sub device not exist or illegal
+    QCLOUD_ERR_BIND_SIGN_ERR        = -803,  // signature check err
+    QCLOUD_ERR_BIND_SIGN_METHOD_RRR = -804,  // signmethod not supporte
+    QCLOUD_ERR_BIND_SIGN_EXPIRED    = -805,  // signature expired
+    QCLOUD_ERR_BIND_BEEN_BINDED     = -806,  // sub device has been binded by other gateway
+    QCLOUD_ERR_BIND_SUBDEV_FORBID   = -807,  // sub device not allow to bind
+    QCLOUD_ERR_BIND_OP_FORBID       = -808,  // operation not permit
+    QCLOUD_ERR_BIND_REPEATED_REQ    = -809,  // repeated bind request,has been binded
 } IoT_Return_Code;
 
 #ifdef __cplusplus
