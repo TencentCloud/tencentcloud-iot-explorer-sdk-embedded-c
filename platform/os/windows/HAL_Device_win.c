@@ -203,7 +203,7 @@ int HAL_GetDevInfoFromFile(const char *file_name, void *dev_info)
         ret = QCLOUD_ERR_FAILURE;
         goto exit;
     } else {
-        strncpy(pDevInfo->device_name, destValue, MAX_SIZE_OF_PRODUCT_ID);
+        strncpy(pDevInfo->device_name, destValue, MAX_SIZE_OF_DEVICE_NAME);
         HAL_Free(destValue);
     }
 

@@ -24,6 +24,7 @@
 #include "lite-utils.h"
 #include "mqtt_client.h"
 #include "utils_base64.h"
+#include "utils_md5.h"
 #include "utils_hmac.h"
 
 
@@ -378,30 +379,43 @@ int gateway_publish_sync(Gateway *gateway, char *topic, PublishParams *params, i
 }
 
 #ifdef AUTH_MODE_CERT
-static int get_key_from_cert_file(const char *file_path, char *keybuff, int buff_len)
+static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff_len)
 {
-#define KEY_LEN         24
-#define KEY_BEGIN_POS   28
     FILE *fp;
+    uint32_t length;
     int ret = QCLOUD_RET_SUCCESS;
 
     if ((fp = fopen(file_path, "r")) == NULL) {
         Log_e("fail to open cert file %s", file_path);
         return QCLOUD_ERR_FAILURE;
     }
-    fseek(fp, KEY_BEGIN_POS, SEEK_SET);
-    if(KEY_LEN != fread(keybuff, 1, KEY_LEN, fp)) {
-        Log_e("read data len fail");
-        ret = QCLOUD_ERR_FAILURE;
+
+    fseek(fp, 0L, SEEK_END);
+    length = ftell(fp);
+    uint8_t *data = HAL_Malloc(length + 1);
+    if(!data) {
+        Log_e("malloc mem err");
+        return QCLOUD_ERR_MALLOC;
     }
-    Log_d("sign key %s", keybuff);
+
+    fseek(fp, 0, SEEK_SET);
+    if(length != fread(data, 1, length, fp)) {
+        Log_e("read data len fail");
+        ret =  QCLOUD_ERR_FAILURE;
+        goto exit;
+    }
+
+    utils_md5_str(data, length, (uint8_t *)keybuff);
+    Log_d("sign key: %s", keybuff);
+
+exit:
+
+    HAL_Free(data);
     fclose(fp);
 
     return ret;
-#undef  KEY_LEN
-
-#undef  KEY_BEGIN_POS
 }
+
 #endif
 
 int subdev_bind_hmac_sha1_cal(DeviceInfo *pDevInfo, char *signout, int max_signlen, int nonce, long timestamp)
@@ -424,9 +438,9 @@ int subdev_bind_hmac_sha1_cal(DeviceInfo *pDevInfo, char *signout, int max_signl
     //gen digest key
     char key[BIND_SIGN_KEY_SIZE + 1] = {0};
 #ifdef AUTH_MODE_CERT
-    ret = get_key_from_cert_file(pDevInfo->dev_cert_file_name, key, BIND_SIGN_KEY_SIZE);
+    ret = gen_key_from_cert_file(pDevInfo->dev_cert_file_name, key, BIND_SIGN_KEY_SIZE);
     if(QCLOUD_RET_SUCCESS != ret) {
-        Log_e("get key from cert file fail, ret:%d",ret);
+        Log_e("gen key from cert file fail, ret:%d",ret);
         HAL_Free(pSignText);
         return ret;
     }
