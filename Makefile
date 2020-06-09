@@ -62,6 +62,10 @@ $(call CompLib_Map, SYSTEM_COMM_ENABLED, \
     $(SRC_DIR)/services/system \
 )
 
+$(call CompLib_Map, LOG_UPLOAD_ENABLED, \
+    $(SRC_DIR)/services/log \
+)
+
 $(call CompLib_Map, DEV_DYN_REG_ENABLED, \
 	$(SRC_DIR)/services/dynreg \
 )

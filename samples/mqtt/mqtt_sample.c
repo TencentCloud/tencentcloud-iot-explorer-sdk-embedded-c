@@ -197,22 +197,73 @@ static void on_message_callback(void *pClient, MQTTMessage *message, void *userD
           (int)message->payload_len, (char *)message->payload);
 }
 
-// subscrib MQTT topic
-static int _subscribe_topic(void *client, char *topic_keyword, QoS qos)
+// subscribe MQTT topic and wait for sub result
+static int subscribe_topic_wait_result(void *client, char *topic_keyword, QoS qos)
 {
-    static char topic_name[128] = {0};
-    int size = HAL_Snprintf(topic_name, sizeof(topic_name), "%s/%s/%s", sg_devInfo.product_id, sg_devInfo.device_name,
-                            topic_keyword);
+    char topic_name[128] = {0};
 
+    int size = HAL_Snprintf(topic_name, sizeof(topic_name), "%s/%s/%s", sg_devInfo.product_id, \
+                            sg_devInfo.device_name,  topic_keyword);
     if (size < 0 || size > sizeof(topic_name) - 1) {
         Log_e("topic content length not enough! content size:%d  buf size:%d", size, (int)sizeof(topic_name));
         return QCLOUD_ERR_FAILURE;
     }
-    SubscribeParams sub_params    = DEFAULT_SUB_PARAMS;
-    sub_params.qos                = qos;
+
+    SubscribeParams sub_params = DEFAULT_SUB_PARAMS;
+    sub_params.qos = qos;
     sub_params.on_message_handler = on_message_callback;
-    return IOT_MQTT_Subscribe(client, topic_name, &sub_params);
+
+    int rc = IOT_MQTT_Subscribe(client, topic_name, &sub_params);
+    if (rc < 0) {
+        Log_e("MQTT subscribe FAILED: %d", rc);
+        return rc;
+    }
+
+    int wait_cnt = 10;
+    while (!IOT_MQTT_IsSubReady(client, topic_name) && (wait_cnt > 0)) {
+        // wait for subscription result
+        rc = IOT_MQTT_Yield(client, 1000);
+        if (rc) {
+            Log_e("MQTT error: %d", rc);
+            return rc;
+        }
+        wait_cnt--;
+    }
+
+    if (wait_cnt > 0) {
+        return QCLOUD_RET_SUCCESS;
+    } else {
+        Log_e("wait for subscribe result timeout!");
+        return QCLOUD_ERR_FAILURE;
+    }
 }
+
+#ifdef LOG_UPLOAD
+// init log upload module
+static int _init_log_upload(MQTTInitParams *init_params)
+{
+    LogUploadInitParams log_init_params;
+    memset(&log_init_params, 0, sizeof(LogUploadInitParams));
+
+    log_init_params.product_id = init_params->product_id;
+    log_init_params.device_name = init_params->device_name;
+#ifdef AUTH_MODE_CERT
+    log_init_params.sign_key = init_params->cert_file;
+#else
+    log_init_params.sign_key = init_params->device_secret;
+#endif
+
+#if defined(__linux__) || defined(WIN32)
+    log_init_params.read_func = HAL_Log_Read;
+    log_init_params.save_func = HAL_Log_Save;
+    log_init_params.del_func = HAL_Log_Del;
+    log_init_params.get_size_func = HAL_Log_Get_Size;
+#endif
+
+    return IOT_Log_Init_Uploader(&log_init_params);
+}
+
+#endif
 
 static bool sg_loop_test = false;
 static int  parse_arguments(int argc, char **argv)
@@ -261,6 +312,14 @@ int main(int argc, char **argv)
         return rc;
     }
 
+#ifdef LOG_UPLOAD
+    // _init_log_upload should be done after _setup_connect_init_params and before
+    // IOT_MQTT_Construct
+    rc = _init_log_upload(&init_params);
+    if (rc != QCLOUD_RET_SUCCESS)
+        Log_e("init log upload error, rc = %d", rc);
+#endif
+
     // create MQTT client and connect with server
     void *client = IOT_MQTT_Construct(&init_params);
     if (client != NULL) {
@@ -274,7 +333,7 @@ int main(int argc, char **argv)
 #ifdef SYSTEM_COMM
     long time = 0;
     // get system timestamp from server
-    rc = IOT_Get_SysTime(client, &time);
+    rc = IOT_Get_Sys_Resource(client, eRESOURCE_TIME, &sg_devInfo, &time);	
     if (QCLOUD_RET_SUCCESS == rc) {
         Log_i("system time is %ld", time);
     } else {
@@ -283,7 +342,7 @@ int main(int argc, char **argv)
 #endif
 
     // subscribe normal topics here
-    rc = _subscribe_topic(client, "data", QOS0);
+    rc = subscribe_topic_wait_result(client, "data", QOS0);
     if (rc < 0) {
         Log_e("Client Subscribe Topic Failed: %d", rc);
         return rc;
@@ -315,6 +374,10 @@ int main(int argc, char **argv)
     } while (sg_loop_test);
 
     rc = IOT_MQTT_Destroy(&client);
-
+	IOT_Log_Upload(true);
+	
+#ifdef LOG_UPLOAD	
+	IOT_Log_Fini_Uploader();
+#endif
     return rc;
 }

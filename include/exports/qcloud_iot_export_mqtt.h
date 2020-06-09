@@ -237,6 +237,18 @@ int IOT_MQTT_Destroy(void **pClient);
  */
 int IOT_MQTT_Yield(void *pClient, uint32_t timeout_ms);
 
+
+/**
+ * @brief set mqtt yield is by thread or not
+ *
+ * @param pClient    handle to MQTT client
+ * @param state      yield thread running state
+ */
+#ifdef MULTITHREAD_ENABLED
+void IOT_MQTT_Set_Yield_Thread_State(void *pClient, bool state);
+#endif
+
+
 /**
  * @brief Publish MQTT message
  *

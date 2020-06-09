@@ -28,7 +28,7 @@ endif()
 
 
 # HTTP 
-if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON")
+if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON" OR ${FEATURE_DEV_DYN_REG_ENABLED} STREQUAL "ON" OR ${FEATURE_LOG_UPLOAD_ENABLED} STREQUAL "ON")
 	# http
 	file(GLOB src_http 	${CMAKE_CURRENT_SOURCE_DIR}/protocol/http/*.c)
 	list(APPEND src_sdk ${src_http})
@@ -38,6 +38,18 @@ endif()
 if(${FEATURE_DEV_DYN_REG_ENABLED} STREQUAL "ON")
 	file(GLOB src_dyn_reg ${CMAKE_CURRENT_SOURCE_DIR}/services/dynreg/*.c)
 	list(APPEND src_sdk ${src_dyn_reg})
+endif()
+
+# LOG
+if(${FEATURE_LOG_UPLOAD_ENABLED} STREQUAL "ON")
+	file(GLOB src_log_upload ${CMAKE_CURRENT_SOURCE_DIR}/services/log/*.c)
+	list(APPEND src_sdk ${src_log_upload})
+endif()
+
+#SYSTEM RESOURCE
+if(${FEATURE_SYSTEM_COMM_ENABLED} STREQUAL "ON")
+	file(GLOB src_system ${CMAKE_CURRENT_SOURCE_DIR}/services/system/*.c)
+	list(APPEND src_sdk ${src_system})
 endif()
 
 # AT OR TCP

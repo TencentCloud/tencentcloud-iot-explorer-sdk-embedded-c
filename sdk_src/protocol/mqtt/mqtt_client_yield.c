@@ -11,8 +11,7 @@
  *   http://www.eclipse.org/org/documents/edl-v10.php.
  *
  * Contributors:
- *    Allan Stockdill-Mander/Ian Craggs - initial API and implementation and/or
- *initial documentation
+ *    Allan Stockdill-Mander/Ian Craggs - initial API and implementation and/or initial documentation
  *******************************************************************************/
 
 #ifdef __cplusplus
@@ -114,7 +113,7 @@ static int _handle_reconnect(Qcloud_IoT_Client *pClient)
 #ifdef LOG_UPLOAD
             if (is_log_uploader_init()) {
                 int log_level;
-                if (qcloud_get_log_level(pClient, &log_level) < 0) {
+                if (qcloud_get_log_level(&log_level) < 0) {
                     Log_e("client get log topic failed: %d", rc);
                 }
             }
@@ -161,8 +160,7 @@ static int _mqtt_keep_alive(Qcloud_IoT_Client *pClient)
     }
 
     if (pClient->is_ping_outstanding >= MQTT_PING_RETRY_TIMES) {
-        // Reaching here means we haven't received any MQTT packet for a long time
-        // (keep_alive_interval)
+        // Reaching here means we haven't received any MQTT packet for a long time (keep_alive_interval)
         Log_e("Fail to recv MQTT msg. Something wrong with the connection.");
         rc = _handle_disconnect(pClient);
         IOT_FUNC_EXIT_RC(rc);
@@ -186,8 +184,7 @@ static int _mqtt_keep_alive(Qcloud_IoT_Client *pClient)
 
     if (QCLOUD_RET_SUCCESS != rc) {
         HAL_MutexUnlock(pClient->lock_write_buf);
-        // If sending a PING fails, propably the connection is not OK and we decide
-        // to disconnect and begin reconnection
+        // If sending a PING fails, propably the connection is not OK and we decide to disconnect and begin reconnection
         // attempts
         Log_e("Fail to send PING request. Something wrong with the connection.");
         rc = _handle_disconnect(pClient);
@@ -206,14 +203,12 @@ static int _mqtt_keep_alive(Qcloud_IoT_Client *pClient)
 }
 
 /**
- * @brief Check connection and keep alive state, read/handle MQTT message in
- * synchronized way
+ * @brief Check connection and keep alive state, read/handle MQTT message in synchronized way
  *
  * @param pClient    handle to MQTT client
  * @param timeout_ms timeout value (unit: ms) for this operation
  *
- * @return QCLOUD_RET_SUCCESS when success, QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT
- * when try reconnecing, or err code for
+ * @return QCLOUD_RET_SUCCESS when success, QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT when try reconnecing, or err code for
  * failure
  */
 int qcloud_iot_mqtt_yield(Qcloud_IoT_Client *pClient, uint32_t timeout_ms)
@@ -255,12 +250,10 @@ int qcloud_iot_mqtt_yield(Qcloud_IoT_Client *pClient, uint32_t timeout_ms)
         rc = cycle_for_read(pClient, &timer, &packet_type, QOS0);
 
         if (rc == QCLOUD_RET_SUCCESS) {
-            /* check list of wait publish ACK to remove node that is ACKED or timeout
-             */
+            /* check list of wait publish ACK to remove node that is ACKED or timeout */
             qcloud_iot_mqtt_pub_info_proc(pClient);
 
-            /* check list of wait subscribe(or unsubscribe) ACK to remove node that is
-             * ACKED or timeout */
+            /* check list of wait subscribe(or unsubscribe) ACK to remove node that is ACKED or timeout */
             qcloud_iot_mqtt_sub_info_proc(pClient);
 
             rc = _mqtt_keep_alive(pClient);
@@ -288,6 +281,23 @@ int qcloud_iot_mqtt_yield(Qcloud_IoT_Client *pClient, uint32_t timeout_ms)
     }
 
     IOT_FUNC_EXIT_RC(rc);
+}
+
+// workaround wrapper for qcloud_iot_mqtt_yield for multi-thread mode
+int qcloud_iot_mqtt_yield_mt(Qcloud_IoT_Client *mqtt_client, uint32_t timeout_ms)
+{
+    POINTER_SANITY_CHECK(mqtt_client, QCLOUD_ERR_INVAL);
+    NUMBERIC_SANITY_CHECK(timeout_ms, QCLOUD_ERR_INVAL);
+
+#ifdef MULTITHREAD_ENABLED
+    /* only one instance of yield is allowed in running state*/
+    if (mqtt_client->yield_thread_running) {
+        HAL_SleepMs(timeout_ms);
+        return QCLOUD_RET_SUCCESS;
+    }
+#endif
+
+    return qcloud_iot_mqtt_yield(mqtt_client, timeout_ms);
 }
 
 /**

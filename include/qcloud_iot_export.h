@@ -29,7 +29,7 @@ extern "C" {
 #include "platform.h"
 
 /* IoT C-SDK version info */
-#define QCLOUD_IOT_DEVICE_SDK_VERSION "3.1.2"
+#define QCLOUD_IOT_DEVICE_SDK_VERSION "3.1.3"
 
 /**************** QCloud IoT C-SDK constants begin ************************/
 
@@ -104,6 +104,8 @@ typedef struct {
 #include "qcloud_iot_export_ota.h"
 #include "qcloud_iot_export_gateway.h"
 #include "qcloud_iot_export_dynreg.h"
+#include "qcloud_iot_export_system.h"
+
 
 #ifdef __cplusplus
 }

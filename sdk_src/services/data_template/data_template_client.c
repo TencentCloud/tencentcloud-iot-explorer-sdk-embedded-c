@@ -31,9 +31,9 @@ extern "C" {
 #include "data_template_action.h"
 #include "data_template_client_common.h"
 #include "data_template_client_json.h"
+#include "utils_param_check.h"
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
-#include "utils_param_check.h"
 
 static void _init_request_params(RequestParams *pParams, Method method, OnReplyCallback callback, void *userContext,
                                  uint8_t timeout_sec)
@@ -296,7 +296,7 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
 }
 
 int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size_t sizeOfBuffer, uint8_t count,
-                                           DeviceProperty *pDeviceProperties[])
+        DeviceProperty *pDeviceProperties[])
 {
     POINTER_SANITY_CHECK(jsonBuffer, QCLOUD_ERR_INVAL);
     POINTER_SANITY_CHECK(pDeviceProperties, QCLOUD_ERR_INVAL);
@@ -753,6 +753,7 @@ int IOT_Template_Start_Yield_Thread(void *pClient)
     thread_params.stack_size        = 4096;
     thread_params.priority          = 1;
     pTemplate->yield_thread_running = true;
+    IOT_MQTT_Set_Yield_Thread_State(pTemplate->mqtt, true);
 
     int rc = HAL_ThreadCreate(&thread_params);
     if (rc) {
@@ -770,6 +771,7 @@ void IOT_Template_Stop_Yield_Thread(void *pClient)
 
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)pClient;
     pTemplate->yield_thread_running = false;
+    IOT_MQTT_Set_Yield_Thread_State(pTemplate->mqtt, false);
     HAL_SleepMs(1000);
     return;
 }

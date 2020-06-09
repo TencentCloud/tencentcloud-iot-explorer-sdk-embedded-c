@@ -177,15 +177,6 @@ typedef struct SubTopicHandle {
 } SubTopicHandle;
 
 /**
- * @brief data structure for system time service
- */
-typedef struct _sys_mqtt_state {
-    bool topic_sub_ok;
-    bool result_recv_ok;
-    long time;
-} SysMQTTState;
-
-/**
  * @brief MQTT QCloud IoT Client structure
  */
 typedef struct Client {
@@ -240,9 +231,11 @@ typedef struct Client {
     unsigned int current_packet_id_cnt;
 #endif
 
-#ifdef SYSTEM_COMM
-    SysMQTTState sys_state;
+#ifdef MULTITHREAD_ENABLED
+    bool yield_thread_running;
+    int  yield_thread_exit_code;
 #endif
+
 } Qcloud_IoT_Client;
 
 /**

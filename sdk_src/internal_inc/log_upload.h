@@ -89,19 +89,25 @@ void set_log_upload_in_comm_err(bool value);
 /**
  * @brief get current upload log_level from IoT Hub
  *
- * @param client
  * @param log_level
  * @return QCLOUD_RET_SUCCESS when success
  */
-int qcloud_get_log_level(void *client, int *log_level);
+int qcloud_get_log_level(int *log_level);
 
 /**
- * @brief subscribe to upload log_level topic
+ * @brief get the log mqtt client
  *
- * @param client
- * @return QCLOUD_RET_SUCCESS when success
+ * @return log mqtt client
  */
-int qcloud_log_topic_subscribe(void *client);
+void *get_log_mqtt_client(void);
+
+/**
+ * @brief get the device info of log client
+ *
+ * @return device info pointer of log client
+ */
+void * get_log_dev_info(void);
+
 
 #ifdef __cplusplus
 }

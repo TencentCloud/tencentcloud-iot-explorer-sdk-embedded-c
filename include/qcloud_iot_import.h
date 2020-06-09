@@ -332,8 +332,11 @@ int HAL_AT_Uart_Recv(void *data, uint32_t expect_size, uint32_t *recv_size, uint
 #endif
 
 /********** TLS/DTLS network sturcture and operations **********/
-
 #ifndef AUTH_WITH_NOTLS
+
+#ifndef MAX_SIZE_OF_CLIENT_ID
+#define MAX_SIZE_OF_CLIENT_ID  (80)
+#endif
 /**
  * @brief Define structure for TLS connection parameters
  *
@@ -353,7 +356,7 @@ typedef struct {
      * Device with PSK
      */
     const char *psk;     // PSK string
-    const char *psk_id;  // PSK ID
+    char psk_id[MAX_SIZE_OF_CLIENT_ID + 1];  // PSK ID
 #endif
 
     size_t psk_length;  // PSK length

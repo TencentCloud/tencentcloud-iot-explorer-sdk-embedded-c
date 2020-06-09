@@ -68,6 +68,7 @@ int IOT_Gateway_Start_Yield_Thread(void *pClient)
     thread_params.stack_size       = 4096;
     thread_params.priority         = 1;
     pGateway->yield_thread_running = true;
+    IOT_MQTT_Set_Yield_Thread_State(pGateway->mqtt, true);
 
     int rc = HAL_ThreadCreate(&thread_params);
     if (rc) {
@@ -85,6 +86,7 @@ void IOT_Gateway_Stop_Yield_Thread(void *pClient)
     Gateway *pGateway = (Gateway *)pClient;
 
     pGateway->yield_thread_running = false;
+    IOT_MQTT_Set_Yield_Thread_State(pGateway->mqtt, false);
     HAL_SleepMs(1000);
     return;
 }

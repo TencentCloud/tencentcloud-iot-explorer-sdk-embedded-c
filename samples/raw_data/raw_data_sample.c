@@ -315,7 +315,7 @@ int main(int argc, char **argv)
 #ifdef SYSTEM_COMM
     long time = 0;
     // get system timestamp from server
-    rc = IOT_Get_SysTime(client, &time);
+    rc = IOT_Get_Sys_Resource(client, eRESOURCE_TIME, &sg_devInfo, &time);	
     if (QCLOUD_RET_SUCCESS == rc) {
         Log_i("system time is %ld", time);
     } else {
