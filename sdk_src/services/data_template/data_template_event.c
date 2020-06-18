@@ -98,9 +98,6 @@ static void _traverse_event_list(Qcloud_IoT_Template *pTemplate, List *list, con
 static void _on_event_reply_callback(void *pClient, MQTTMessage *message, void *userData)
 {
     POINTER_SANITY_CHECK_RTN(message);
-    //  Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
-    //  Qcloud_IoT_Template *template_client =
-    //  (Qcloud_IoT_Template*)mqtt_client->event_handle.context;
     Qcloud_IoT_Template *template_client = (Qcloud_IoT_Template *)userData;
 
     int32_t code;
@@ -126,7 +123,7 @@ static void _on_event_reply_callback(void *pClient, MQTTMessage *message, void *
         // Log_d("no status return");
     }
 
-    Log_d("eventToken:%s code:%d status:%s", client_token, code, status);
+    Log_d("eventToken:%s code:%d  ", client_token, code);
 
     if (template_client != NULL)
         _traverse_event_list(template_client, template_client->inner_data.event_list, client_token, message,

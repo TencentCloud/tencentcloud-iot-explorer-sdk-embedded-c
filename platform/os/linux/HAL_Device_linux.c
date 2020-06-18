@@ -63,10 +63,12 @@ static char sg_device_secret[MAX_SIZE_OF_DEVICE_SECRET + 1] = "YOUR_IOT_PSK";
 #ifdef DEBUG_DEV_INFO_USED
 /* sub-device list  */
 static DeviceInfo sg_subdevList[] = {
-    {.product_id = "WPDA0S6S08", .device_name = "dev001"},  {.product_id = "WPDA0S6S08", .device_name = "dev002"},
+    {.product_id = "WPDA0S6S08", .device_name = "dev001"},  
+    {.product_id = "WPDA0S6S08", .device_name = "dev002"},
     {.product_id = "WPDA0S6S08", .device_name = "dev003"},
 
-    {.product_id = "Y8T6NB8DM0", .device_name = "test001"}, {.product_id = "Y8T6NB8DM0", .device_name = "test002"},
+    {.product_id = "Y8T6NB8DM0", .device_name = "test001"}, 
+    {.product_id = "Y8T6NB8DM0", .device_name = "test002"},
     {.product_id = "Y8T6NB8DM0", .device_name = "test003"}};
 #endif
 
