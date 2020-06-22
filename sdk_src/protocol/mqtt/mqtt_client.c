@@ -75,7 +75,7 @@ void *IOT_MQTT_Construct(MQTTInitParams *pParams)
     }
 
     MQTTConnectParams connect_params = DEFAULT_MQTTCONNECT_PARAMS;
-    char              client_id[MAX_SIZE_OF_CLIENT_ID + 1];
+    static char              client_id[MAX_SIZE_OF_CLIENT_ID + 1];
     memset(client_id, 0, MAX_SIZE_OF_CLIENT_ID + 1);
     HAL_Snprintf(client_id, MAX_SIZE_OF_CLIENT_ID, "%s%s", pParams->product_id, pParams->device_name);
 
@@ -98,7 +98,6 @@ void *IOT_MQTT_Construct(MQTTInitParams *pParams)
                                        (unsigned char *)pParams->device_secret, src_len);
     connect_params.device_secret     = (char *)mqtt_client->psk_decode;
     connect_params.device_secret_len = len;
-    mqtt_client->yield_thread_running = false;
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("Device secret decode err, secret:%s", pParams->device_secret);
         qcloud_iot_mqtt_fini(mqtt_client);

@@ -206,7 +206,6 @@ static void sub_dev_thread(void *user_arg)
  * show gateway dynamic bind/unbind sub-devices
  */
 #ifdef GATEWAY_DYN_BIND_SUBDEV_ENABLED
-#define WAIT_BIND_SUB_DEV001_INFO_FILE      "wait_bind_sub_dev001_info.json"
 static int add_new_binded_sub_dev(GatewayDeviceInfo *pGateway, DeviceInfo *pNewSubDev)
 {
     int ret;
@@ -225,14 +224,18 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
 {
     int rc;
 
-    //Get wait bind sub dev info
+    //ajust for your bind device info
     DeviceInfo subDev;
     memset((char *)&subDev, 0, sizeof(DeviceInfo));
-    rc = HAL_GetDevInfoFromFile(WAIT_BIND_SUB_DEV001_INFO_FILE, &subDev);
-    if(QCLOUD_RET_SUCCESS != rc) {
-        Log_e("get subdev info from file %s fail,pls check file exist. rc:%d", WAIT_BIND_SUB_DEV001_INFO_FILE, rc);
-        return rc;
-    }
+    strncpy(subDev.product_id, "BIND_PID", MAX_SIZE_OF_PRODUCT_ID);
+    strncpy(subDev.device_name, "BIND_DEV_NAME", MAX_SIZE_OF_DEVICE_NAME);
+#ifdef AUTH_MODE_CERT
+    strncpy(subDev.dev_cert_file_name, "BIND_CERT_FILE_NAME", MAX_SIZE_OF_DEVICE_CERT_FILE_NAME);
+    strncpy(subDev.dev_key_file_name, "BIND_KEY_FILE_NAME", MAX_SIZE_OF_DEVICE_SECRET_FILE_NAME);
+
+#else
+    strncpy(subDev.device_secret, "BIND_DEV_PSK", MAX_SIZE_OF_DEVICE_SECRET);
+#endif
     Log_d("bind subdev %s/%s", subDev.product_id, subDev.device_name);
 
     //bind sub dev
