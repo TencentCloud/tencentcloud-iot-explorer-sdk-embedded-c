@@ -854,6 +854,14 @@ int IOT_Template_Yield(void *pClient, uint32_t timeout_ms)
     IOT_FUNC_EXIT_RC(rc);
 }
 
+void *IOT_Template_Get_MQTT_Client(void *pClient)
+{
+    POINTER_SANITY_CHECK(pClient, NULL);
+    Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)pClient;
+	
+    return pTemplate->mqtt;
+}
+
 void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
 {
     POINTER_SANITY_CHECK(pParams, NULL);

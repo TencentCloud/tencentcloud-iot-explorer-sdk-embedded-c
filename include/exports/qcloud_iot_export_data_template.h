@@ -97,13 +97,13 @@ typedef struct {
 #endif
 
     uint32_t command_timeout;         // timeout value (unit: ms) for MQTT
-                                      // connect/pub/sub/yield
+    // connect/pub/sub/yield
     uint32_t keep_alive_interval_ms;  // MQTT keep alive time interval in millisecond
 
     uint8_t clean_session;  // flag of clean session, 1 clean, 0 not clean
 
     uint8_t auto_connect_enable;  // flag of auto reconnection, 1 is enable and
-                                  // recommended
+    // recommended
 
     MQTTEventHandler event_handle;  // event callback
 
@@ -175,7 +175,7 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient);
  *
  * @return packet id (>=0) when success, or err code (<0) for failure
  */
-int IOT_Template_Publish(void *handle, char *topicName, PublishParams *pParams);
+int IOT_Template_Publish(void *pClient, char *topicName, PublishParams *pParams);
 
 /**
  * @brief Subscribe MQTT message
@@ -186,7 +186,7 @@ int IOT_Template_Publish(void *handle, char *topicName, PublishParams *pParams);
  *
  * @return packet id (>=0) when success, or err code (<0) for failure
  */
-int IOT_Template_Subscribe(void *handle, char *topicFilter, SubscribeParams *pParams);
+int IOT_Template_Subscribe(void *pClient, char *topicFilter, SubscribeParams *pParams);
 
 /**
  * @brief Unsubscribe MQTT message
@@ -196,7 +196,7 @@ int IOT_Template_Subscribe(void *handle, char *topicFilter, SubscribeParams *pPa
  *
  * @return packet id (>=0) when success, or err code (<0) for failure
  */
-int IOT_Template_Unsubscribe(void *handle, char *topicFilter);
+int IOT_Template_Unsubscribe(void *pClient, char *topicFilter);
 
 /**
  * @brief Check if MQTT data_template is connected
@@ -204,7 +204,7 @@ int IOT_Template_Unsubscribe(void *handle, char *topicFilter);
  * @param pClient       handle to data_template client
  * @return true= connected, false = unconnected
  */
-bool IOT_Template_IsConnected(void *handle);
+bool IOT_Template_IsConnected(void *pClient);
 
 /**
  * @brief Close connection and destroy MQTT data_template client
@@ -213,23 +213,31 @@ bool IOT_Template_IsConnected(void *handle);
  *
  * @return QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int IOT_Template_Destroy(void *handle);
+int IOT_Template_Destroy(void *pClient);
 
 /**
- * @brief Check connection and keep alive state, read/handle MQTT message in
- * synchronized way
+ * @brief Check connection and keep alive state, read/handle MQTT message by synchronized way
  *
  * @param pClient    handle to data_template client
  * @param timeout_ms timeout value (unit: ms) for this operation
  *
  * @return QCLOUD_RET_SUCCESS when success, or err code for failure
  */
-int IOT_Template_Yield(void *handle, uint32_t timeout_ms);
+int IOT_Template_Yield(void *pClient, uint32_t timeout_ms);
+
+/**
+ * @brief Get the mqtt client from data_template client
+ *
+ * @param pClient    handle to data_template client
+ * @param timeout_ms timeout value (unit: ms) for this operation
+ *
+ * @return QCLOUD_RET_SUCCESS when success, or err code for failure
+ */
+void *IOT_Template_Get_MQTT_Client(void *pClient);
 
 #ifdef MULTITHREAD_ENABLED
 /**
- * @brief Start the default yield thread to read and handle data_template
- * control and reply msg
+ * @brief Start the default yield thread to read and handle data_template control and reply msg
  *
  * @param pClient       handle to data_template client
  * @return QCLOUD_RET_SUCCESS when success, err code for failure
@@ -237,8 +245,7 @@ int IOT_Template_Yield(void *handle, uint32_t timeout_ms);
 int IOT_Template_Start_Yield_Thread(void *pClient);
 
 /**
- * @brief Stop the default yield thread to read and handle data_template control
- * and reply msg
+ * @brief Stop the default yield thread to read and handle data_template control and reply msg
  *
  * @param pClient      handle to data_template client
  */
@@ -271,7 +278,7 @@ void IOT_Template_Set_Yield_Status(void *pClient, bool running_state, int code);
  *
  * @return QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int IOT_Template_Destroy_Except_MQTT(void *handle);
+int IOT_Template_Destroy_Except_MQTT(void *pClient);
 #endif
 
 /**
@@ -280,10 +287,9 @@ int IOT_Template_Destroy_Except_MQTT(void *handle);
  * @param pClient           handle to data_template client
  * @param pProperty         reference to device property
  * @param callback          callback when property changes
- * @return                  QCLOUD_RET_SUCCESS when success, or err code for
- * failure
+ * @return                  QCLOUD_RET_SUCCESS when success, or err code for failure
  */
-int IOT_Template_Register_Property(void *handle, DeviceProperty *pProperty, OnPropRegCallback callback);
+int IOT_Template_Register_Property(void *pClient, DeviceProperty *pProperty, OnPropRegCallback callback);
 
 /**
  * @brief UnRegister device property
@@ -293,16 +299,30 @@ int IOT_Template_Register_Property(void *handle, DeviceProperty *pProperty, OnPr
  * @return                  QCLOUD_RET_SUCCESS when success, or err code for
  * failure
  */
-int IOT_Template_UnRegister_Property(void *handle, DeviceProperty *pProperty);
+int IOT_Template_UnRegister_Property(void *pClient, DeviceProperty *pProperty);
 
-void *IOT_Template_Get_DataTemplate(void *handle);
+/**
+ * @brief Get data_template client's data template
+ *
+ * @param pClient           handle to data_template client
+ * @return                  data_template client's data template
+ */
+void *IOT_Template_Get_DataTemplate(void *pClient);
 
-int IOT_Template_Set_DataTemplate(void *handle, void *data_template, DataTemplateDestroyCb cb);
+/**
+ * @brief Set data_template client's data template
+ *
+ * @param pClient           handle to data_template client
+ * @param data_template     handle to data_template
+ * @param cb                call back to destroy data_template
+ * @return                  QCLOUD_RET_SUCCESS when success, or err code for failure
+ */
+int IOT_Template_Set_DataTemplate(void *pClient, void *data_template, DataTemplateDestroyCb cb);
 
 #ifdef ACTION_ENABLED
-int IOT_Template_Register_Action(void *handle, DeviceAction *pAction, OnActionHandleCallback callback);
+int IOT_Template_Register_Action(void *pClient, DeviceAction *pAction, OnActionHandleCallback callback);
 
-int IOT_Template_UnRegister_Action(void *handle, DeviceAction *pAction);
+int IOT_Template_UnRegister_Action(void *pClient, DeviceAction *pAction);
 #endif
 
 /**
@@ -316,7 +336,7 @@ int IOT_Template_UnRegister_Action(void *handle, DeviceAction *pAction);
  * @return              QCLOUD_RET_SUCCESS when success, or err code for failure
  */
 int IOT_Template_JSON_ConstructReportArray(void *handle, char *jsonBuffer, size_t sizeOfBuffer, uint8_t count,
-                                           DeviceProperty *pDeviceProperties[]);
+        DeviceProperty *pDeviceProperties[]);
 
 /**
  * @brief report data_template data in asynchronized way
@@ -371,32 +391,32 @@ int IOT_Template_GetStatus_sync(void *handle, uint32_t timeout_ms);
 
 /**
  * @brief  clear the control msg when IOT_Template_GetStatus get control msg
- * @param pClient		  handle to data_template client
- * @param pClientToken	  correspond to the clientToken of control msg
- * @return				  QCLOUD_RET_SUCCESS when success, or err code for
+ * @param pClient         handle to data_template client
+ * @param pClientToken    correspond to the clientToken of control msg
+ * @return                QCLOUD_RET_SUCCESS when success, or err code for
  * failure
  */
 int IOT_Template_ClearControl(void *handle, char *pClientToken, OnReplyCallback callback, uint32_t timeout_ms);
 
 /**
  * @brief  reply to the control msg
- * @param pClient		  handle to data_template client
- * @param pJsonDoc	  	  data buffer for reply
+ * @param pClient         handle to data_template client
+ * @param pJsonDoc        data buffer for reply
  * @param sizeOfBuffer    length of data buffer
  * @param replyPara       reply info
- * @return				  QCLOUD_RET_SUCCESS when success, or err code for
+ * @return                QCLOUD_RET_SUCCESS when success, or err code for
  * failure
  */
 int IOT_Template_ControlReply(void *handle, char *pJsonDoc, size_t sizeOfBuffer, sReplyPara *replyPara);
 
 /**
  * @brief  construct system information in json format
- * @param pClient		   handle to data_template client
- * @param jsonBuffer	   data buffer for construct
- * @param sizeOfBuffer	   length of data buffer
- * @param pPlatInfo		   pointer of platform info, compulsory
- * @param pSelfInfo		   pointer of self-define info, option
- * @return				  QCLOUD_RET_SUCCESS when success, or err
+ * @param pClient          handle to data_template client
+ * @param jsonBuffer       data buffer for construct
+ * @param sizeOfBuffer     length of data buffer
+ * @param pPlatInfo        pointer of platform info, compulsory
+ * @param pSelfInfo        pointer of self-define info, option
+ * @return                QCLOUD_RET_SUCCESS when success, or err
 code for failure
 
  *package format for system info report
@@ -404,12 +424,12 @@ code for failure
 *  "method": "report_info",
 *  "clientToken": "client-token1618",
 *  "params": {
-*  "module_hardinfo": "esp8266",	//if module used, compulsory
+*  "module_hardinfo": "esp8266",    //if module used, compulsory
 *  "module_softinfo":  "APP_2.0.0", //compulsory
-*  "fw_ver":       "FW_1.0.0",		//compulsory
-*  "imei":       "123456789",		//option
-*  "lat":        "22.546015"		//latitude,option
-*  "lon":        "113.941125",		//longitude,option
+*  "fw_ver":       "FW_1.0.0",      //compulsory
+*  "imei":       "123456789",       //option
+*  "lat":        "22.546015"        //latitude,option
+*  "lon":        "113.941125",      //longitude,option
 *  "device_label": {
 *    "append_info": "your self define info" //self-define information,option
 * ...
@@ -422,13 +442,13 @@ int IOT_Template_JSON_ConstructSysInfo(void *handle, char *jsonBuffer, size_t si
 /**
  * @brief report system information in asynchronized way
  *
- * @param pClient			handle to data_template client
- * @param pJsonDoc			source JSON document for report
- * @param sizeOfBuffer		length of JSON document
- * @param callback			callback when response arrive
- * @param userContext		user data for callback
- * @param timeout_ms		timeout value for this operation (unit: ms)
- * @return					QCLOUD_RET_SUCCESS when success, or err code
+ * @param pClient           handle to data_template client
+ * @param pJsonDoc          source JSON document for report
+ * @param sizeOfBuffer      length of JSON document
+ * @param callback          callback when response arrive
+ * @param userContext       user data for callback
+ * @param timeout_ms        timeout value for this operation (unit: ms)
+ * @return                  QCLOUD_RET_SUCCESS when success, or err code
  * for failure
  */
 int IOT_Template_Report_SysInfo(void *handle, char *pJsonDoc, size_t sizeOfBuffer, OnReplyCallback callback,
@@ -437,13 +457,13 @@ int IOT_Template_Report_SysInfo(void *handle, char *pJsonDoc, size_t sizeOfBuffe
 /**
  * @brief report data_template data in synchronized way
  *
- * @param pClient			handle to data_template client
- * @param pJsonDoc			source JSON document for report
- * @param sizeOfBuffer		length of JSON document
- * @param callback			callback when response arrive
- * @param userContext		user data for callback
- * @param timeout_ms		timeout value for this operation (unit: ms)
- * @return					QCLOUD_RET_SUCCESS when success, or err code
+ * @param pClient           handle to data_template client
+ * @param pJsonDoc          source JSON document for report
+ * @param sizeOfBuffer      length of JSON document
+ * @param callback          callback when response arrive
+ * @param userContext       user data for callback
+ * @param timeout_ms        timeout value for this operation (unit: ms)
+ * @return                  QCLOUD_RET_SUCCESS when success, or err code
  * for failure
  */
 int IOT_Template_Report_SysInfo_Sync(void *handle, char *pJsonDoc, size_t sizeOfBuffer, uint32_t timeout_ms);
@@ -453,7 +473,7 @@ int IOT_Template_Report_SysInfo_Sync(void *handle, char *pJsonDoc, size_t sizeOf
  * @brief callback of event reply
  *
  * @param client    handle to data_template client
- * @param msg		event reply msg
+ * @param msg       event reply msg
  *
  */
 typedef void (*OnEventReplyCallback)(void *client, MQTTMessage *msg);
@@ -462,7 +482,7 @@ typedef void (*OnEventReplyCallback)(void *client, MQTTMessage *msg);
  * @brief set events flag when events occured
  *
  * @param client    handle to data_template client
- * @param flag		event flags for set. per bit of 32bits represent one
+ * @param flag      event flags for set. per bit of 32bits represent one
  * event.
  *
  */
@@ -472,7 +492,7 @@ void IOT_Event_setFlag(void *client, uint32_t flag);
  * @brief  clear events flag after events dealed
  *
  * @param client    handle to data_template client
- * @param flag		event flags for clear. per bit of 32bits represent one
+ * @param flag      event flags for clear. per bit of 32bits represent one
  * event.
  *
  */
@@ -482,7 +502,7 @@ void IOT_Event_clearFlag(void *client, uint32_t flag);
  * @brief get events flag setted
  *
  * @param client    handle to data_template client
- * @return			events flag status
+ * @return          events flag status
  *
  */
 uint32_t IOT_Event_getFlag(void *client);
@@ -503,12 +523,12 @@ void handle_template_expired_event(void *client);
 
 /**
  * @brief post event to cloud, SDK construct event json package
- * @param pClient 		  handle to data_template client
- * @param pJsonDoc	  	  data buffer for event post
+ * @param pClient         handle to data_template client
+ * @param pJsonDoc        data buffer for event post
  * @param sizeOfBuffer    length of data buffer
  * @param event_count     event counts to post
- * @param pEventArry	  pointer of events array to post
- * @param replyCb	      callback when event reply received
+ * @param pEventArry      pointer of events array to post
+ * @param replyCb         callback when event reply received
  * @return @see IoT_Error_Code
  */
 int IOT_Post_Event(void *pClient, char *pJsonDoc, size_t sizeOfBuffer, uint8_t event_count, sEvent *pEventArry[],
@@ -521,52 +541,52 @@ int IOT_Post_Event(void *pClient, char *pJsonDoc, size_t sizeOfBuffer, uint8_t e
  * @param sizeOfBuffer    length of data buffer
  * @param pEventMsg       user input event raw data in json format
  *  event package format:
- *	 {"method": "event_post",
- *		"clientToken": "123",
- *		"version": "1.0",
- *		"eventId": "PowerAlarm",
- *		"type": "fatal",
- *		"timestamp": 1212121221,
- *		"params": {
- *			"Voltage": 2.8,
- *			"Percent": 20
- *		}
- *	}
+ *   {"method": "event_post",
+ *      "clientToken": "123",
+ *      "version": "1.0",
+ *      "eventId": "PowerAlarm",
+ *      "type": "fatal",
+ *      "timestamp": 1212121221,
+ *      "params": {
+ *          "Voltage": 2.8,
+ *          "Percent": 20
+ *      }
+ *  }
 
- * 	pEventMsg for example
+ *  pEventMsg for example
  *  single event:
- *	 {
- *		 "eventId": "PowerAlarm",
- *		 "type": "fatal",
- *		 "timestamp": 1212121221,
- *		 "params": {
- *			 "Voltage": 2.8,
- *			 "Percent": 20
- *		 }
- *	 }
+ *   {
+ *       "eventId": "PowerAlarm",
+ *       "type": "fatal",
+ *       "timestamp": 1212121221,
+ *       "params": {
+ *           "Voltage": 2.8,
+ *           "Percent": 20
+ *       }
+ *   }
  *
  *  multi event:
- *	 {
- *		 "eventId": "PowerAlarm",
- *		 "type": "fatal",
- *		 "timestamp": 1212121221,
- *		 "params": {
- *			 "Voltage": 2.8,
- *			 "Percent": 20
- *		 }
- *	 },
- *	 {
- *		 "name": "PowerAlarm",
- *		 "type": "fatal",
- *		 "timestamp": 1212121223,
- *		 "params": {
- *			 "Voltage": 2.1,
- *			 "Percent": 10
- *		 }
- *	 },
+ *   {
+ *       "eventId": "PowerAlarm",
+ *       "type": "fatal",
+ *       "timestamp": 1212121221,
+ *       "params": {
+ *           "Voltage": 2.8,
+ *           "Percent": 20
+ *       }
+ *   },
+ *   {
+ *       "name": "PowerAlarm",
+ *       "type": "fatal",
+ *       "timestamp": 1212121223,
+ *       "params": {
+ *           "Voltage": 2.1,
+ *           "Percent": 10
+ *       }
+ *   },
  *   ....
  *
- * @param replyCb	  event callback when event reply received
+ * @param replyCb     event callback when event reply received
  * @return @see IoT_Error_Code
  */
 int IOT_Post_Event_Raw(void *pClient, char *pJsonDoc, size_t sizeOfBuffer, char *pEventMsg,
@@ -577,13 +597,13 @@ int IOT_Post_Event_Raw(void *pClient, char *pJsonDoc, size_t sizeOfBuffer, char 
 #ifdef ACTION_ENABLED
 /**
  * @brief  reply to the action msg
- * @param pClient		  handle to data_template client
- * @param pClientToken	  correspond to the clientToken of action msg
- * @param pJsonDoc	  	  data buffer for reply
+ * @param pClient         handle to data_template client
+ * @param pClientToken    correspond to the clientToken of action msg
+ * @param pJsonDoc        data buffer for reply
  * @param sizeOfBuffer     length of data buffer
- * @param pAction 		  pointer of action
+ * @param pAction         pointer of action
  * @param replyPara        action reply info
- * @return				  QCLOUD_RET_SUCCESS when success, or err code
+ * @return                QCLOUD_RET_SUCCESS when success, or err code
  * for failure
  */
 

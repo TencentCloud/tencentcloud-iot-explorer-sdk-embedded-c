@@ -398,10 +398,8 @@ bool process_ota(OTAContextData *ota_ctx)
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_FILE_SIZE, &ota_ctx->fw_file_size, 4);
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_VERSION, ota_ctx->remote_version, FW_VERSION_MAX_LEN);
 
-            DeviceInfo *device_info = &sg_devInfo;
-            HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s_%s.bin", device_info->client_id,
-                         ota_ctx->remote_version);
-            HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", device_info->client_id);
+            HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.bin", ota_ctx->remote_version);
+            HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", ota_ctx->remote_version);
 
             /* check if pre-downloading finished or not */
             /* if local FW downloaded size (ota_ctx->downloaded_size) is not zero, it

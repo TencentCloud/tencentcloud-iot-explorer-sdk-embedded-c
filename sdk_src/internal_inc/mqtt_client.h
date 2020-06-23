@@ -379,7 +379,7 @@ bool qcloud_iot_mqtt_is_sub_ready(Qcloud_IoT_Client *pClient, char *topicFilter)
  */
 int qcloud_iot_mqtt_yield(Qcloud_IoT_Client *pClient, uint32_t timeout_ms);
 
-// workaround wrapper for qcloud_iot_mqtt_yield for multi-thread mode
+// wrapper for qcloud_iot_mqtt_yield for multi-thread mode
 int qcloud_iot_mqtt_yield_mt(Qcloud_IoT_Client *mqtt_client, uint32_t timeout_ms);
 
 /**

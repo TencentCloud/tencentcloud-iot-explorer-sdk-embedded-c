@@ -226,8 +226,7 @@ void *IOT_MQTT_Construct(MQTTInitParams *pParams);
 int IOT_MQTT_Destroy(void **pClient);
 
 /**
- * @brief Check connection and keep alive state, read/handle MQTT message in
- * synchronized way
+ * @brief Check connection and keep alive state, read/handle MQTT message in synchronized way
  *
  * @param pClient    handle to MQTT client
  * @param timeout_ms timeout value (unit: ms) for this operation
@@ -237,6 +236,16 @@ int IOT_MQTT_Destroy(void **pClient);
  */
 int IOT_MQTT_Yield(void *pClient, uint32_t timeout_ms);
 
+/**
+ * @brief IOT_MQTT_Yield for multi-thread mode
+ *
+ * @param pClient    handle to MQTT client
+ * @param timeout_ms timeout value (unit: ms) for this operation
+ *
+ * @return QCLOUD_RET_SUCCESS when success, QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT
+ * when try reconnecing, or err code for failure
+ */
+int IOT_MQTT_Yield_MT(void *pClient, uint32_t timeout_ms);
 
 /**
  * @brief set mqtt yield is by thread or not

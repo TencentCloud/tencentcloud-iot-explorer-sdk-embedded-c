@@ -133,7 +133,19 @@ End:
 static void IOT_OTA_ResetStatus(void *handle)
 {
     OTA_Struct_t *h_ota = (OTA_Struct_t *)handle;
-    h_ota->state        = IOT_OTAS_INITED;
+    Log_i("reset OTA state!");
+    h_ota->state = IOT_OTAS_INITED;
+    h_ota->err   = 0;
+
+    if (NULL != h_ota->purl) {
+        HAL_Free(h_ota->purl);
+        h_ota->purl = NULL;
+    }
+
+    if (NULL != h_ota->version) {
+        HAL_Free(h_ota->version);
+        h_ota->version = NULL;
+    }
 }
 
 static int IOT_OTA_ReportProgress(void *handle, IOT_OTA_Progress_Code progress, IOT_OTAReportType reportType)
@@ -238,7 +250,11 @@ static int IOT_OTA_ReportUpgradeResult(void *handle, const char *version, IOT_OT
         goto do_exit;
     }
 
-    IOT_OTA_ResetStatus(h_ota);
+    if ((IOT_OTAR_UPGRADE_FAIL == reportType) || (IOT_OTAR_UPGRADE_SUCCESS == reportType) ||
+        (IOT_OTAR_MD5_NOT_MATCH == reportType)) {
+        IOT_OTA_ResetStatus(h_ota);
+    }
+
 
 do_exit:
     if (NULL != msg_upgrade) {
@@ -328,10 +344,12 @@ int IOT_OTA_Destroy(void *handle)
 
     if (NULL != h_ota->purl) {
         HAL_Free(h_ota->purl);
+        h_ota->purl = NULL;
     }
 
     if (NULL != h_ota->version) {
         HAL_Free(h_ota->version);
+        h_ota->version = NULL;
     }
 
     HAL_Free(h_ota);
@@ -346,6 +364,18 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size)
 
     Log_d("to download FW from offset: %u, size: %u", offset, size);
     h_ota->size_fetched = offset;
+
+    // reset md5 for new download
+    if (offset == 0) {
+        Ret = IOT_OTA_ResetClientMD5(h_ota);
+        if (Ret) {
+            Log_e("initialize md5 failed");
+            return QCLOUD_ERR_FAILURE;
+        }
+    }
+
+    // reinit ofc
+    qcloud_ofc_deinit(h_ota->ch_fetch);
     h_ota->ch_fetch     = ofc_Init(h_ota->purl, offset, size);
     if (NULL == h_ota->ch_fetch) {
         Log_e("Initialize fetch module failed");
