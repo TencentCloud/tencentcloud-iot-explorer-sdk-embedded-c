@@ -100,7 +100,7 @@ IOTSDK_SRC_FILES := $(filter-out $(EXCLUDE_SRC_FILES),$(IOTSDK_SRC_FILES))
 endif
 
 ifeq (,$(filter -DACTION_ENABLED, $(CFLAGS)))
-EXCLUDE_SRC_FILES += $(TOP_DIR)/$(SRC_DIR)/services/data_template/data_template_aciton.c
+EXCLUDE_SRC_FILES += $(TOP_DIR)/$(SRC_DIR)/services/data_template/data_template_action.c
 IOTSDK_SRC_FILES := $(filter-out $(EXCLUDE_SRC_FILES),$(IOTSDK_SRC_FILES))
 endif
 

@@ -80,7 +80,7 @@ static int _parse_action_input(DeviceAction *pAction, char *pInput)
     return 0;
 }
 
-static void _handle_aciton(Qcloud_IoT_Template *pTemplate, List *list, const char *pClientToken, const char *pActionId,
+static void _handle_action(Qcloud_IoT_Template *pTemplate, List *list, const char *pClientToken, const char *pActionId,
                            uint32_t timestamp, char *pInput)
 {
     IOT_FUNC_ENTRY;
@@ -177,7 +177,7 @@ static void _on_action_handle_callback(void *pClient, MQTTMessage *message, void
 
     // find action ID in register list and call handle
     if (template_client != NULL)
-        _handle_aciton(template_client, template_client->inner_data.action_handle_list, client_token, action_id,
+        _handle_action(template_client, template_client->inner_data.action_handle_list, client_token, action_id,
                        timestamp, pInput);
 
 EXIT:
