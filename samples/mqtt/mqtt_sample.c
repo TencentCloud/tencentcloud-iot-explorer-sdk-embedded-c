@@ -313,8 +313,7 @@ int main(int argc, char **argv)
     }
 
 #ifdef LOG_UPLOAD
-    // _init_log_upload should be done after _setup_connect_init_params and before
-    // IOT_MQTT_Construct
+    // _init_log_upload should be done after _setup_connect_init_params and before IOT_MQTT_Construct
     rc = _init_log_upload(&init_params);
     if (rc != QCLOUD_RET_SUCCESS)
         Log_e("init log upload error, rc = %d", rc);

@@ -26,8 +26,6 @@ extern "C" {
 
 
 #ifdef SYSTEM_COMM
-
-#include "qcloud_iot_export_system.h"
 #include "mqtt_client.h"
 #include "lite-utils.h"
 #include "qcloud_iot_device.h"

@@ -150,7 +150,7 @@ static sEventReply *_create_event_add_to_list(Qcloud_IoT_Template *pTemplate, On
         IOT_FUNC_EXIT_RC(NULL);
     }
 
-    sEventReply *pReply = (sEventReply *)HAL_Malloc(sizeof(Request));
+    sEventReply *pReply = (sEventReply *)HAL_Malloc(sizeof(sEventReply));
     if (NULL == pReply) {
         HAL_MutexUnlock(pTemplate->mutex);
         Log_e("run memory malloc is error!");
@@ -161,7 +161,7 @@ static sEventReply *_create_event_add_to_list(Qcloud_IoT_Template *pTemplate, On
     pReply->user_context = pTemplate;
 
     InitTimer(&(pReply->timer));
-    countdown(&(pReply->timer), reply_timeout_ms);
+    countdown(&(pReply->timer), reply_timeout_ms/1000);
     HAL_Snprintf(pReply->client_token, EVENT_TOKEN_MAX_LEN, "%s-%u", pTemplate->device_info.product_id,
                  pTemplate->inner_data.token_num++);
 

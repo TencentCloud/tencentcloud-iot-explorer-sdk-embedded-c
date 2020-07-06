@@ -160,7 +160,7 @@ static void update_events_timestamp(sEvent *pEvents, int count)
         }
 #ifdef EVENT_TIMESTAMP_USED
         pEvents[i].timestamp = HAL_Timer_current_sec();  // should be UTC and
-                                                         // accurate
+        // accurate
 #else
         pEvents[i].timestamp = 0;
 #endif
@@ -211,7 +211,8 @@ static void eventPostCheck(void *client)
 
 static TYPE_DEF_TEMPLATE_INT sg_blink_in_period    = 5;
 static DeviceProperty        g_actionInput_blink[] = {
-    {.key = "period", .data = &sg_blink_in_period, .type = TYPE_TEMPLATE_INT}};
+    {.key = "period", .data = &sg_blink_in_period, .type = TYPE_TEMPLATE_INT}
+};
 static TYPE_DEF_TEMPLATE_BOOL sg_blink_out_result    = 0;
 static DeviceProperty         g_actionOutput_blink[] = {
 
@@ -379,6 +380,32 @@ static int _setup_connect_init_params(TemplateInitParams *initParams)
 
     return QCLOUD_RET_SUCCESS;
 }
+
+#ifdef LOG_UPLOAD
+// init log upload module
+static int _init_log_upload(TemplateInitParams *init_params)
+{
+    LogUploadInitParams log_init_params;
+    memset(&log_init_params, 0, sizeof(LogUploadInitParams));
+
+    log_init_params.product_id = init_params->product_id;
+    log_init_params.device_name = init_params->device_name;
+#ifdef AUTH_MODE_CERT
+    log_init_params.sign_key = init_params->cert_file;
+#else
+    log_init_params.sign_key = init_params->device_secret;
+#endif
+
+#if defined(__linux__) || defined(WIN32)
+    log_init_params.read_func = HAL_Log_Read;
+    log_init_params.save_func = HAL_Log_Save;
+    log_init_params.del_func = HAL_Log_Del;
+    log_init_params.get_size_func = HAL_Log_Get_Size;
+#endif
+
+    return IOT_Log_Init_Uploader(&log_init_params);
+}
+#endif
 
 /*control msg from server will trigger this callback*/
 static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, uint32_t valueLength,
@@ -608,6 +635,14 @@ int main(int argc, char **argv)
         return rc;
     }
 
+#ifdef LOG_UPLOAD
+    // _init_log_upload should be done after _setup_connect_init_params and before IOT_Template_Construct
+    rc = _init_log_upload(&init_params);
+    if (rc != QCLOUD_RET_SUCCESS) {
+        Log_e("init log upload error, rc = %d", rc);
+    }
+#endif
+
     void *client = IOT_Template_Construct(&init_params, NULL);
     if (client != NULL) {
         Log_i("Cloud Device Construct Success");
@@ -649,8 +684,7 @@ int main(int argc, char **argv)
     }
 #endif
 
-    // report device info, then you can manager your product by these info, like
-    // position
+    // report device info, then you can manager your product by these info, like position
     rc = _get_sys_info(client, sg_data_report_buffer, sg_data_report_buffersize);
     if (QCLOUD_RET_SUCCESS == rc) {
         rc = IOT_Template_Report_SysInfo_Sync(client, sg_data_report_buffer, sg_data_report_buffersize,
@@ -688,7 +722,7 @@ int main(int argc, char **argv)
         if (sg_control_msg_arrived) {
             deal_down_stream_user_logic(client, &sg_ProductData);
             /* control msg should reply, otherwise server treat device didn't receive
-             * and retain the msg which would be get by  get status*/
+             * and retain the msg which would be get by get status*/
             memset((char *)&replyPara, 0, sizeof(sReplyPara));
             replyPara.code          = eDEAL_SUCCESS;
             replyPara.timeout_ms    = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
@@ -707,7 +741,7 @@ int main(int argc, char **argv)
         /*report the lastest properties's status*/
         if (QCLOUD_RET_SUCCESS == deal_up_stream_user_logic(pReportDataList, &ReportCont)) {
             rc = IOT_Template_JSON_ConstructReportArray(client, sg_data_report_buffer, sg_data_report_buffersize,
-                                                        ReportCont, pReportDataList);
+                    ReportCont, pReportDataList);
             if (rc == QCLOUD_RET_SUCCESS) {
                 rc = IOT_Template_Report(client, sg_data_report_buffer, sg_data_report_buffersize,
                                          OnReportReplyCallback, NULL, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
@@ -733,6 +767,11 @@ exit:
     IOT_Template_Stop_Yield_Thread(client);
 #endif
     rc = IOT_Template_Destroy(client);
+   
+#ifdef LOG_UPLOAD
+	IOT_Log_Upload(true);
+    IOT_Log_Fini_Uploader();
+#endif
 
     return rc;
 }
