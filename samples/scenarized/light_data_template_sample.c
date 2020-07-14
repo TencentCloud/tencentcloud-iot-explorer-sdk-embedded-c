@@ -388,6 +388,7 @@ static int _init_log_upload(TemplateInitParams *init_params)
     LogUploadInitParams log_init_params;
     memset(&log_init_params, 0, sizeof(LogUploadInitParams));
 
+    log_init_params.region = init_params->region;
     log_init_params.product_id = init_params->product_id;
     log_init_params.device_name = init_params->device_name;
 #ifdef AUTH_MODE_CERT
@@ -767,9 +768,9 @@ exit:
     IOT_Template_Stop_Yield_Thread(client);
 #endif
     rc = IOT_Template_Destroy(client);
-   
+
 #ifdef LOG_UPLOAD
-	IOT_Log_Upload(true);
+    IOT_Log_Upload(true);
     IOT_Log_Fini_Uploader();
 #endif
 

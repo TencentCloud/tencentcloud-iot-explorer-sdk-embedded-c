@@ -38,9 +38,11 @@ extern "C" {
 #include "utils_param_check.h"
 #include "log_upload.h"
 #include "qcloud_iot_common.h"
+#include "qcloud_iot_ca.h"
 #include "utils_hmac.h"
 #include "utils_httpc.h"
 #include "utils_timer.h"
+
 
 /* log post header format */
 #define TIMESTAMP_SIZE                                      (10)
@@ -283,7 +285,7 @@ int init_log_uploader(LogUploadInitParams *init_params)
 
     /* set http request-header parameter */
     pLogClient->http_client->http.header = "Accept:application/json;*/*\r\n";
-    pLogClient->http_client->url = LOG_UPLOAD_SERVER_URL;
+    pLogClient->http_client->url = iot_get_log_domain(init_params->region);
     pLogClient->http_client->port = LOG_UPLOAD_SERVER_PORT;
     pLogClient->http_client->ca_crt = NULL;
 

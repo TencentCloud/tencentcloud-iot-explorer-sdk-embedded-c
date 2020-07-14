@@ -70,6 +70,7 @@ typedef size_t (*LogGetSizeFunc)();
  * @brief data structure to init feature of log upload
  */
 typedef struct {
+    const char *region;  // region
     /* device info */
     const char *product_id;
     const char *device_name;

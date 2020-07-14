@@ -245,6 +245,7 @@ static int _init_log_upload(MQTTInitParams *init_params)
     LogUploadInitParams log_init_params;
     memset(&log_init_params, 0, sizeof(LogUploadInitParams));
 
+    log_init_params.region = init_params->region;
     log_init_params.product_id = init_params->product_id;
     log_init_params.device_name = init_params->device_name;
 #ifdef AUTH_MODE_CERT
@@ -332,7 +333,7 @@ int main(int argc, char **argv)
 #ifdef SYSTEM_COMM
     long time = 0;
     // get system timestamp from server
-    rc = IOT_Get_Sys_Resource(client, eRESOURCE_TIME, &sg_devInfo, &time);	
+    rc = IOT_Get_Sys_Resource(client, eRESOURCE_TIME, &sg_devInfo, &time);
     if (QCLOUD_RET_SUCCESS == rc) {
         Log_i("system time is %ld", time);
     } else {
@@ -373,10 +374,10 @@ int main(int argc, char **argv)
     } while (sg_loop_test);
 
     rc = IOT_MQTT_Destroy(&client);
-	IOT_Log_Upload(true);
-	
-#ifdef LOG_UPLOAD	
-	IOT_Log_Fini_Uploader();
+    IOT_Log_Upload(true);
+
+#ifdef LOG_UPLOAD
+    IOT_Log_Fini_Uploader();
 #endif
     return rc;
 }

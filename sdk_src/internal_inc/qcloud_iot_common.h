@@ -44,9 +44,9 @@
 #define DYN_REG_SERVER_PORT_TLS 443
 
 /* URL for doing log upload */
-#define LOG_UPLOAD_SERVER_URL            "http://devicelog.iot.cloud.tencent.com/cgi-bin/report-log"
-#define LOG_UPLOAD_SERVER_DOMAIN         "devicelog.iot.cloud.tencent.com"
-#define LOG_UPLOAD_SERVER_US_EAST_DOMAIN "us-east.devicelog.iot.cloud.tencent.com"
+#define LOG_UPLOAD_SERVER_DOMAIN         "http://devicelog.iot.cloud.tencent.com/cgi-bin/report-log"
+#define LOG_UPLOAD_SERVER_US_EAST_DOMAIN "http://us-east.devicelog.iot.cloud.tencent.com/cgi-bin/report-log"
+#define LOG_UPLOAD_SERVER_PATTEN         "devicelog.iot.cloud.tencent.com"
 
 #define LOG_UPLOAD_SERVER_PORT 80
 

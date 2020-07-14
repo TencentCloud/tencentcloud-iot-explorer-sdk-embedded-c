@@ -264,6 +264,13 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)context;
     MQTTMessage *        topic_info = (MQTTMessage *)msg->msg;
 
+    if(pTemplate) {
+        if(pclient != pTemplate->mqtt) {
+//          Log_d("not template topic event");
+            return;
+        }
+    }
+
     switch (msg->event_type) {
         case MQTT_EVENT_SUBCRIBE_SUCCESS:
             Log_d("template subscribe success, packet-id=%u", packet_id);
@@ -858,7 +865,7 @@ void *IOT_Template_Get_MQTT_Client(void *pClient)
 {
     POINTER_SANITY_CHECK(pClient, NULL);
     Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)pClient;
-	
+
     return pTemplate->mqtt;
 }
 

@@ -150,7 +150,7 @@ const char *iot_https_ca_get()
 #endif
 }
 
-const char *iot_get_mqtt_domain(char *region)
+const char *iot_get_mqtt_domain(const char *region)
 {
     const char *pDomain = NULL;
     int         i;
@@ -174,7 +174,7 @@ end:
     return pDomain;
 }
 
-const char *iot_get_dyn_reg_domain(char *region)
+const char *iot_get_dyn_reg_domain(const char *region)
 {
     const char *pDomain = NULL;
     int         i;
@@ -198,7 +198,7 @@ end:
     return pDomain;
 }
 
-const char *iot_get_log_domain(char *region)
+const char *iot_get_log_domain(const char *region)
 {
     const char *pDomain = NULL;
     int         i;
