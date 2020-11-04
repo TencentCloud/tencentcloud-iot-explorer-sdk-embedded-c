@@ -155,7 +155,7 @@ static int _mbedtls_client_init(DTLSDataParams *pDataParams, DTLSConnectParams *
         ret                = mbedtls_ssl_conf_psk(&(pDataParams->ssl_conf), (unsigned char *)pConnectParams->psk,
                                    pConnectParams->psk_length, (const unsigned char *)psk_id, strlen(psk_id));
     } else {
-        Log_d("psk/pskid is empty!|psk=%s|psd_id=%s", pConnectParams->psk, pConnectParams->psk_id);
+        Log_d("psk/pskid is empty!");
     }
 
     if (0 != ret) {

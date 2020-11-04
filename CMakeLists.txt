@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 3.5)
 
 ######################CONFIG BEGIN####################################
 # 编译类型: release/debug
-set(BUILD_TYPE "release")
+set(BUILD_TYPE "debug")
 
 # 代码抽取，ON表示根据配置抽取源码到ouput/qcloud_iot_c_sdk目录
 set(EXTRACT_SRC ON)
@@ -31,14 +31,20 @@ set(FEATURE_GATEWAY_DYN_BIND_SUBDEV_ENABLED OFF)
 # 是否使能多线程
 set(FEATURE_MULTITHREAD_ENABLED OFF)
 
-# 是否打开数据模板事件上报功能
+# 是否使能数据模板事件上报功能
 set(FEATURE_EVENT_POST_ENABLED OFF)
 
-# 是否打开数据模板行为功能
+# 是否使能数据模板行为功能
 set(FEATURE_ACTION_ENABLED OFF)
 
-# 是否打开OTA固件升级总开关
+# 是否使能OTA固件升级总开关
 set(FEATURE_OTA_COMM_ENABLED ON)
+
+# 是否使能资源管理
+set(FEATURE_RESOURCE_UPDATE_ENABLED ON)
+
+# 是否使能语音识别功能
+set(FEATURE_ASR_ENABLED ON)
 
 # 接入认证方式，使用证书认证：CERT；使用密钥认证：KEY
 set(FEATURE_AUTH_MODE "KEY")
@@ -52,10 +58,10 @@ set(FEATURE_DEBUG_DEV_INFO_USED OFF)
 # 是否使用HTTPS下载固件
 set(FEATURE_OTA_USE_HTTPS ON)
 
-# 是否打开获取iot后台时间功能
+# 是否使能获取iot后台时间功能
 set(FEATURE_SYSTEM_COMM_ENABLED OFF)
 
-# 是否打开日志上报云端功能
+# 是否使能日志上报云端功能
 set(FEATURE_LOG_UPLOAD_ENABLED OFF)
 
 
@@ -139,6 +145,7 @@ option(AT_TCP_ENABLED "Enable AT_TCP" ${FEATURE_AT_TCP_ENABLED})
 option(DEBUG_DEV_INFO_USED "Enable DEBUG_DEV_INFO_USED" ${FEATURE_DEBUG_DEV_INFO_USED})
 option(SYSTEM_COMM "Enable SYSTEM_COMM" ${FEATURE_SYSTEM_COMM_ENABLED})
 option(LOG_UPLOAD "Enable LOG_UPLOAD" ${FEATURE_LOG_UPLOAD_ENABLED})
+option(ASR_ENABLED "Enable ASR" ${FEATURE_ASR_ENABLED})
 
 
 if(${FEATURE_AUTH_WITH_NOTLS} STREQUAL "ON" )
@@ -209,4 +216,8 @@ endif()
 if(NOT DEFINED SAMPLE_ONLY)
 	file(COPY ${PROJECT_SOURCE_DIR}/certs DESTINATION ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
 	file(COPY ${PROJECT_SOURCE_DIR}/device_info.json DESTINATION ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
+	
+	if(ASR_ENABLED STREQUAL "ON")
+		file(COPY ${PROJECT_SOURCE_DIR}/tools/test_file DESTINATION ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
+	endif()
 endif()

@@ -19,3 +19,4 @@
 #cmakedefine GATEWAY_ENABLED
 #cmakedefine MULTITHREAD_ENABLED
 #cmakedefine GATEWAY_DYN_BIND_SUBDEV_ENABLED
+#cmakedefine ASR_ENABLED

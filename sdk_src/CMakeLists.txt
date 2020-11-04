@@ -18,14 +18,21 @@ endif()
 
 # ota mqtt
 if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON")
-	file(GLOB src_mqtt_ota 
-				${CMAKE_CURRENT_SOURCE_DIR}/services/ota/ota_client.c
-				${CMAKE_CURRENT_SOURCE_DIR}/services/ota/ota_fetch.c
-				${CMAKE_CURRENT_SOURCE_DIR}/services/ota/ota_lib.c
-				${CMAKE_CURRENT_SOURCE_DIR}/services/ota/ota_mqtt.c)
+	file(GLOB src_mqtt_ota ${CMAKE_CURRENT_SOURCE_DIR}/services/ota/*.c)
 	list(APPEND src_sdk ${src_mqtt_ota})
 endif()
 
+# resource mqtt
+if(${FEATURE_RESOURCE_UPDATE_ENABLED} STREQUAL "ON")
+	file(GLOB src_mqtt_resource ${CMAKE_CURRENT_SOURCE_DIR}/services/resource/*.c)
+	list(APPEND src_sdk ${src_mqtt_resource})
+endif()
+
+# ASR
+if(${FEATURE_ASR_ENABLED} STREQUAL "ON")
+	file(GLOB src_asr ${CMAKE_CURRENT_SOURCE_DIR}/services/asr/*.c)
+	list(APPEND src_sdk ${src_asr})
+endif()
 
 # HTTP 
 if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON" OR ${FEATURE_DEV_DYN_REG_ENABLED} STREQUAL "ON" OR ${FEATURE_LOG_UPLOAD_ENABLED} STREQUAL "ON")

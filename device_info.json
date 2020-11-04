@@ -1,12 +1,12 @@
 {
     "auth_mode":"KEY",
 
-    "productId":"PRODUCT_ID",
+    "productId":"W0MHQCSFN5",
     "productSecret":"YOUR_PRODUCT_SECRET",
-    "deviceName":"YOUR_DEV_NAME",
+    "deviceName":"dev001",
 
     "key_deviceinfo":{    
-        "deviceSecret":"YOUR_IOT_PSK"
+        "deviceSecret":"gLTbgctUUfkKPflWdWFV7Q=="
     },
 
     "cert_deviceinfo":{

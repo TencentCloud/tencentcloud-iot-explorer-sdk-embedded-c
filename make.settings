@@ -34,6 +34,9 @@ FEATURE_DEV_DYN_REG_ENABLED             = y
 # 是否打开OTA固件升级总开关
 FEATURE_OTA_COMM_ENABLED                = y
 
+# 是否打开资源管理总开关
+FEATURE_RESOURCE_UPDATE_ENABLED         = y
+
 # 是否使用HTTPS下载固件
 FEATURE_OTA_USE_HTTPS                   = y
 

@@ -584,6 +584,58 @@ int HAL_Log_Del(void);
 size_t HAL_Log_Get_Size(void);
 #endif
 
+/**
+ * @brief Opens the filename pointed to by filename using the given mode.
+ */
+void *HAL_FileOpen(const char *filename, const char *mode);
+
+/**
+ * @brief Reads data from the given stream into the array pointed to by ptr.
+ */
+size_t HAL_FileRead(void *ptr, size_t size, size_t nmemb, void *fp);
+
+/**
+ * @brief Writes data from the array pointed to by ptr to the given stream.
+ */
+size_t HAL_FileWrite(const void *ptr, size_t size, size_t nmemb, void *fp);
+
+/**
+ * @brief Sets the file position of the stream to the given offset. The argument 
+ * offset signifies the number of bytes to seek from the given whence position.
+ */
+int HAL_FileSeek(void *fp, long int offset, int whence);
+
+/**
+ * @brief Closes the stream. All buffers are flushed.
+ */
+int HAL_FileClose(void *fp);
+
+/**
+ * @brief Deletes the given filename so that it is no longer accessible.
+ */
+int HAL_FileRemove(const char *filename);
+
+/**
+ * @brief Sets the file position to the beginning of the file of the given stream.
+ */
+int HAL_FileRewind(void *fp);
+
+/**
+ * @brief Causes the filename referred to, by old_filename to be changed to new_filename
+ */
+int HAL_FileRename(const char *old_filename, const char *new_filename);
+
+/**
+ * @brief Tests the end-of-file indicator for the given stream.
+ */
+int HAL_FileEof(void *fp);
+
+/**
+ * @brief Flushes the output buffer of a stream.
+ */
+int HAL_FileFlush(void *fp);
+
+
 #if defined(__cplusplus)
 }
 #endif

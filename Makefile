@@ -74,6 +74,10 @@ $(call CompLib_Map, OTA_COMM_ENABLED, \
 	$(SRC_DIR)/services/ota \
 )
 
+$(call CompLib_Map, RESOURCE_UPDATE_ENABLED, \
+	$(SRC_DIR)/services/resource \
+)
+
 $(call CompLib_Map, AT_TCP_ENABLED, \
 	$(SRC_DIR)/network/at_socket \
 )

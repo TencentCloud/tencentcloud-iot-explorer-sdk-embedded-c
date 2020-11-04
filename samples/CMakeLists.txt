@@ -61,6 +61,20 @@ if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON")
 	target_link_libraries(ota_mqtt_sample			 ${lib})
 endif()
 
+# Resource MQTT
+if(${FEATURE_RESOURCE_UPDATE_ENABLED} STREQUAL "ON")
+	file(GLOB src_resource_mqtt_sample 				${PROJECT_SOURCE_DIR}/samples/resource/resource_mqtt_sample.c)
+	add_executable(resource_mqtt_sample				${src_resource_mqtt_sample})
+	target_link_libraries(resource_mqtt_sample			 ${lib})
+endif()
+
+# ASR
+if(${FEATURE_RESOURCE_UPDATE_ENABLED} STREQUAL "ON")
+	file(GLOB src_asr_sample 				${PROJECT_SOURCE_DIR}/samples/asr/asr_data_template_sample.c)
+	add_executable(asr_data_template_sample				${src_asr_sample})
+	target_link_libraries(asr_data_template_sample			 ${lib})
+endif()
+
 # DYN_REG
 if(${FEATURE_DEV_DYN_REG_ENABLED} STREQUAL "ON")
 	file(GLOB src_dynreg_dev_sample		${PROJECT_SOURCE_DIR}/samples/dynreg_dev/dynreg_dev_sample.c)

@@ -82,7 +82,7 @@ void utils_md5_process(iot_md5_context *ctx, const unsigned char data[64]);
  * @brief          Output = MD5( input buffer )
  *
  * @param input    data input
- * @param ilen     data lenght
+ * @param ilen     data length
  * @param output   MD5 result
  */
 void utils_md5(const unsigned char *input, size_t ilen, unsigned char output[16]);
@@ -91,11 +91,40 @@ void utils_md5(const unsigned char *input, size_t ilen, unsigned char output[16]
  * @brief          Output = MD5( input buffer )
  *
  * @param input    data input
- * @param ilen     data lenght
+ * @param ilen     data length
  * @param output   string MD5 result
  */
 void utils_md5_str(const unsigned char *input, size_t ilen, unsigned char *output);
 
 int8_t utils_hb2hex(uint8_t hb);
+
+/**
+ * @brief          create md5 context dynamic
+ *
+ * @return         MD5 context
+ */
+void *utils_md5_create(void);
+
+/**
+ * @brief          Output = str(md5)
+ *
+ * @param ctx      MD5 ctx
+ * @param output_str   string MD5 result
+ */
+void utils_md5_finish_str(void *ctx, char *output_str);
+
+/**
+ * @brief          free MD5 context
+ *
+ * @param ctx      MD5 ctx
+ */
+void utils_md5_delete(void *ctx);
+
+/**
+ * @brief          reset MD5 context
+ *
+ * @param ctx      MD5 ctx
+ */
+void utils_md5_reset(void *ctx);
 
 #endif

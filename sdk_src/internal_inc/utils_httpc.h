@@ -29,8 +29,12 @@ extern "C" {
 
 #include "network_interface.h"
 
+#define HTTP_PREFIX    ("http://")
+#define HTTPS_PREFIX    ("https://")
 #define HTTP_PORT  80
 #define HTTPS_PORT 443
+
+
 
 typedef enum { HTTP_GET, HTTP_POST, HTTP_PUT, HTTP_DELETE, HTTP_HEAD } HttpMethod;
 

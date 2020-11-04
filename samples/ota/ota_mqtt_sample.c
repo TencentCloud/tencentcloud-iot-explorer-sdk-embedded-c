@@ -186,7 +186,7 @@ static int _cal_exist_fw_md5(OTAContextData *ota_ctx)
         return QCLOUD_ERR_FAILURE;
     }
 
-    FILE *fp = fopen(ota_ctx->fw_file_path, "ab+");
+    void *fp = HAL_FileOpen(ota_ctx->fw_file_path, "ab+");
     if (NULL == fp) {
         Log_e("open file %s failed", ota_ctx->fw_file_path);
         return QCLOUD_ERR_FAILURE;
@@ -195,9 +195,9 @@ static int _cal_exist_fw_md5(OTAContextData *ota_ctx)
     // rewind(fp);
     size_t size = ota_ctx->downloaded_size;
 
-    while ((size > 0) && (!feof(fp))) {
+    while ((size > 0) && (!HAL_FileEof(fp))) {
         rlen = (size > OTA_BUF_LEN) ? OTA_BUF_LEN : size;
-        if (rlen != fread(buff, 1, rlen, fp)) {
+        if (rlen != HAL_FileRead(buff, 1, rlen, fp)) {
             Log_e("read data len not expected");
             ret = QCLOUD_ERR_FAILURE;
             break;
@@ -207,7 +207,7 @@ static int _cal_exist_fw_md5(OTAContextData *ota_ctx)
         total_read += rlen;
     }
 
-    fclose(fp);
+    HAL_FileClose(fp);
     Log_d("total read: %d", total_read);
     return ret;
 }
@@ -215,7 +215,7 @@ static int _cal_exist_fw_md5(OTAContextData *ota_ctx)
 /* update local firmware info for resuming download from break point */
 static int _update_local_fw_info(OTAContextData *ota_ctx)
 {
-    FILE *fp;
+    void *fp;
     int   wlen;
     int   ret = QCLOUD_RET_SUCCESS;
     char  data_buf[FW_INFO_FILE_DATA_LEN];
@@ -224,14 +224,14 @@ static int _update_local_fw_info(OTAContextData *ota_ctx)
     HAL_Snprintf(data_buf, sizeof(data_buf), "{\"%s\":\"%s\", \"%s\":%d}", KEY_VER, ota_ctx->remote_version, KEY_SIZE,
                  ota_ctx->downloaded_size);
 
-    fp = fopen(ota_ctx->fw_info_file_path, "w");
+    fp = HAL_FileOpen(ota_ctx->fw_info_file_path, "w");
     if (NULL == fp) {
         Log_e("open file %s failed", ota_ctx->fw_info_file_path);
         ret = QCLOUD_ERR_FAILURE;
         goto exit;
     }
 
-    wlen = fwrite(data_buf, 1, strlen(data_buf), fp);
+    wlen = HAL_FileWrite(data_buf, 1, strlen(data_buf), fp);
     if (wlen != strlen(data_buf)) {
         Log_e("save version to file err");
         ret = QCLOUD_ERR_FAILURE;
@@ -240,7 +240,7 @@ static int _update_local_fw_info(OTAContextData *ota_ctx)
 exit:
 
     if (NULL != fp) {
-        fclose(fp);
+        HAL_FileClose(fp);
     }
 
     return ret;
@@ -252,25 +252,25 @@ static int _get_local_fw_info(char *file_name, char *local_version)
     int  rlen;
     char json_doc[FW_INFO_FILE_DATA_LEN] = {0};
 
-    FILE *fp = fopen(file_name, "r");
+    void *fp = HAL_FileOpen(file_name, "r");
     if (NULL == fp) {
         Log_e("open file %s failed", file_name);
         return 0;
     }
 
-    fseek(fp, 0L, SEEK_END);
+    HAL_FileSeek(fp, 0L, SEEK_END);
     len = ftell(fp);
     if (len > FW_INFO_FILE_DATA_LEN) {
         Log_e("%s is too big, pls check", file_name);
-        fclose(fp);
+        HAL_FileClose(fp);
         return 0;
     }
 
     rewind(fp);
-    rlen = fread(json_doc, 1, len, fp);
+    rlen = HAL_FileRead(json_doc, 1, len, fp);
     if (len != rlen) {
         Log_e("read data len (%d) less than needed (%d), %s", rlen, len, json_doc);
-        fclose(fp);
+        HAL_FileClose(fp);
         return 0;
     }
 
@@ -282,7 +282,7 @@ static int _get_local_fw_info(char *file_name, char *local_version)
             HAL_Free(version);
         if (size)
             HAL_Free(size);
-        fclose(fp);
+        HAL_FileClose(fp);
         return 0;
     }
 
@@ -297,7 +297,7 @@ static int _get_local_fw_info(char *file_name, char *local_version)
 
     strncpy(local_version, version, FW_VERSION_MAX_LEN);
     HAL_Free(version);
-    fclose(fp);
+    HAL_FileClose(fp);
     return local_size;
 }
 
@@ -321,7 +321,7 @@ static int _update_fw_downloaded_size(OTAContextData *ota_ctx)
     int ret = _cal_exist_fw_md5(ota_ctx);
     if (ret) {
         Log_e("regen OTA MD5 error: %d", ret);
-        remove(ota_ctx->fw_info_file_path);
+        HAL_FileRemove(ota_ctx->fw_info_file_path);
         ota_ctx->downloaded_size = 0;
         return 0;
     }
@@ -331,33 +331,33 @@ static int _update_fw_downloaded_size(OTAContextData *ota_ctx)
 
 static int _delete_fw_info_file(char *file_name)
 {
-    return remove(file_name);
+    return HAL_FileRemove(file_name);
 }
 
 static int _save_fw_data_to_file(char *file_name, uint32_t offset, char *buf, int len)
 {
-    FILE *fp;
+    void *fp;
     if (offset > 0) {
-        if (NULL == (fp = fopen(file_name, "ab+"))) {
+        if (NULL == (fp = HAL_FileOpen(file_name, "ab+"))) {
             Log_e("open file failed");
             return QCLOUD_ERR_FAILURE;
         }
     } else {
-        if (NULL == (fp = fopen(file_name, "wb+"))) {
+        if (NULL == (fp = HAL_FileOpen(file_name, "wb+"))) {
             Log_e("open file failed");
             return QCLOUD_ERR_FAILURE;
         }
     }
 
-    fseek(fp, offset, SEEK_SET);
+    HAL_FileSeek(fp, offset, SEEK_SET);
 
-    if (1 != fwrite(buf, len, 1, fp)) {
+    if (1 != HAL_FileWrite(buf, len, 1, fp)) {
         Log_e("write data to file failed");
-        fclose(fp);
+        HAL_FileClose(fp);
         return QCLOUD_ERR_FAILURE;
     }
-    fflush(fp);
-    fclose(fp);
+    HAL_FileFlush(fp);
+    HAL_FileClose(fp);
 
     return 0;
 }

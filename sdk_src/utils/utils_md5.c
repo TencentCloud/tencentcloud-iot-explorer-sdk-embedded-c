@@ -323,6 +323,54 @@ void utils_md5_str(const unsigned char *input, size_t ilen, unsigned char *outpu
     }
     output[32] = '\0';
 }
+
+/*
+ * MD5 create dynamicly
+ */
+void *utils_md5_create(void)
+{
+    iot_md5_context *ctx = HAL_Malloc(sizeof(iot_md5_context));
+    if (NULL == ctx) {
+        return NULL;
+    }
+
+    utils_md5_init(ctx);
+    utils_md5_starts(ctx);
+    return ctx;
+}
+
+void utils_md5_finish_str(void *ctx, char *output_str)
+{
+    int           i;
+    unsigned char buf_out[16];
+    utils_md5_finish(ctx, buf_out);
+
+    for (i = 0; i < 16; ++i) {
+        output_str[i * 2]     = utils_hb2hex(buf_out[i] >> 4);
+        output_str[i * 2 + 1] = utils_hb2hex(buf_out[i]);
+    }
+    output_str[32] = '\0';
+}
+
+void utils_md5_delete(void *ctx)
+{
+    HAL_Free(ctx);
+}
+
+void utils_md5_reset(void *ctx)
+{
+    iot_md5_context *pCtx = (iot_md5_context *)ctx;
+
+    if (!pCtx) {
+        Log_e("invalid md5 pointer");
+        return;
+    }
+
+    utils_md5_init(pCtx);
+    utils_md5_starts(pCtx);
+    return;
+}
+
 #ifdef __cplusplus
 }
 #endif
