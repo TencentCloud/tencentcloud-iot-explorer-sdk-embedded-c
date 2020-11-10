@@ -156,7 +156,7 @@ int HAL_ThreadCreate(ThreadParams *params)
 
 int HAL_ThreadDestroy(void *threadId)
 {
-	return QCLOUD_RET_SUCCESS;
+    return QCLOUD_RET_SUCCESS;
 }
 
 #endif

@@ -23,10 +23,15 @@ extern "C" {
 #include <stdint.h>
 #include "qcloud_iot_export_resource.h"
 
-#define MAX_RES_WAIT_POST			 (10)
+#define MAX_RES_WAIT_POST (10)
 
-
-typedef enum { eRESOURCE_PROGRESS, eRESOURCE_VERSION, eRESOURCE_UPGRADE_RESULT, eRESOURCE_POST_REQ, eRESOURCE_POST_RESULT } eResourceReportType;
+typedef enum {
+    eRESOURCE_PROGRESS,
+    eRESOURCE_VERSION,
+    eRESOURCE_UPGRADE_RESULT,
+    eRESOURCE_POST_REQ,
+    eRESOURCE_POST_RESULT
+} eResourceReportType;
 
 typedef void (*OnResourceMessageCallback)(void *pContext, const char *msg, uint32_t msgLen);
 

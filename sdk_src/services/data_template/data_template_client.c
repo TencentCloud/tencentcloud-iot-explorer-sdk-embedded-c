@@ -264,10 +264,10 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
     uintptr_t            packet_id  = (uintptr_t)msg->msg;
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)context;
     MQTTMessage *        topic_info = (MQTTMessage *)msg->msg;
-
-    if(pTemplate) {
-        if(pclient != pTemplate->mqtt) {
-//          Log_d("not template topic event");
+	
+    if (pTemplate) {
+        if (pclient != pTemplate->mqtt) {
+            //Log_d("not template topic event");
             return;
         }
     }
@@ -304,7 +304,7 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
 }
 
 int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size_t sizeOfBuffer, uint8_t count,
-        DeviceProperty *pDeviceProperties[])
+                                           DeviceProperty *pDeviceProperties[])
 {
     POINTER_SANITY_CHECK(jsonBuffer, QCLOUD_ERR_INVAL);
     POINTER_SANITY_CHECK(pDeviceProperties, QCLOUD_ERR_INVAL);
@@ -788,8 +788,8 @@ void IOT_Template_Set_Yield_Status(void *pClient, bool running_state, int code)
 {
     POINTER_SANITY_CHECK_RTN(pClient);
 
-    Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)pClient;
-    pTemplate->yield_thread_running = running_state;
+    Qcloud_IoT_Template *pTemplate    = (Qcloud_IoT_Template *)pClient;
+    pTemplate->yield_thread_running   = running_state;
     pTemplate->yield_thread_exit_code = code;
 
     return;

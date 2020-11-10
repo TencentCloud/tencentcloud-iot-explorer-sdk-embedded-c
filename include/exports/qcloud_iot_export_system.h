@@ -25,24 +25,24 @@
 extern "C" {
 #endif
 
-#define IP_MAX_NUM					10
-#define ONE_IP_MAX_LEN				24
+#define IP_MAX_NUM     10
+#define ONE_IP_MAX_LEN 24
 
-typedef enum{
-	eRESOURCE_TIME = 0,
-	eRESOURCE_IP,	
-}eSysResourcType;
+typedef enum {
+    eRESOURCE_TIME = 0,
+    eRESOURCE_IP,
+} eSysResourcType;
 
 /**
  * @brief Get domain ip list for dns disaster recovery
  *
  * @param pClient           MQTTClient pointer
  * @param eType             type of sys resource to get
- * @param usrArg            usr arg to return the target resource 
+ * @param usrArg            usr arg to return the target resource
  * @return                  QCLOUD_RET_SUCCESS for success
  *                          otherwise, failure
  */
-int IOT_Get_Sys_Resource(void* pClient, eSysResourcType eType, DeviceInfo *pDevInfo, void *usrArg);
+int IOT_Get_Sys_Resource(void *pClient, eSysResourcType eType, DeviceInfo *pDevInfo, void *usrArg);
 
 #ifdef __cplusplus
 }

@@ -96,7 +96,7 @@ typedef struct {
     char *device_secret;  // device secret
 #endif
 
-    uint32_t command_timeout;         // timeout value (unit: ms) for MQTT
+    uint32_t command_timeout;  // timeout value (unit: ms) for MQTT
     // connect/pub/sub/yield
     uint32_t keep_alive_interval_ms;  // MQTT keep alive time interval in millisecond
 
@@ -336,7 +336,7 @@ int IOT_Template_UnRegister_Action(void *pClient, DeviceAction *pAction);
  * @return              QCLOUD_RET_SUCCESS when success, or err code for failure
  */
 int IOT_Template_JSON_ConstructReportArray(void *handle, char *jsonBuffer, size_t sizeOfBuffer, uint8_t count,
-        DeviceProperty *pDeviceProperties[]);
+                                           DeviceProperty *pDeviceProperties[]);
 
 /**
  * @brief report data_template data in asynchronized way

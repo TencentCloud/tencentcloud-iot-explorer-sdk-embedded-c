@@ -139,7 +139,7 @@ static void _on_event_reply_callback(void *pClient, MQTTMessage *message, void *
  * @brief create event reply struct and add to event_list
  */
 static sEventReply *_create_event_add_to_list(Qcloud_IoT_Template *pTemplate, OnEventReplyCallback replyCb,
-        uint32_t reply_timeout_ms)
+                                              uint32_t reply_timeout_ms)
 {
     IOT_FUNC_ENTRY;
 
@@ -161,7 +161,7 @@ static sEventReply *_create_event_add_to_list(Qcloud_IoT_Template *pTemplate, On
     pReply->user_context = pTemplate;
 
     InitTimer(&(pReply->timer));
-    countdown(&(pReply->timer), reply_timeout_ms/1000);
+    countdown(&(pReply->timer), reply_timeout_ms / 1000);
     HAL_Snprintf(pReply->client_token, EVENT_TOKEN_MAX_LEN, "%s-%u", pTemplate->device_info.product_id,
                  pTemplate->inner_data.token_num++);
 

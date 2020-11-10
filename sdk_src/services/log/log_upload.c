@@ -43,66 +43,63 @@ extern "C" {
 #include "utils_httpc.h"
 #include "utils_timer.h"
 
-
 /* log post header format */
-#define TIMESTAMP_SIZE                                      (10)
-#define SIGNATURE_SIZE                                      (40)
-#define CTRL_BYTES_SIZE                                     (4)
+#define TIMESTAMP_SIZE  (10)
+#define SIGNATURE_SIZE  (40)
+#define CTRL_BYTES_SIZE (4)
 // LOG_BUF_FIXED_HEADER_SIZE = 112
-#define LOG_BUF_FIXED_HEADER_SIZE                                              \
-  (SIGNATURE_SIZE + CTRL_BYTES_SIZE + MAX_SIZE_OF_PRODUCT_ID +                 \
-   MAX_SIZE_OF_DEVICE_NAME + TIMESTAMP_SIZE)
+#define LOG_BUF_FIXED_HEADER_SIZE \
+    (SIGNATURE_SIZE + CTRL_BYTES_SIZE + MAX_SIZE_OF_PRODUCT_ID + MAX_SIZE_OF_DEVICE_NAME + TIMESTAMP_SIZE)
 
 /* do immediate log update if buffer is lower than this threshold (about two max log item) */
-#define LOG_LOW_BUFFER_THRESHOLD                            (LOG_UPLOAD_BUFFER_SIZE / 4)
-#define SIGN_KEY_SIZE                                       (24)
+#define LOG_LOW_BUFFER_THRESHOLD (LOG_UPLOAD_BUFFER_SIZE / 4)
+#define SIGN_KEY_SIZE            (24)
 
-#define POINTER_CHECK_RET_ERR(ptr, err)                    \
-    do {                                                   \
-        if (NULL == (ptr)) {                               \
-            return (err);                                  \
-        }                                                  \
+#define POINTER_CHECK_RET_ERR(ptr, err) \
+    do {                                \
+        if (NULL == (ptr)) {            \
+            return (err);               \
+        }                               \
     } while (0)
 
-#define POINTER_CHECK_RET(ptr)                             \
-    do {                                                   \
-        if (NULL == (ptr)) {                               \
-            return;                                        \
-        }                                                  \
+#define POINTER_CHECK_RET(ptr) \
+    do {                       \
+        if (NULL == (ptr)) {   \
+            return;            \
+        }                      \
     } while (0)
-
 
 /* Log upload feature switch */
 /* To check log http server return msg or not */
 #define LOG_CHECK_HTTP_RET_CODE
 /*Log http client*/
 typedef struct {
-    const char *url;
-    const char *ca_crt;
-    int port;
-    HTTPClient http;          /* http client */
+    const char *   url;
+    const char *   ca_crt;
+    int            port;
+    HTTPClient     http;      /* http client */
     HTTPClientData http_data; /* http client data */
 } LogHTTPStruct;
 
 /*Log  client*/
 typedef struct {
-    DeviceInfo dev_info;
-    void *mqtt_client;
+    DeviceInfo     dev_info;
+    void *         mqtt_client;
     LogHTTPStruct *http_client;
-    bool upload_only_in_comm_err;
+    bool           upload_only_in_comm_err;
 
-    char *log_buffer;
+    char *   log_buffer;
     uint32_t log_index;
-    void *lock_buf;
-    char sign_key[SIGN_KEY_SIZE + 1];
+    void *   lock_buf;
+    char     sign_key[SIGN_KEY_SIZE + 1];
 
     long  system_time;
     Timer upload_timer;
     Timer time_update_timer;
 
-    LogSaveFunc save_func;
-    LogReadFunc read_func;
-    LogDelFunc del_func;
+    LogSaveFunc    save_func;
+    LogReadFunc    read_func;
+    LogDelFunc     del_func;
     LogGetSizeFunc get_size_func;
 
     bool log_save_enabled;
@@ -123,17 +120,17 @@ Qcloud_IoT_Log *get_log_client(void)
 void *get_log_mqtt_client(void)
 {
     Qcloud_IoT_Log *pLogClient = get_log_client();
-    if(pLogClient) {
+    if (pLogClient) {
         return pLogClient->mqtt_client;
     } else {
         return NULL;
     }
 }
 
-void * get_log_dev_info(void)
+void *get_log_dev_info(void)
 {
     Qcloud_IoT_Log *pLogClient = get_log_client();
-    if(pLogClient) {
+    if (pLogClient) {
         return (void *)&pLogClient->dev_info;
     } else {
         return NULL;
@@ -143,7 +140,7 @@ void * get_log_dev_info(void)
 bool is_log_uploader_init(void)
 {
     Qcloud_IoT_Log *pLogClient = get_log_client();
-    if(pLogClient) {
+    if (pLogClient) {
         return pLogClient->log_client_init_done;
     } else {
         return NULL;
@@ -154,8 +151,8 @@ bool is_log_uploader_init(void)
 static int _gen_key_from_cert_file(char *sign_key, const char *file_path)
 {
     FILE *fp;
-    int len;
-    char line_buf[128] = {0};
+    int   len;
+    char  line_buf[128] = {0};
 
     if ((fp = fopen(file_path, "r")) == NULL) {
         UPLOAD_ERR("fail to open cert file %s", file_path);
@@ -193,8 +190,7 @@ static int _gen_key_from_cert_file(char *sign_key, const char *file_path)
 static void _reset_log_buffer(Qcloud_IoT_Log *pLogClient)
 {
     pLogClient->log_index = LOG_BUF_FIXED_HEADER_SIZE;
-    memset(pLogClient->log_buffer + LOG_BUF_FIXED_HEADER_SIZE, 0,\
-           LOG_UPLOAD_BUFFER_SIZE - LOG_BUF_FIXED_HEADER_SIZE);
+    memset(pLogClient->log_buffer + LOG_BUF_FIXED_HEADER_SIZE, 0, LOG_UPLOAD_BUFFER_SIZE - LOG_BUF_FIXED_HEADER_SIZE);
 }
 
 int init_log_uploader(LogUploadInitParams *init_params)
@@ -206,8 +202,8 @@ int init_log_uploader(LogUploadInitParams *init_params)
         return QCLOUD_RET_SUCCESS;
     }
 
-    if (init_params == NULL || init_params->product_id == NULL
-        || init_params->device_name == NULL || init_params->sign_key == NULL) {
+    if (init_params == NULL || init_params->product_id == NULL || init_params->device_name == NULL ||
+        init_params->sign_key == NULL) {
         UPLOAD_ERR("invalid init parameters");
         return QCLOUD_ERR_INVAL;
     }
@@ -228,17 +224,17 @@ int init_log_uploader(LogUploadInitParams *init_params)
     memset(pLogClient->dev_info.device_name, '\0', MAX_SIZE_OF_DEVICE_NAME);
     strncpy(pLogClient->dev_info.product_id, init_params->product_id, MAX_SIZE_OF_PRODUCT_ID);
     strncpy(pLogClient->dev_info.device_name, init_params->device_name, MAX_SIZE_OF_DEVICE_NAME);
-    pLogClient->mqtt_client = NULL;
-    pLogClient->system_time = 0;
+    pLogClient->mqtt_client             = NULL;
+    pLogClient->system_time             = 0;
     pLogClient->upload_only_in_comm_err = false;
 
     /* all the call back functions are necessary to handle log save and re-upload*/
-    if (init_params->save_func != NULL && init_params->read_func != NULL
-        && init_params->del_func != NULL && init_params->get_size_func) {
-        pLogClient->save_func = init_params->save_func;
-        pLogClient->read_func = init_params->read_func;
-        pLogClient->del_func = init_params->del_func;
-        pLogClient->get_size_func = init_params->get_size_func;
+    if (init_params->save_func != NULL && init_params->read_func != NULL && init_params->del_func != NULL &&
+        init_params->get_size_func) {
+        pLogClient->save_func        = init_params->save_func;
+        pLogClient->read_func        = init_params->read_func;
+        pLogClient->del_func         = init_params->del_func;
+        pLogClient->get_size_func    = init_params->get_size_func;
         pLogClient->log_save_enabled = true;
     } else {
         pLogClient->log_save_enabled = false;
@@ -271,10 +267,9 @@ int init_log_uploader(LogUploadInitParams *init_params)
     pLogClient->log_buffer[SIGNATURE_SIZE] = 'P';
 #endif
 
-    memcpy(pLogClient->log_buffer + SIGNATURE_SIZE + CTRL_BYTES_SIZE,\
-           init_params->product_id, MAX_SIZE_OF_PRODUCT_ID);
-    memcpy(pLogClient->log_buffer + SIGNATURE_SIZE + CTRL_BYTES_SIZE + MAX_SIZE_OF_PRODUCT_ID,\
-           init_params->device_name, strlen(init_params->device_name));
+    memcpy(pLogClient->log_buffer + SIGNATURE_SIZE + CTRL_BYTES_SIZE, init_params->product_id, MAX_SIZE_OF_PRODUCT_ID);
+    memcpy(pLogClient->log_buffer + SIGNATURE_SIZE + CTRL_BYTES_SIZE + MAX_SIZE_OF_PRODUCT_ID, init_params->device_name,
+           strlen(init_params->device_name));
 
     pLogClient->http_client = HAL_Malloc(sizeof(LogHTTPStruct));
     if (NULL == pLogClient->http_client) {
@@ -285,9 +280,9 @@ int init_log_uploader(LogUploadInitParams *init_params)
 
     /* set http request-header parameter */
     pLogClient->http_client->http.header = "Accept:application/json;*/*\r\n";
-    pLogClient->http_client->url = iot_get_log_domain(init_params->region);
-    pLogClient->http_client->port = LOG_UPLOAD_SERVER_PORT;
-    pLogClient->http_client->ca_crt = NULL;
+    pLogClient->http_client->url         = iot_get_log_domain(init_params->region);
+    pLogClient->http_client->port        = LOG_UPLOAD_SERVER_PORT;
+    pLogClient->http_client->ca_crt      = NULL;
 
     _reset_log_buffer(pLogClient);
     _set_log_client(pLogClient);
@@ -297,18 +292,18 @@ int init_log_uploader(LogUploadInitParams *init_params)
 
 err_exit:
 
-    if(pLogClient) {
-        if(pLogClient->http_client) {
+    if (pLogClient) {
+        if (pLogClient->http_client) {
             HAL_Free(pLogClient->http_client);
             pLogClient->http_client = NULL;
         }
 
-        if(pLogClient->log_buffer) {
+        if (pLogClient->log_buffer) {
             HAL_Free(pLogClient->log_buffer);
             pLogClient->log_buffer = NULL;
         }
 
-        if(pLogClient->lock_buf) {
+        if (pLogClient->lock_buf) {
             HAL_MutexDestroy(pLogClient->lock_buf);
             pLogClient->lock_buf = NULL;
         }
@@ -438,7 +433,7 @@ static void _update_system_time(Qcloud_IoT_Log *pLogClient)
 static int _check_server_connection(Qcloud_IoT_Log *pLogClient)
 {
     int rc;
-    rc = qcloud_http_client_connect(&pLogClient->http_client->http, pLogClient->http_client->url, \
+    rc = qcloud_http_client_connect(&pLogClient->http_client->http, pLogClient->http_client->url,
                                     pLogClient->http_client->port, pLogClient->http_client->ca_crt);
     if (rc != QCLOUD_RET_SUCCESS) {
         return rc;
@@ -468,7 +463,7 @@ static bool _get_json_ret_code(char *json, int32_t *res)
 
 static int _post_one_http_to_server(char *post_buf, size_t post_size)
 {
-    int rc = 0;
+    int             rc         = 0;
     Qcloud_IoT_Log *pLogClient = get_log_client();
     POINTER_CHECK_RET_ERR(pLogClient, QCLOUD_ERR_INVAL);
     POINTER_CHECK_RET_ERR(pLogClient->http_client, QCLOUD_ERR_INVAL);
@@ -479,9 +474,9 @@ static int _post_one_http_to_server(char *post_buf, size_t post_size)
     pLogClient->http_client->http_data.post_content_type = "text/plain;charset=utf-8";
     pLogClient->http_client->http_data.post_buf          = post_buf;
     pLogClient->http_client->http_data.post_buf_len      = post_size;
-    rc = qcloud_http_client_common(&pLogClient->http_client->http, pLogClient->http_client->url, \
-                                   pLogClient->http_client->port, pLogClient->http_client->ca_crt, \
-                                   HTTP_POST, &pLogClient->http_client->http_data);
+    rc = qcloud_http_client_common(&pLogClient->http_client->http, pLogClient->http_client->url,
+                                   pLogClient->http_client->port, pLogClient->http_client->ca_crt, HTTP_POST,
+                                   &pLogClient->http_client->http_data);
     if (rc != QCLOUD_RET_SUCCESS) {
         UPLOAD_ERR("qcloud_http_client_common failed, rc = %d", rc);
         return rc;
@@ -492,11 +487,12 @@ static int _post_one_http_to_server(char *post_buf, size_t post_size)
     /* TODO: handle recv data from log server */
 #define HTTP_RET_JSON_LENGTH     256
 #define HTTP_WAIT_RET_TIMEOUT_MS 1000
-    char buf[HTTP_RET_JSON_LENGTH]        = {0};
+    char buf[HTTP_RET_JSON_LENGTH]                      = {0};
     pLogClient->http_client->http_data.response_buf     = buf;
     pLogClient->http_client->http_data.response_buf_len = sizeof(buf);
 
-    rc = qcloud_http_recv_data(&pLogClient->http_client->http, HTTP_WAIT_RET_TIMEOUT_MS, &pLogClient->http_client->http_data);
+    rc = qcloud_http_recv_data(&pLogClient->http_client->http, HTTP_WAIT_RET_TIMEOUT_MS,
+                               &pLogClient->http_client->http_data);
     if (QCLOUD_RET_SUCCESS != rc) {
         UPLOAD_ERR("qcloud_http_recv_data failed, rc = %d", rc);
     } else {
@@ -536,7 +532,8 @@ static void update_time_and_signature(char *log_buf, size_t log_size)
     memcpy(log_buf + LOG_BUF_FIXED_HEADER_SIZE - TIMESTAMP_SIZE, timestamp, strlen(timestamp));
 
     /* signature of this log uploading */
-    utils_hmac_sha1(log_buf + SIGNATURE_SIZE, log_size - SIGNATURE_SIZE, signature, pLogClient->sign_key, strlen(pLogClient->sign_key));
+    utils_hmac_sha1(log_buf + SIGNATURE_SIZE, log_size - SIGNATURE_SIZE, signature, pLogClient->sign_key,
+                    strlen(pLogClient->sign_key));
     memcpy(log_buf, signature, SIGNATURE_SIZE);
 }
 
@@ -614,8 +611,8 @@ static int post_log_to_server(char *post_buf, size_t post_size, size_t *actual_p
 
 static int _save_log(char *log_buf, size_t log_size)
 {
-    int rc = 0;
-    size_t write_size, current_size;
+    int             rc = 0;
+    size_t          write_size, current_size;
     Qcloud_IoT_Log *pLogClient = get_log_client();
     POINTER_CHECK_RET_ERR(pLogClient, QCLOUD_ERR_INVAL);
     if (!pLogClient->log_client_init_done) {
@@ -644,7 +641,7 @@ static int _save_log(char *log_buf, size_t log_size)
 
 static int _handle_saved_log(void)
 {
-    int    rc             = QCLOUD_RET_SUCCESS;
+    int             rc         = QCLOUD_RET_SUCCESS;
     Qcloud_IoT_Log *pLogClient = get_log_client();
     POINTER_CHECK_RET_ERR(pLogClient, QCLOUD_ERR_INVAL);
     if (!pLogClient->log_client_init_done) {
@@ -691,7 +688,7 @@ static int _handle_saved_log(void)
     return rc;
 }
 
-static bool _check_force_upload( bool force_upload)
+static bool _check_force_upload(bool force_upload)
 {
     Qcloud_IoT_Log *pLogClient = get_log_client();
     if (!force_upload) {
@@ -767,17 +764,15 @@ int do_log_upload(bool force_upload)
              * forward */
             if (actual_post_payload) {
                 UPLOAD_DBG("move the new log %d forward", actual_post_payload);
-                memmove(pLogClient->log_buffer + upload_log_size - actual_post_payload,\
-                        pLogClient->log_buffer + upload_log_size,\
-                        pLogClient->log_index - upload_log_size);
+                memmove(pLogClient->log_buffer + upload_log_size - actual_post_payload,
+                        pLogClient->log_buffer + upload_log_size, pLogClient->log_index - upload_log_size);
                 pLogClient->log_index = pLogClient->log_index - actual_post_payload;
-                memset(pLogClient->log_buffer + pLogClient->log_index, 0,\
+                memset(pLogClient->log_buffer + pLogClient->log_index, 0,
                        LOG_UPLOAD_BUFFER_SIZE - pLogClient->log_index);
             }
             upload_log_size = pLogClient->log_index;
             HAL_MutexUnlock(pLogClient->lock_buf);
-            _save_log(pLogClient->log_buffer + LOG_BUF_FIXED_HEADER_SIZE,\
-                      upload_log_size - LOG_BUF_FIXED_HEADER_SIZE);
+            _save_log(pLogClient->log_buffer + LOG_BUF_FIXED_HEADER_SIZE, upload_log_size - LOG_BUF_FIXED_HEADER_SIZE);
             unhandle_saved_log = true;
         }
     }
@@ -787,11 +782,10 @@ int do_log_upload(bool force_upload)
     if (upload_log_size == pLogClient->log_index) {
         _reset_log_buffer(pLogClient);
     } else {
-        memmove(pLogClient->log_buffer + LOG_BUF_FIXED_HEADER_SIZE,\
-                pLogClient->log_buffer + upload_log_size, pLogClient->log_index - upload_log_size);
+        memmove(pLogClient->log_buffer + LOG_BUF_FIXED_HEADER_SIZE, pLogClient->log_buffer + upload_log_size,
+                pLogClient->log_index - upload_log_size);
         pLogClient->log_index = pLogClient->log_index - upload_log_size + LOG_BUF_FIXED_HEADER_SIZE;
-        memset(pLogClient->log_buffer + pLogClient->log_index, 0,
-               LOG_UPLOAD_BUFFER_SIZE - pLogClient->log_index);
+        memset(pLogClient->log_buffer + pLogClient->log_index, 0, LOG_UPLOAD_BUFFER_SIZE - pLogClient->log_index);
     }
     HAL_MutexUnlock(pLogClient->lock_buf);
     countdown_ms(&pLogClient->upload_timer, LOG_UPLOAD_INTERVAL_MS);

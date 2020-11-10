@@ -27,7 +27,6 @@
 #include "utils_md5.h"
 #include "utils_hmac.h"
 
-
 static char cloud_rcv_buf[GATEWAY_RECEIVE_BUFFER_LEN];
 
 static bool get_json_type(char *json, char **v)
@@ -164,14 +163,14 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
             Log_i("client_id(%s), offline result %d", client_id, result);
             gateway->gateway_data.offline.result = result;
         }
-    } else if(strncmp(type, GATEWAY_BIND_OP_STR, sizeof(GATEWAY_BIND_OP_STR) - 1) == 0) {
+    } else if (strncmp(type, GATEWAY_BIND_OP_STR, sizeof(GATEWAY_BIND_OP_STR) - 1) == 0) {
         if (strncmp(client_id, gateway->gateway_data.bind.client_id, size) == 0) {
-            gateway->gateway_data.bind.result = (result > 0)? -result: result;
+            gateway->gateway_data.bind.result = (result > 0) ? -result : result;
             Log_i("client_id(%s), bind result %d", client_id, gateway->gateway_data.bind.result);
         }
-    } else if(strncmp(type, GATEWAY_UNBIND_OP_STR, sizeof(GATEWAY_UNBIND_OP_STR) - 1) == 0) {
+    } else if (strncmp(type, GATEWAY_UNBIND_OP_STR, sizeof(GATEWAY_UNBIND_OP_STR) - 1) == 0) {
         if (strncmp(client_id, gateway->gateway_data.unbind.client_id, size) == 0) {
-            gateway->gateway_data.unbind.result = (result > 0)? -result: result;
+            gateway->gateway_data.unbind.result = (result > 0) ? -result : result;
             Log_i("client_id(%s), unbind result %d", client_id, gateway->gateway_data.unbind.result);
         }
     }
@@ -361,7 +360,7 @@ int gateway_publish_sync(Gateway *gateway, char *topic, PublishParams *params, i
             IOT_FUNC_EXIT_RC(QCLOUD_ERR_GATEWAY_SESSION_TIMEOUT);
         }
 #ifdef MULTITHREAD_ENABLED
-        if((gateway->yield_thread_running)) {
+        if ((gateway->yield_thread_running)) {
             HAL_SleepMs(200);
         } else
 #endif
@@ -381,9 +380,9 @@ int gateway_publish_sync(Gateway *gateway, char *topic, PublishParams *params, i
 #ifdef AUTH_MODE_CERT
 static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff_len)
 {
-    FILE *fp;
+    FILE *   fp;
     uint32_t length;
-    int ret = QCLOUD_RET_SUCCESS;
+    int      ret = QCLOUD_RET_SUCCESS;
 
     if ((fp = fopen(file_path, "r")) == NULL) {
         Log_e("fail to open cert file %s", file_path);
@@ -391,17 +390,17 @@ static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff
     }
 
     fseek(fp, 0L, SEEK_END);
-    length = ftell(fp);
+    length        = ftell(fp);
     uint8_t *data = HAL_Malloc(length + 1);
-    if(!data) {
+    if (!data) {
         Log_e("malloc mem err");
         return QCLOUD_ERR_MALLOC;
     }
 
     fseek(fp, 0, SEEK_SET);
-    if(length != fread(data, 1, length, fp)) {
+    if (length != fread(data, 1, length, fp)) {
         Log_e("read data len fail");
-        ret =  QCLOUD_ERR_FAILURE;
+        ret = QCLOUD_ERR_FAILURE;
         goto exit;
     }
 
@@ -420,13 +419,14 @@ exit:
 
 int subdev_bind_hmac_sha1_cal(DeviceInfo *pDevInfo, char *signout, int max_signlen, int nonce, long timestamp)
 {
-    int         text_len,ret;
-    size_t      olen                   = 0;
-    char *      pSignText            = NULL;
-    const char *sign_fmt               = "%s%s;%d;%d"; //${product_id}${device_name};${random};${expiration_time}
+    int         text_len, ret;
+    size_t      olen      = 0;
+    char *      pSignText = NULL;
+    const char *sign_fmt  = "%s%s;%d;%d";  //${product_id}${device_name};${random};${expiration_time}
 
     /*format sign data*/
-    text_len = strlen(sign_fmt) + strlen(pDevInfo->device_name) + strlen(pDevInfo->product_id) + sizeof(int) + sizeof(long) + 10;
+    text_len = strlen(sign_fmt) + strlen(pDevInfo->device_name) + strlen(pDevInfo->product_id) + sizeof(int) +
+               sizeof(long) + 10;
     pSignText = HAL_Malloc(text_len);
     if (pSignText == NULL) {
         Log_e("malloc sign source buff fail");
@@ -435,12 +435,12 @@ int subdev_bind_hmac_sha1_cal(DeviceInfo *pDevInfo, char *signout, int max_signl
     memset(pSignText, 0, text_len);
     HAL_Snprintf((char *)pSignText, text_len, sign_fmt, pDevInfo->product_id, pDevInfo->device_name, nonce, timestamp);
 
-    //gen digest key
+    // gen digest key
     char key[BIND_SIGN_KEY_SIZE + 1] = {0};
 #ifdef AUTH_MODE_CERT
     ret = gen_key_from_cert_file(pDevInfo->dev_cert_file_name, key, BIND_SIGN_KEY_SIZE);
-    if(QCLOUD_RET_SUCCESS != ret) {
-        Log_e("gen key from cert file fail, ret:%d",ret);
+    if (QCLOUD_RET_SUCCESS != ret) {
+        Log_e("gen key from cert file fail, ret:%d", ret);
         HAL_Free(pSignText);
         return ret;
     }
@@ -450,7 +450,7 @@ int subdev_bind_hmac_sha1_cal(DeviceInfo *pDevInfo, char *signout, int max_signl
 
     /*cal hmac sha1*/
     char sign[SUBDEV_BIND_SIGN_LEN] = {0};
-    int sign_len = utils_hmac_sha1_hex(pSignText, strlen(pSignText), sign, key, strlen(key));
+    int  sign_len                   = utils_hmac_sha1_hex(pSignText, strlen(pSignText), sign, key, strlen(key));
 
     /*base64 encode*/
     ret = qcloud_iot_utils_base64encode((uint8_t *)signout, max_signlen, &olen, (const uint8_t *)sign, sign_len);
@@ -458,4 +458,3 @@ int subdev_bind_hmac_sha1_cal(DeviceInfo *pDevInfo, char *signout, int max_signl
 
     return (olen > max_signlen) ? QCLOUD_ERR_FAILURE : ret;
 }
-

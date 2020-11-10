@@ -260,8 +260,7 @@ void utils_md5_update(iot_md5_context *ctx, const unsigned char *input, size_t i
 
 static const unsigned char iot_md5_padding[64] = {0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                                   0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                                  0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                                                 };
+                                                  0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /*
  * MD5 final digest
@@ -312,11 +311,11 @@ int8_t utils_hb2hex(uint8_t hb)
 
 void utils_md5_str(const unsigned char *input, size_t ilen, unsigned char *output)
 {
-    int i;
+    int           i;
     unsigned char buf_out[16];
     utils_md5(input, ilen, buf_out);
 
-    //hex to string
+    // hex to string
     for (i = 0; i < 16; ++i) {
         output[i * 2]     = utils_hb2hex(buf_out[i] >> 4);
         output[i * 2 + 1] = utils_hb2hex(buf_out[i]);

@@ -257,7 +257,6 @@ int IOT_MQTT_Yield_MT(void *pClient, uint32_t timeout_ms);
 void IOT_MQTT_Set_Yield_Thread_State(void *pClient, bool state);
 #endif
 
-
 /**
  * @brief Publish MQTT message
  *

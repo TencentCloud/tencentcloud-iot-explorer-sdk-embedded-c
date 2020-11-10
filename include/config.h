@@ -8,7 +8,7 @@
 /* #undef EVENT_POST_ENABLED */
 /* #undef ACTION_ENABLED */
 #define DEV_DYN_REG_ENABLED
-#define LOG_UPLOAD
+/* #undef LOG_UPLOAD */
 /* #undef IOT_DEBUG */
 /* #undef DEBUG_DEV_INFO_USED */
 /* #undef AT_TCP_ENABLED */
@@ -19,3 +19,5 @@
 /* #undef GATEWAY_ENABLED */
 /* #undef MULTITHREAD_ENABLED */
 /* #undef GATEWAY_DYN_BIND_SUBDEV_ENABLED */
+#define ASR_ENABLED
+#define RESOURCE_UPDATE_ENABLED

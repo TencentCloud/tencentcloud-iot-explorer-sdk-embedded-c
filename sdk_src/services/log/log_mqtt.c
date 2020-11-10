@@ -136,9 +136,9 @@ static int _iot_log_level_get_publish(void *pClient, DeviceInfo *dev_info)
     POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
     static unsigned int sg_client_token = 1;
 
-    Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
-    char topic_name[128]      = {0};
-    char payload_content[128] = {0};
+    Qcloud_IoT_Client *mqtt_client          = (Qcloud_IoT_Client *)pClient;
+    char               topic_name[128]      = {0};
+    char               payload_content[128] = {0};
 
     HAL_Snprintf(topic_name, sizeof(topic_name), "$log/operation/%s/%s", dev_info->product_id, dev_info->device_name);
     HAL_Snprintf(payload_content, sizeof(payload_content),
@@ -157,8 +157,8 @@ static int _iot_log_level_get_publish(void *pClient, DeviceInfo *dev_info)
 static int _log_topic_subscribe(void *client, DeviceInfo *dev_info)
 {
     /* subscribe the log topic: "$log/operation/result/${productId}/${deviceName}" */
-    char               topic_name[128] = {0};
-    int size = HAL_Snprintf(topic_name, sizeof(topic_name), "$log/operation/result/%s/%s", dev_info->product_id,
+    char topic_name[128] = {0};
+    int  size = HAL_Snprintf(topic_name, sizeof(topic_name), "$log/operation/result/%s/%s", dev_info->product_id,
                             dev_info->device_name);
     if (size < 0 || size > sizeof(topic_name) - 1) {
         Log_e("topic content buf not enough! content size:%d buf size:%d", size, (int)sizeof(topic_name));
@@ -176,15 +176,15 @@ static int _log_topic_subscribe(void *client, DeviceInfo *dev_info)
 
 int qcloud_get_log_level(int *log_level)
 {
-#define SUB_RETRY_TIMES  3
-#define SYNC_TIMES       20
+#define SUB_RETRY_TIMES 3
+#define SYNC_TIMES      20
 
     int ret    = 0;
     int cntSub = 0;
     int cntRev = 0;
 
     Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)get_log_mqtt_client();
-    DeviceInfo *dev_info = (DeviceInfo *)get_log_dev_info();
+    DeviceInfo *       dev_info    = (DeviceInfo *)get_log_dev_info();
     POINTER_SANITY_CHECK(mqtt_client, QCLOUD_ERR_INVAL);
     LogMQTTState *pLogState = &sg_log_state;
 

@@ -292,7 +292,7 @@ bool update_value_if_key_match(char *pJsonDoc, DeviceProperty *pProperty)
         ret = true;
     }
 
-    if(property_data) {
+    if (property_data) {
         HAL_Free(property_data);
     }
 

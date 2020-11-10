@@ -106,8 +106,7 @@ void *get_log_mqtt_client(void);
  *
  * @return device info pointer of log client
  */
-void * get_log_dev_info(void);
-
+void *get_log_dev_info(void);
 
 #ifdef __cplusplus
 }

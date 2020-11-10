@@ -255,7 +255,6 @@ static int IOT_OTA_ReportUpgradeResult(void *handle, const char *version, IOT_OT
         IOT_OTA_ResetStatus(h_ota);
     }
 
-
 do_exit:
     if (NULL != msg_upgrade) {
         HAL_Free(msg_upgrade);
@@ -376,7 +375,7 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size)
 
     // reinit ofc
     qcloud_ofc_deinit(h_ota->ch_fetch);
-    h_ota->ch_fetch     = ofc_Init(h_ota->purl, offset, size);
+    h_ota->ch_fetch = ofc_Init(h_ota->purl, offset, size);
     if (NULL == h_ota->ch_fetch) {
         Log_e("Initialize fetch module failed");
         return QCLOUD_ERR_FAILURE;

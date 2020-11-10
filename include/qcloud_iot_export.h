@@ -108,7 +108,6 @@ typedef struct {
 #include "qcloud_iot_export_dynreg.h"
 #include "qcloud_iot_export_system.h"
 
-
 #ifdef __cplusplus
 }
 #endif
