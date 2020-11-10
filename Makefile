@@ -78,6 +78,10 @@ $(call CompLib_Map, RESOURCE_UPDATE_ENABLED, \
 	$(SRC_DIR)/services/resource \
 )
 
+$(call CompLib_Map, ASR_ENABLED, \
+	$(SRC_DIR)/services/asr \
+)
+
 $(call CompLib_Map, AT_TCP_ENABLED, \
 	$(SRC_DIR)/network/at_socket \
 )

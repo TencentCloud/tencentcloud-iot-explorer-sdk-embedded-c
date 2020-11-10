@@ -285,7 +285,7 @@ uintptr_t HAL_TLS_Connect(TLSConnectParams *pConnectParams, const char *host, in
 
     mbedtls_ssl_conf_read_timeout(&(pDataParams->ssl_conf), 100);
 
-    Log_i("connected with /%s/%d...", host, port);
+    Log_d("connected with /%s/%d...", host, port);
 
     return (uintptr_t)pDataParams;
 

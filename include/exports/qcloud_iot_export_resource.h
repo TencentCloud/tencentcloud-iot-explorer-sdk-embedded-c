@@ -84,23 +84,23 @@ typedef enum {
     IOT_RES_TYPE_UPGRADE_FAIL     = -5,
     IOT_RES_TYPE_SPACE_NOT_ENOUGH = -6,
     IOT_RES_TYPE_FILE_DEL_FAIL    = -7,
-    IOT_RES_TYPE_POST_FAIL 	  	  = -8,
+    IOT_RES_TYPE_POST_FAIL        = -8,
     IOT_RES_TYPE_NONE             = 0,
     IOT_RES_TYPE_DOWNLOAD_BEGIN   = 1,
     IOT_RES_TYPE_DOWNLOADING      = 2,
     IOT_RES_TYPE_UPGRADE_BEGIN    = 3,
     IOT_RES_TYPE_UPGRADE_SUCCESS  = 4,
     IOT_RES_TYPE_FILE_DEL_SUCCESS = 5,
-    IOT_RES_TYPE_REQUEST_URL 	  = 6,
-    IOT_RES_TYPE_POST_SUCCESS 	  = 7,
-    
+    IOT_RES_TYPE_REQUEST_URL      = 6,
+    IOT_RES_TYPE_POST_SUCCESS     = 7,
+
 } IOT_RES_ReportType;
 
 /* usr event of resource update */
 typedef enum {
-	IOT_RES_EVENT_DEL_RESOURCE = 0, 
-	IOT_RES_EVENT_REPORT_VERSION_RESP = 1,
-	IOT_RES_EVENT_REQUEST_URL_RESP = 2,
+    IOT_RES_EVENT_DEL_RESOURCE        = 0,
+    IOT_RES_EVENT_REPORT_VERSION_RESP = 1,
+    IOT_RES_EVENT_REQUEST_URL_RESP    = 2,
 } IOT_RES_UsrEvent;
 
 /* resource info filed */
@@ -306,7 +306,7 @@ int IOT_Resource_GetReportResult(void *handle);
  *
  * @return the context of resource handle
  */
-void* IOT_Resource_Get_Context(void *handle);
+void *IOT_Resource_Get_Context(void *handle);
 
 /**
  * @brief publish msg to resource topic
@@ -326,6 +326,8 @@ int IOT_Resource_Report_Msg(void *handle, char *msg);
  *
  * @param handle: resource module handle
  *
+ * @param timeout_ms: request timeout
+ *
  * @param res_name:  resource name to be posted
  *
  * @param res_name:  resource version to be posted
@@ -334,8 +336,8 @@ int IOT_Resource_Report_Msg(void *handle, char *msg);
  *
  * @return request id (>0) when success, or err code (<0) for failure
  */
-int IOT_Resource_Post_Request(void *handle, const char *res_name, char *res_version, void *usr_context);
-
+int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res_name, char *res_version,
+                              void *usr_context);
 
 #ifdef __cplusplus
 }

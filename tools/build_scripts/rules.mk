@@ -76,6 +76,11 @@ ifeq (,$(filter -DAUTH_WITH_NOTLS,$(CFLAGS)))
 	$(TOP_Q) \
 	mv ${TEMP_DIR}/*.a ${FINAL_DIR}/lib/
 endif
+
+#ifeq (,$(filter -DASR_ENABLED,$(CFLAGS)))
+	$(TOP_Q) \
+	cp -rf $(TOP_DIR)/tools/test_file $(FINAL_DIR)/bin/
+#endif
 	
 	$(TOP_Q) \
 	rm -rf ${TEMP_DIR}

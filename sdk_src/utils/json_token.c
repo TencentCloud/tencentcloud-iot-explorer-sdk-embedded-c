@@ -139,12 +139,12 @@ void LITE_json_keys_release(list_head_t *keylist)
     }
 }
 
-static void _strip_transfer(char *src)
+void LITE_string_strip_char(char *src, char ch)
 {
     char *end = src + strlen(src) + 1;
 
     while (*src != '\0') {
-        if (*src == '\\') {
+        if (*src == ch) {
             memmove(src, src + 1, end - src);
             end--;
         }
@@ -157,7 +157,7 @@ char *LITE_json_string_value_strip_transfer(char *key, char *src)
     char *str = LITE_json_value_of(key, src);
 
     if (NULL != str) {
-        _strip_transfer(str);
+        LITE_string_strip_char(str, '\\');
     }
     return str;
 }

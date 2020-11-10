@@ -27,36 +27,82 @@ extern "C" {
 
 #include "qcloud_iot_import.h"
 
-//refer to https://cloud.tencent.com/document/product/1093/37823#2.-.E8.BE.93.E5.85.A5.E5.8F.82.E6.95.B0
-typedef enum{
-	eENGINE_8K_EN = 0,
-	eENGINE_8K_ZH = 1,
-	eENGINE_8K_ZH_S = 2,
-	eENGINE_16K_ZH = 3,
-	eENGINE_16K_ZH_VIDEO = 4,
-	eENGINE_16K_EN = 5,
-	eENGINE_16K_CA = 6,
-	eENGINE_16K_JA = 7,
-	eENGINE_16K_WUU_SH = 8,	
-	eENGINE_DEFAULT = 9,
-}eAsrEngineType;
+#define REAL_TIME_SLICE_FILE_NAME_LEN (64)
+#define VOICE_ID_LEN                  (16)
+
+// refer to https://cloud.tencent.com/document/product/1093/37823#2.-.E8.BE.93.E5.85.A5.E5.8F.82.E6.95.B0
+typedef enum {
+    eENGINE_8K_EN        = 0,
+    eENGINE_8K_ZH        = 1,
+    eENGINE_8K_ZH_S      = 2,
+    eENGINE_16K_ZH       = 3,
+    eENGINE_16K_ZH_VIDEO = 4,
+    eENGINE_16K_EN       = 5,
+    eENGINE_16K_CA       = 6,
+    eENGINE_16K_JA       = 7,
+    eENGINE_16K_WUU_SH   = 8,
+    eENGINE_DEFAULT      = 9,
+} eAsrEngineType;
+
+typedef enum {
+    eASR_FILE     = 0,
+    eASR_REALTIME = 1,
+    eASR_SENTENCE = 2,
+} eAsrType;
+
+typedef enum {
+    eVOICE_WAVE  = 1,
+    eVOICE_SPEEX = 4,
+    eVOICE_SILK  = 6,
+    eVOICE_MP3   = 8,
+    eVOICE_OPUS  = 10,
+} eVoiceType;
+
+typedef enum {
+    eRESPONSE_PER_SLICE = 0,
+    eRESPONSE_END       = 1,
+} eResType;
 
 typedef struct _RecordAsrConf_ {
-	//Required parameters
-	int req_type;
-	eAsrEngineType engine_type;
-	int ch_num;
+    uint32_t request_timeout_ms;
 
-	//Optional parameters
-	int filter_dirty;
-	int filter_modal;
-	int filter_punc;
+    // Required parameters
+    eAsrType       req_type;
+    eAsrEngineType engine_type;
+    int            ch_num;
 
-	int request_timeout_ms;
+    // Optional parameters
+    int   filter_dirty;
+    int   filter_modal;
+    int   filter_punc;
+    int   convert_num_mode;
+    int   speaker_diarization;
+    int   speaker_number;
+    char *hot_word_id;
 } RecordAsrConf;
 
+// refer to https://cloud.tencent.com/document/product/1093/35799#.E8.AF.B7.E6.B1.82.E7.BB.93.E6.9E.84
 typedef struct _RealTimeAsrConf_ {
+    uint32_t request_timeout_ms;
+    char     file_name[REAL_TIME_SLICE_FILE_NAME_LEN];
 
+    // Required parameters
+    eAsrType       req_type;
+    eAsrEngineType engine_type;
+    eResType       res_type;
+    eVoiceType     voice_format;
+    char           voice_id[VOICE_ID_LEN + 1];
+    int            seq;
+    int            end;
+
+    // Optional parameters
+    int   need_vad;
+    int   vad_silence_time;
+    int   filter_dirty;
+    int   filter_modal;
+    int   filter_punc;
+    int   convert_num_mode;
+    char *hot_word_id;
 } RealTimeAsrConf;
 
 typedef void (*OnAsrResultCB)(uint32_t request_id, char *res_text, int total_resutl_num, int resutl_seq);
@@ -72,8 +118,9 @@ typedef int (*OnAsrResourceEventUsrCallback)(void *pContext, const char *msg, ui
  * @param ch_signal:    channel: MQTT
  *
  * @return a valid asr client handle when success, or NULL otherwise
- */	
-void *IOT_Asr_Init(const char *product_id, const char *device_name, void *ch_signal, OnAsrResourceEventUsrCallback usr_cb);
+ */
+void *IOT_Asr_Init(const char *product_id, const char *device_name, void *ch_signal,
+                   OnAsrResourceEventUsrCallback usr_cb);
 
 /**
  * @brief Destroy asr client
@@ -99,15 +146,34 @@ int IOT_Asr_Destroy(void *handle);
  */
 int IOT_Asr_RecordFile_Request(void *handle, const char *file_name, RecordAsrConf *conf, OnAsrResultCB cb);
 
-
 /**
  * @brief Realtime asr
  *
  * @param handle: asr client handle
  *
+ * @param audio_buff: audio data with encoding,like wav/speex/silk/mp3/opus
+ *
+ * @param audio_data_len: audio data len
+ *
+ * @param conf: real time audio data parameter and request conf
+ *
+ * @param cb: callback function when asr result received
+ *
  * @return QCLOUD_RET_SUCCESS when success, or err code for failure
  */
-int IOT_Asr_Realtime_Request(void *handle, uint8_t *audio_buff, uint8_t len, RealTimeAsrConf *config);
+int IOT_Asr_Realtime_Request(void *handle, char *audio_buff, uint32_t audio_data_len, RealTimeAsrConf *conf,
+                             OnAsrResultCB cb);
+
+/**
+ * @brief Notify to usr_callback when asr result recived
+ *
+ * @param handle: asr client handle
+ *
+ * @param handle: asr result msg
+ *
+ * @return QCLOUD_RET_SUCCESS when success, or err code for failure
+ */
+int IOT_Asr_Result_Notify(void *handle, char *asr_response);
 
 #ifdef __cplusplus
 }

@@ -29,12 +29,10 @@ extern "C" {
 
 #include "network_interface.h"
 
-#define HTTP_PREFIX    ("http://")
-#define HTTPS_PREFIX    ("https://")
-#define HTTP_PORT  80
-#define HTTPS_PORT 443
-
-
+#define HTTP_PREFIX  ("http://")
+#define HTTPS_PREFIX ("https://")
+#define HTTP_PORT    80
+#define HTTPS_PORT   443
 
 typedef enum { HTTP_GET, HTTP_POST, HTTP_PUT, HTTP_DELETE, HTTP_HEAD } HttpMethod;
 
@@ -74,6 +72,8 @@ int qcloud_http_client_common(HTTPClient *client, const char *url, int port, con
                               HTTPClientData *client_data);
 
 int qcloud_http_recv_data(HTTPClient *client, uint32_t timeout_ms, HTTPClientData *client_data);
+
+int qcloud_http_send_data(HTTPClient *client, HttpMethod method, uint32_t timeout_ms, HTTPClientData *client_data);
 
 int qcloud_http_client_connect(HTTPClient *client, const char *url, int port, const char *ca_crt);
 

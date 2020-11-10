@@ -23,7 +23,7 @@
 
 void *HAL_FileOpen(const char *filename, const char *mode)
 {
-	return (void *)fopen(filename, mode);
+    return (void *)fopen(filename, mode);
 }
 
 size_t HAL_FileRead(void *ptr, size_t size, size_t nmemb, void *fp)
@@ -33,17 +33,17 @@ size_t HAL_FileRead(void *ptr, size_t size, size_t nmemb, void *fp)
 
 size_t HAL_FileWrite(const void *ptr, size_t size, size_t nmemb, void *fp)
 {
-   	return fwrite(ptr, size, nmemb, (FILE *)fp);
+    return fwrite(ptr, size, nmemb, (FILE *)fp);
 }
 
 int HAL_FileSeek(void *fp, long int offset, int whence)
 {
-   	return fseek((FILE *)fp, offset, whence);
+    return fseek((FILE *)fp, offset, whence);
 }
 
 int HAL_FileClose(void *fp)
 {
-   	return fclose((FILE *)fp);
+    return fclose((FILE *)fp);
 }
 
 int HAL_FileRemove(const char *filename)
@@ -53,9 +53,9 @@ int HAL_FileRemove(const char *filename)
 
 int HAL_FileRewind(void *fp)
 {
-     rewind((FILE *)fp);
+    rewind((FILE *)fp);
 
-	 return 0;
+    return 0;
 }
 
 long HAL_FileTell(void *fp)
@@ -63,17 +63,28 @@ long HAL_FileTell(void *fp)
     return ftell((FILE *)fp);
 }
 
+long HAL_FileSize(void *fp)
+{
+    long size = 0;
+
+    fseek((FILE *)fp, 0, SEEK_END);
+    size = ftell((FILE *)fp);
+    rewind((FILE *)fp);
+
+    return size;
+}
+
 int HAL_FileRename(const char *old_filename, const char *new_filename)
 {
-	return rename(old_filename, new_filename);
+    return rename(old_filename, new_filename);
 }
 
 int HAL_FileEof(void *fp)
 {
-	return feof((FILE *)fp);
+    return feof((FILE *)fp);
 }
 
 int HAL_FileFlush(void *fp)
 {
-	return fflush((FILE *)fp);
+    return fflush((FILE *)fp);
 }

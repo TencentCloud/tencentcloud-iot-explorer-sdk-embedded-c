@@ -335,7 +335,7 @@ int HAL_AT_Uart_Recv(void *data, uint32_t expect_size, uint32_t *recv_size, uint
 #ifndef AUTH_WITH_NOTLS
 
 #ifndef MAX_SIZE_OF_CLIENT_ID
-#define MAX_SIZE_OF_CLIENT_ID  (80)
+#define MAX_SIZE_OF_CLIENT_ID (80)
 #endif
 /**
  * @brief Define structure for TLS connection parameters
@@ -355,8 +355,8 @@ typedef struct {
     /**
      * Device with PSK
      */
-    const char *psk;     // PSK string
-    char psk_id[MAX_SIZE_OF_CLIENT_ID + 1];  // PSK ID
+    const char *psk;                                // PSK string
+    char        psk_id[MAX_SIZE_OF_CLIENT_ID + 1];  // PSK ID
 #endif
 
     size_t psk_length;  // PSK length
@@ -600,7 +600,7 @@ size_t HAL_FileRead(void *ptr, size_t size, size_t nmemb, void *fp);
 size_t HAL_FileWrite(const void *ptr, size_t size, size_t nmemb, void *fp);
 
 /**
- * @brief Sets the file position of the stream to the given offset. The argument 
+ * @brief Sets the file position of the stream to the given offset. The argument
  * offset signifies the number of bytes to seek from the given whence position.
  */
 int HAL_FileSeek(void *fp, long int offset, int whence);
@@ -631,10 +631,14 @@ int HAL_FileRename(const char *old_filename, const char *new_filename);
 int HAL_FileEof(void *fp);
 
 /**
+ * @brief Get the stream size.
+ */
+long HAL_FileSize(void *fp);
+
+/**
  * @brief Flushes the output buffer of a stream.
  */
 int HAL_FileFlush(void *fp);
-
 
 #if defined(__cplusplus)
 }

@@ -43,10 +43,6 @@ static char sg_device_name[MAX_SIZE_OF_DEVICE_NAME + 1] = "YOUR_DEV_NAME";
 /* region */
 static char sg_region[MAX_SIZE_OF_REGION + 1] = "china";
 
-#ifdef DEV_DYN_REG_ENABLED
-/* product secret for device dynamic Registration  */
-static char sg_product_secret[MAX_SIZE_OF_PRODUCT_SECRET + 1] = "YOUR_PRODUCT_SECRET";
-#endif
 
 #ifdef AUTH_MODE_CERT
 /* public cert file name of certificate device */
@@ -57,6 +53,12 @@ static char sg_device_privatekey_file_name[MAX_SIZE_OF_DEVICE_SECRET_FILE_NAME +
 /* device secret of PSK device */
 static char sg_device_secret[MAX_SIZE_OF_DEVICE_SECRET + 1] = "YOUR_IOT_PSK";
 #endif
+
+#ifdef DEV_DYN_REG_ENABLED
+/* product secret for device dynamic Registration  */
+static char sg_product_secret[MAX_SIZE_OF_PRODUCT_SECRET + 1] = "YOUR_PRODUCT_SECRET";
+#endif
+
 
 #ifdef GATEWAY_ENABLED
 
@@ -69,7 +71,8 @@ static DeviceInfo sg_subdevList[] = {
 
     {.product_id = "Y8T6NB8DM0", .device_name = "test001"}, 
     {.product_id = "Y8T6NB8DM0", .device_name = "test002"},
-    {.product_id = "Y8T6NB8DM0", .device_name = "test003"}};
+    {.product_id = "Y8T6NB8DM0", .device_name = "test003"}
+	};
 #endif
 
 #endif

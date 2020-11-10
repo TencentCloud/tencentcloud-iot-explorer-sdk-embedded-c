@@ -260,6 +260,7 @@ static int _template_ConstructControlReply(char *jsonBuffer, size_t sizeOfBuffer
 
 static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEventMsg *msg)
 {
+	POINTER_SANITY_CHECK_RTN(context);
     uintptr_t            packet_id  = (uintptr_t)msg->msg;
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)context;
     MQTTMessage *        topic_info = (MQTTMessage *)msg->msg;

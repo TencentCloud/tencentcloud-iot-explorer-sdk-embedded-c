@@ -1,8 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making IoT Hub
  available.
- * Copyright (C) 2018-2020 THL A29 Limited, a Tencent company. All rights
- reserved.
+ * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
 
  * Licensed under the MIT License (the "License"); you may not use this file
  except in
@@ -19,25 +18,27 @@
  *
  */
 
-#ifndef __ASR_CLIENT_H__
-#define __ASR_CLIENT_H__
+#ifndef UTILS_URL_UPLOAD_H_
+#define UTILS_URL_UPLOAD_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MAX_ASR_REQUEST        (20)
-#define DEFAULT_REQ_TIMEOUT_MS (5000)
-#define ASR_REQUEST_BUFF_LEN   (512)
+#include <stdint.h>
 
-typedef enum {
-    eASR_REQ_IDLE = 0,
-    eASR_REQ_INIT = 1,
-    eASR_REQ_DONE = 2,
-} eAsrReqState;
+void *qcloud_url_upload_init(const char *url, uint32_t content_len);
+
+int32_t qcloud_url_upload_connect(void *handle, int method);
+
+int32_t qcloud_url_upload_body(void *handle, char *data_buf, uint32_t data_Len, uint32_t timeout_ms);
+
+int32_t qcloud_url_upload_recv_response(void *handle, char *response_buf, uint32_t bufLen, uint32_t timeout_ms);
+
+int qcloud_url_upload_deinit(void *handle);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __AT_H__ */
+#endif /* UTILS_URL_DOWNLOAD_H_ */

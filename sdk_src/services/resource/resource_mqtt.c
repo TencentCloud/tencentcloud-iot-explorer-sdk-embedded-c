@@ -85,7 +85,7 @@ static void _resource_mqtt_upgrade_cb(void *pClient, MQTTMessage *message, void 
     RESOURCE_MQTT_Struct_t *handle = (RESOURCE_MQTT_Struct_t *)pContext;
 
     Log_d("topic=%.*s", message->topic_len, message->ptopic);
-    Log_i("len=%u, topic_msg=%.*s", message->payload_len, message->payload_len, (char *)message->payload);
+    Log_d("len=%u, topic_msg=%.*s", message->payload_len, message->payload_len, (char *)message->payload);
 
     if (handle->msg_callback) {
         handle->msg_callback(handle->context, message->payload, message->payload_len);
@@ -212,7 +212,7 @@ int qcloud_resource_mqtt_report(void *handle, const char *msg, eResourceReportTy
     switch (type) {
         case eRESOURCE_VERSION:
         case eRESOURCE_UPGRADE_RESULT:
-		case eRESOURCE_POST_REQ:	
+        case eRESOURCE_POST_REQ:
             return _resource_mqtt_publish(handle, QOS1, msg);
         default:
             return _resource_mqtt_publish(handle, QOS0, msg);

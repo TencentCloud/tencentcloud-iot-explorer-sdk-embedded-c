@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 3.5)
 
 ######################CONFIG BEGIN####################################
 # 编译类型: release/debug
-set(BUILD_TYPE "debug")
+set(BUILD_TYPE "release")
 
 # 代码抽取，ON表示根据配置抽取源码到ouput/qcloud_iot_c_sdk目录
 set(EXTRACT_SRC ON)
@@ -145,6 +145,7 @@ option(AT_TCP_ENABLED "Enable AT_TCP" ${FEATURE_AT_TCP_ENABLED})
 option(DEBUG_DEV_INFO_USED "Enable DEBUG_DEV_INFO_USED" ${FEATURE_DEBUG_DEV_INFO_USED})
 option(SYSTEM_COMM "Enable SYSTEM_COMM" ${FEATURE_SYSTEM_COMM_ENABLED})
 option(LOG_UPLOAD "Enable LOG_UPLOAD" ${FEATURE_LOG_UPLOAD_ENABLED})
+option(RESOURCE_UPDATE_ENABLED "Enable Resource update" ${FEATURE_RESOURCE_UPDATE_ENABLED})
 option(ASR_ENABLED "Enable ASR" ${FEATURE_ASR_ENABLED})
 
 
