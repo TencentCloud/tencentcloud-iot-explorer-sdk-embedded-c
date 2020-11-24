@@ -97,8 +97,9 @@ typedef struct {
 
 typedef struct {
     int   request_id;
-    char *file_name;
-    char *version;
+    char *res_name;
+    char *res_version;
+	char *res_type;
     Timer post_timer;
 } ResPostInfo;
 
@@ -158,8 +159,8 @@ static int _gen_resource_ver_info(char *buf, size_t bufLen, uint16_t res_num, re
     return QCLOUD_RET_SUCCESS;
 }
 
-static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_name, const char *version, int progress,
-                                    IOT_RES_ReportType reportType)
+static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_name, const char *version, const char *type, 
+											int progress, IOT_RES_ReportType reportType)
 {
     IOT_FUNC_ENTRY;
 
@@ -247,8 +248,8 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
         case IOT_RES_TYPE_REQUEST_URL:
             ret = HAL_Snprintf(buf, bufLen,
                                "{\"method\":\"request_url\",\"request_id\":\"%d\","
-                               "\"report\":{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"AUDIO\"}}",
-                               progress, file_name, version);
+                               "\"report\":{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"}}",
+                               progress, file_name, version, type);
 
             break;
 
@@ -325,8 +326,8 @@ static int _resource_report_progress(void *handle, int progress, IOT_RES_ReportT
         return QCLOUD_ERR_FAILURE;
     }
 
-    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, pHandle->file_name, pHandle->version, progress,
-                                   reportType);
+    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, pHandle->file_name, pHandle->version, NULL,
+    								progress, reportType);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("generate resource inform message failed");
         pHandle->err = ret;
@@ -384,7 +385,7 @@ static int _resource_report_upgrade_result(void *handle, const char *version, IO
         return QCLOUD_ERR_FAILURE;
     }
 
-    ret = _gen_resource_report_msg(msg_upgrade, MSG_REPORT_LEN, pHandle->file_name, version, 1, reportType);
+    ret = _gen_resource_report_msg(msg_upgrade, MSG_REPORT_LEN, pHandle->file_name, version, NULL, 1, reportType);
     if (ret != 0) {
         Log_e("generate resource inform message failed");
         pHandle->err = ret;
@@ -427,7 +428,7 @@ static int _resource_report_post_result(void *handle, const char *res_token, IOT
         return QCLOUD_ERR_FAILURE;
     }
 
-    ret = _gen_resource_report_msg(msg_post, MSG_REPORT_LEN, res_token, NULL, 0, reportType);
+    ret = _gen_resource_report_msg(msg_post, MSG_REPORT_LEN, res_token, NULL, NULL, 0, reportType);
     if (ret != 0) {
         Log_e("generate resource inform message failed");
         pHandle->err = ret;
@@ -531,10 +532,10 @@ static int _post_resource_to_cos(const char *resource_url, ResPostInfo *info)
     char *data_buf      = NULL;
     void *pUploadHandle = NULL;
 
-    Log_d("post %s(%d) %s to cos", info->file_name, info->request_id, info->version);
-    void *fp = HAL_FileOpen(info->file_name, "rb");
+    Log_d("post %s(%d) %s to cos", info->res_name, info->request_id, info->res_version);
+    void *fp = HAL_FileOpen(info->res_name, "rb");
     if (NULL == fp) {
-        Log_e("can not open file %s!", info->file_name);
+        Log_e("can not open file %s!", info->res_name);
         return QCLOUD_ERR_FAILURE;
     }
 
@@ -731,8 +732,8 @@ static void _resource_msg_callback(void *handle, const char *msg, uint32_t msg_l
             qcloud_resource_mqtt_resource_post_result(pHandle->ch_signal, res_msg, strlen(res_msg));
             HAL_Free(res_token);
             HAL_Free(res_url);
-            HAL_Free(info->file_name);
-            HAL_Free(info->version);
+            HAL_Free(info->res_name);
+            HAL_Free(info->res_version);
             HAL_MutexLock(pHandle->mutex);
             list_remove(pHandle->res_wait_post_list, list_find(pHandle->res_wait_post_list, info));
             HAL_MutexUnlock(pHandle->mutex);
@@ -1225,7 +1226,7 @@ void *IOT_Resource_Get_Context(void *handle)
 }
 
 int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res_name, char *res_version,
-                              void *usr_context)
+                              char *res_type, void *usr_context)
 {
     POINTER_SANITY_CHECK(handle, IOT_OTA_ERR_INVALID_PARAM);
     ResourceHandle *pHandle      = (ResourceHandle *)handle;
@@ -1236,8 +1237,9 @@ int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res
 
     ResPostInfo *info = (ResPostInfo *)HAL_Malloc(sizeof(ResPostInfo));
     info->request_id  = pHandle->request_id;
-    info->file_name   = strdup(res_name);
-    info->version     = strdup(res_version);
+    info->res_name    = strdup(res_name);
+    info->res_version = strdup(res_version);
+    info->res_type = strdup(res_type);	
     InitTimer(&(info->post_timer));
     countdown(&(info->post_timer), timeout_ms);
     pHandle->context = usr_context;
@@ -1253,14 +1255,14 @@ int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res
         goto exit;
     }
 
-    char *file_name_pos = strrchr(res_name, '/');
-    if (!file_name_pos) {
-        file_name_pos = (char *)res_name;
+    char *file_name_post = strrchr(res_name, '/');
+    if (!file_name_post) {
+        file_name_post = (char *)res_name;
     } else {
-        file_name_pos += 1;
+        file_name_post += 1;
     }
-    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, file_name_pos, res_version, pHandle->request_id,
-                                   IOT_RES_TYPE_REQUEST_URL);
+    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, file_name_post, res_version, res_type, 
+    								pHandle->request_id, IOT_RES_TYPE_REQUEST_URL);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("generate resource inform message failed");
         goto exit;

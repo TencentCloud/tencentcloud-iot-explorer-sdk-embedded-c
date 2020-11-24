@@ -444,9 +444,7 @@ static int _cal_dynreg_sign(DeviceInfo *pDevInfo, char *signout, int max_signlen
 
 int IOT_DynReg_Device(DeviceInfo *pDevInfo)
 {
-    const char *para_format =
-        "{\"deviceName\":\"%s\",\"nonce\":%d,\"productId\":"
-        "\"%s\",\"timestamp\":%d,\"signature\":\"%s\"}";
+    const char *para_format ="{\"deviceName\":\"%s\",\"nonce\":%d,\"productId\":\"%s\",\"timestamp\":%d,\"signature\":\"%s\"}";
     int      nonce;
     int      Ret;
     uint32_t timestamp;
@@ -482,8 +480,6 @@ int IOT_DynReg_Device(DeviceInfo *pDevInfo)
     memset(pRequest, 0, len);
     HAL_Snprintf(pRequest, len, para_format, pDevInfo->device_name, nonce, pDevInfo->product_id, timestamp, sign);
     Log_d("request:%s", pRequest);
-
-    Log_d("resbuff len:%d", DYN_RESPONSE_BUFF_LEN);
     /*post request*/
     Ret = _post_reg_request_by_http(pRequest, pDevInfo);
     if (QCLOUD_RET_SUCCESS == Ret) {

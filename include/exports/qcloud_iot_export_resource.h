@@ -31,10 +31,15 @@ extern "C" {
 #define RESOURCE_VERSION_STR_LEN_MIN (1)
 #define RESOURCE_VERSION_STR_LEN_MAX (32)
 #define RESOURCE_NAME_STR_LEN_MAX    (64)
-#define RESOURCE_TYPE_STR_LEN_MAX    (4)  // may be one of FILE or FW
+#define RESOURCE_TYPE_STR_LEN_MAX    (10)  
 #define RESOURCE_INFO_FIXED_LEN      (53)
 #define RESOURCE_INFO_LEN_MAX \
     (RESOURCE_VERSION_STR_LEN_MAX + RESOURCE_NAME_STR_LEN_MAX + RESOURCE_INFO_FIXED_LEN + RESOURCE_TYPE_STR_LEN_MAX)
+
+#define RESOURCE_TYPE_FILE			"FILE"
+#define RESOURCE_TYPE_AUDIO			"AUDIO"
+#define RESOURCE_TYPE_VOICE			"VOICE"
+#define RESOURCE_TYPE_VIDEO			"VIDEO"
 
 /* error code of resource update */
 typedef enum {
@@ -330,14 +335,16 @@ int IOT_Resource_Report_Msg(void *handle, char *msg);
  *
  * @param res_name:  resource name to be posted
  *
- * @param res_name:  resource version to be posted
+ * @param res_version:  resource version to be posted
  *
+ * @param res_type:  resource type to be posted
+ * 
  * @param usr_context:  usr context
  *
  * @return request id (>0) when success, or err code (<0) for failure
  */
 int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res_name, char *res_version,
-                              void *usr_context);
+                              			 char *res_type, void *usr_context);
 
 #ifdef __cplusplus
 }

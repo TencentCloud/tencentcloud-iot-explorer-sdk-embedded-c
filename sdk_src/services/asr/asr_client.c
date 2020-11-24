@@ -579,8 +579,9 @@ int IOT_Asr_RecordFile_Request(void *handle, const char *file_name, RecordAsrCon
     char time_str[TIME_FORMAT_STR_LEN] = {0};
     HAL_Snprintf(time_str, TIME_FORMAT_STR_LEN, "%d", HAL_Timer_current_sec());
     conf->request_timeout_ms = (conf->request_timeout_ms > 0) ? conf->request_timeout_ms : DEFAULT_REQ_TIMEOUT_MS;
+	char *type = (req->req_type == eASR_FILE)?RESOURCE_TYPE_AUDIO:RESOURCE_TYPE_VOICE;
     req->request_id =
-        IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms, file_name, time_str, handle);
+        IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms, file_name, time_str, type, handle);
     if (req->request_id < 0) {
         Log_e("%s resource post request fail", file_name);
         HAL_Free(req);
@@ -648,20 +649,24 @@ int IOT_Asr_Realtime_Request(void *handle, char *audio_buff, uint32_t audio_data
     HAL_Snprintf(req->realtime_conf.file_name, VOICE_ID_LEN + VERSION_LEN, "./%s-%s.dat", voice_id, version);
     // save audio data to file
     void *fp = HAL_FileOpen(req->realtime_conf.file_name, "wb");
-    if (fp) {
-        if (audio_data_len != HAL_FileWrite(audio_buff, 1, audio_data_len, fp)) {
-            Log_e("write data buff to %s fail", req->realtime_conf.file_name);
-            HAL_Free(req);
-            HAL_FileClose(fp);
-            rc = QCLOUD_ERR_FAILURE;
-            goto exit;
-        }
+	if(!fp){
+		Log_e("create file %s fail", req->realtime_conf.file_name);
+		goto exit;
+	}
+
+    if (audio_data_len != HAL_FileWrite(audio_buff, 1, audio_data_len, fp)) {
+        Log_e("write data buff to %s fail", req->realtime_conf.file_name);
+        HAL_Free(req);
+        HAL_FileClose(fp);
+        rc = QCLOUD_ERR_FAILURE;
+        goto exit;
     }
+   
     HAL_FileClose(fp);
 
     conf->request_timeout_ms = (conf->request_timeout_ms > 0) ? conf->request_timeout_ms : DEFAULT_REQ_TIMEOUT_MS;
     req->request_id          = IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms,
-                                                req->realtime_conf.file_name, version, handle);
+                                                req->realtime_conf.file_name, version, RESOURCE_TYPE_VOICE, handle);
     if (req->request_id < 0) {
         Log_e("%s resource post request fail", req->realtime_conf.file_name);
         HAL_FileRemove(req->realtime_conf.file_name);
@@ -706,38 +711,34 @@ int IOT_Asr_Result_Notify(void *handle, char *asr_response)
         goto exit;
     }
     AsrReq *req = _get_req_node_by_asr_token(asr_handle, asr_token);
-    if (req) {
-        rc = atoi(str_result);
-        if (QCLOUD_RET_SUCCESS == rc) {
-            str_num = LITE_json_value_of(KEY_ASR_TEXT_SEGS, asr_response);
-            str_seq = LITE_json_value_of(KEY_ASR_TEXT_SEQ, asr_response);
-            if (!str_num || !str_seq) {
-                Log_e("required text key not found in asr_response");
-                rc = QCLOUD_ERR_JSON_PARSE;
-                goto exit;
-            }
+	if(!req){
+        Log_e("asr_token: %s not found", asr_token);
+        rc = QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
 
-            int num = atoi(str_num);
-            int seq = atoi(str_seq);
-            if (req->result_cb) {
-                asr_txt = LITE_json_value_of(KEY_ASR_TEXT, asr_response);
-                if (!asr_txt) {
-                    req->result_cb(req->request_id, "NULL", num, seq);
-                } else {
-                    req->result_cb(req->request_id, asr_txt, num, seq);
-                }
-            }
+    rc = atoi(str_result);
+    if (QCLOUD_RET_SUCCESS == rc) {
+        str_num = LITE_json_value_of(KEY_ASR_TEXT_SEGS, asr_response);
+        str_seq = LITE_json_value_of(KEY_ASR_TEXT_SEQ, asr_response);
+        if (!str_num || !str_seq) {
+            Log_e("required text key not found in asr_response");
+            rc = QCLOUD_ERR_JSON_PARSE;
+            goto exit;
+        }
 
-            if ((num == seq) || (num < 2)) {
-                if (req->asr_token) {
-                    HAL_Free(req->asr_token);
-                }
-                HAL_MutexLock(asr_handle->mutex);
-                list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
-                HAL_MutexUnlock(asr_handle->mutex);
+        int num = atoi(str_num);
+        int seq = atoi(str_seq);
+        if (req->result_cb) {
+            asr_txt = LITE_json_value_of(KEY_ASR_TEXT, asr_response);
+            if (!asr_txt) {
+                req->result_cb(req->request_id, "NULL", num, seq);
+            } else {
+                req->result_cb(req->request_id, asr_txt, num, seq);
             }
-        } else {
-            Log_e("%s request asr result fail:%d", asr_token, rc);
+        }
+
+        if ((num == seq) || (num < 2)) {
             if (req->asr_token) {
                 HAL_Free(req->asr_token);
             }
@@ -745,10 +746,14 @@ int IOT_Asr_Result_Notify(void *handle, char *asr_response)
             list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
             HAL_MutexUnlock(asr_handle->mutex);
         }
-
     } else {
-        Log_e("asr_token: %s not found", asr_token);
-        rc = QCLOUD_ERR_FAILURE;
+        Log_e("%s request asr result fail:%d", asr_token, rc);
+        if (req->asr_token) {
+            HAL_Free(req->asr_token);
+        }
+        HAL_MutexLock(asr_handle->mutex);
+        list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
+        HAL_MutexUnlock(asr_handle->mutex);
     }
 
 exit:
