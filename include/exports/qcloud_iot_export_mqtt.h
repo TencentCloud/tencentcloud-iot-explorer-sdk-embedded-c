@@ -237,24 +237,35 @@ int IOT_MQTT_Destroy(void **pClient);
 int IOT_MQTT_Yield(void *pClient, uint32_t timeout_ms);
 
 /**
- * @brief IOT_MQTT_Yield for multi-thread mode
- *
- * @param pClient    handle to MQTT client
- * @param timeout_ms timeout value (unit: ms) for this operation
- *
- * @return QCLOUD_RET_SUCCESS when success, QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT
- * when try reconnecing, or err code for failure
- */
-int IOT_MQTT_Yield_MT(void *pClient, uint32_t timeout_ms);
-
-/**
  * @brief set mqtt yield is by thread or not
  *
  * @param pClient    handle to MQTT client
  * @param state      yield thread running state
  */
 #ifdef MULTITHREAD_ENABLED
-void IOT_MQTT_Set_Yield_Thread_State(void *pClient, bool state);
+/**
+ * @brief Start the default loop thread to read and handle MQTT packet
+ *
+ * @param pClient       handle to MQTT client
+ * @return QCLOUD_RET_SUCCESS when success, err code for failure
+ */
+int IOT_MQTT_StartLoop(void *pClient);
+
+/**
+ * @brief Stop the default loop thread to read and handle MQTT packet
+ *
+ * @param pClient       handle to MQTT client
+ */
+void IOT_MQTT_StopLoop(void *pClient);
+
+/**
+ * @brief Get the status of loop thread
+ *
+ * @param pClient       handle to MQTT client
+ * @param exit_code     exit code of the thread
+ * @return true= thread running, false = thread quit
+ */
+bool IOT_MQTT_GetLoopStatus(void *pClient, int *exit_code);
 #endif
 
 /**

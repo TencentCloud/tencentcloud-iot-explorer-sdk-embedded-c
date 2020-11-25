@@ -25,6 +25,7 @@
 #include "lite-utils.h"
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
+#include "utils_getopt.h"
 
 #define FW_RUNNING_VERSION "1.0.0"
 
@@ -483,6 +484,25 @@ bool process_ota(OTAContextData *ota_ctx)
     return upgrade_fetch_success;
 }
 
+static int parse_arguments(int argc, char **argv)
+{
+    int c;
+    while ((c = utils_getopt(argc, argv, "c:l:")) != EOF) switch (c) {
+            case 'c':
+                if (HAL_SetDevInfoFile(utils_optarg))
+                    return -1;
+                break;
+
+            default:
+                HAL_Printf(
+                    "usage: %s [options]\n"
+                    "  [-c <config file for DeviceInfo>] \n",
+                    argv[0]);
+                return -1;
+        }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     int             rc;
@@ -491,6 +511,13 @@ int main(int argc, char **argv)
     void *          h_ota       = NULL;
 
     IOT_Log_Set_Level(eLOG_DEBUG);
+	// parse arguments for device info file
+    rc = parse_arguments(argc, argv);
+    if (rc != QCLOUD_RET_SUCCESS) {
+        Log_e("parse arguments error, rc = %d", rc);
+        return rc;
+    }
+	
     ota_ctx = (OTAContextData *)HAL_Malloc(sizeof(OTAContextData));
     if (ota_ctx == NULL) {
         Log_e("malloc failed");

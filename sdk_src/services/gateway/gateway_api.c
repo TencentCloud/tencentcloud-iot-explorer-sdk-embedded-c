@@ -25,59 +25,22 @@
 #include "mqtt_client.h"
 #include "utils_param_check.h"
 
+
 #ifdef MULTITHREAD_ENABLED
-/**
- * gateway yield thread runner
- */
-static void gateway_yield_thread(void *pClient)
-{
-#define THREAD_SLEEP_INTERVAL_MS 1
-    int      rc       = QCLOUD_RET_SUCCESS;
-    Gateway *pGateway = (Gateway *)pClient;
-
-    Log_d("gateway yield thread start ...");
-    while (pGateway->yield_thread_running) {
-        rc = IOT_Gateway_Yield(pGateway, 200);
-        if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
-            HAL_SleepMs(THREAD_SLEEP_INTERVAL_MS);
-            continue;
-        } else if (rc == QCLOUD_RET_MQTT_MANUALLY_DISCONNECTED || rc == QCLOUD_ERR_MQTT_RECONNECT_TIMEOUT) {
-            Log_e("Gateway yield thread exit with error: %d", rc);
-            break;
-        } else if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
-            Log_e("Something goes error: %d", rc);
-        }
-        HAL_SleepMs(THREAD_SLEEP_INTERVAL_MS);
-    }
-
-    pGateway->yield_thread_running   = false;
-    pGateway->yield_thread_exit_code = rc;
-
-#undef THREAD_SLEEP_INTERVAL_MS
-}
-
 int IOT_Gateway_Start_Yield_Thread(void *pClient)
 {
     POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
     Gateway *pGateway = (Gateway *)pClient;
 
-    ThreadParams thread_params     = {0};
-    thread_params.thread_func      = gateway_yield_thread;
-    thread_params.thread_name      = "gateway_yield_thread";
-    thread_params.user_arg         = pClient;
-    thread_params.stack_size       = 4096;
-    thread_params.priority         = 1;
-    pGateway->yield_thread_running = true;
-    IOT_MQTT_Set_Yield_Thread_State(pGateway->mqtt, true);
-
-    int rc = HAL_ThreadCreate(&thread_params);
-    if (rc) {
-        Log_e("create template_yield_thread fail: %d", rc);
-        return QCLOUD_ERR_FAILURE;
+    int rc = IOT_MQTT_StartLoop(pGateway->mqtt);
+    if(QCLOUD_RET_SUCCESS == rc) {
+        pGateway->yield_thread_running = true;
+    } else {
+        pGateway->yield_thread_running = false;
     }
-
     HAL_SleepMs(500);
-    return QCLOUD_RET_SUCCESS;
+
+    return rc;
 }
 
 void IOT_Gateway_Stop_Yield_Thread(void *pClient)
@@ -85,17 +48,19 @@ void IOT_Gateway_Stop_Yield_Thread(void *pClient)
     POINTER_SANITY_CHECK_RTN(pClient);
     Gateway *pGateway = (Gateway *)pClient;
 
+    IOT_MQTT_StopLoop(pGateway->mqtt);
     pGateway->yield_thread_running = false;
-    IOT_MQTT_Set_Yield_Thread_State(pGateway->mqtt, false);
     HAL_SleepMs(1000);
+	
     return;
 }
 
 bool IOT_Gateway_Get_Yield_Status(void *pClient, int *exit_code)
 {
     POINTER_SANITY_CHECK(pClient, false);
+
     Gateway *pGateway = (Gateway *)pClient;
-    *exit_code        = pGateway->yield_thread_exit_code;
+    pGateway->yield_thread_running = IOT_MQTT_GetLoopStatus(pGateway->mqtt, exit_code);
 
     return pGateway->yield_thread_running;
 }

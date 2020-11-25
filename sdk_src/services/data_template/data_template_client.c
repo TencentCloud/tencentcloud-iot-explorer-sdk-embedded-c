@@ -260,11 +260,11 @@ static int _template_ConstructControlReply(char *jsonBuffer, size_t sizeOfBuffer
 
 static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEventMsg *msg)
 {
-	POINTER_SANITY_CHECK_RTN(context);
+    POINTER_SANITY_CHECK_RTN(context);
     uintptr_t            packet_id  = (uintptr_t)msg->msg;
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)context;
     MQTTMessage *        topic_info = (MQTTMessage *)msg->msg;
-	
+
     if (pTemplate) {
         if (pclient != pTemplate->mqtt) {
             //Log_d("not template topic event");
@@ -304,7 +304,7 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
 }
 
 int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size_t sizeOfBuffer, uint8_t count,
-                                           DeviceProperty *pDeviceProperties[])
+        DeviceProperty *pDeviceProperties[])
 {
     POINTER_SANITY_CHECK(jsonBuffer, QCLOUD_ERR_INVAL);
     POINTER_SANITY_CHECK(pDeviceProperties, QCLOUD_ERR_INVAL);
@@ -723,74 +723,29 @@ int IOT_Template_ControlReply(void *pClient, char *pJsonDoc, size_t sizeOfBuffer
 }
 
 #ifdef MULTITHREAD_ENABLED
-static void template_yield_thread(void *ptr)
-{
-#define THREAD_SLEEP_INTERVAL_MS 1
-    int                  rc        = QCLOUD_RET_SUCCESS;
-    Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)ptr;
-
-    Log_d("template yield thread start ...");
-    while (pTemplate->yield_thread_running) {
-        rc = IOT_MQTT_Yield(pTemplate->mqtt, 200);
-        if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
-            HAL_SleepMs(THREAD_SLEEP_INTERVAL_MS);
-            continue;
-        } else if (rc == QCLOUD_RET_MQTT_MANUALLY_DISCONNECTED || rc == QCLOUD_ERR_MQTT_RECONNECT_TIMEOUT) {
-            Log_e("Template yield thread exit with error: %d", rc);
-            break;
-        } else if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
-            Log_e("Something goes error: %d", rc);
-        }
-        HAL_SleepMs(THREAD_SLEEP_INTERVAL_MS);
-    }
-
-    pTemplate->yield_thread_running   = false;
-    pTemplate->yield_thread_exit_code = rc;
-#undef THREAD_SLEEP_INTERVAL_MS
-}
 
 int IOT_Template_Start_Yield_Thread(void *pClient)
 {
     POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
     Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)pClient;
-
-    ThreadParams thread_params      = {0};
-    thread_params.thread_func       = template_yield_thread;
-    thread_params.thread_name       = "template_yield_thread";
-    thread_params.user_arg          = pClient;
-    thread_params.stack_size        = 4096;
-    thread_params.priority          = 1;
-    pTemplate->yield_thread_running = true;
-    IOT_MQTT_Set_Yield_Thread_State(pTemplate->mqtt, true);
-
-    int rc = HAL_ThreadCreate(&thread_params);
-    if (rc) {
-        Log_e("create template_yield_thread fail: %d", rc);
-        return QCLOUD_ERR_FAILURE;
+    int rc = IOT_MQTT_StartLoop(pTemplate->mqtt);
+    if(QCLOUD_RET_SUCCESS == rc) {
+        pTemplate->yield_thread_running = true;
+    } else {
+        pTemplate->yield_thread_running = false;
     }
 
-    HAL_SleepMs(500);
-    return QCLOUD_RET_SUCCESS;
+    return rc;
 }
 
 void IOT_Template_Stop_Yield_Thread(void *pClient)
 {
     POINTER_SANITY_CHECK_RTN(pClient);
-
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)pClient;
+
+    IOT_MQTT_StopLoop(pTemplate->mqtt);
     pTemplate->yield_thread_running = false;
-    IOT_MQTT_Set_Yield_Thread_State(pTemplate->mqtt, false);
     HAL_SleepMs(1000);
-    return;
-}
-
-void IOT_Template_Set_Yield_Status(void *pClient, bool running_state, int code)
-{
-    POINTER_SANITY_CHECK_RTN(pClient);
-
-    Qcloud_IoT_Template *pTemplate    = (Qcloud_IoT_Template *)pClient;
-    pTemplate->yield_thread_running   = running_state;
-    pTemplate->yield_thread_exit_code = code;
 
     return;
 }
@@ -798,8 +753,9 @@ void IOT_Template_Set_Yield_Status(void *pClient, bool running_state, int code)
 bool IOT_Template_Get_Yield_Status(void *pClient, int *exit_code)
 {
     POINTER_SANITY_CHECK(pClient, false);
+
     Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)pClient;
-    *exit_code                     = pTemplate->yield_thread_exit_code;
+    pTemplate->yield_thread_running = IOT_MQTT_GetLoopStatus(pTemplate->mqtt, exit_code);
 
     return pTemplate->yield_thread_running;
 }
@@ -832,6 +788,7 @@ int IOT_Template_Destroy_Except_MQTT(void *pClient)
 }
 #endif
 
+
 int IOT_Template_Yield(void *pClient, uint32_t timeout_ms)
 {
     IOT_FUNC_ENTRY;
@@ -848,16 +805,7 @@ int IOT_Template_Yield(void *pClient, uint32_t timeout_ms)
     handle_template_expired_event(pTemplate);
 #endif
 
-#ifdef MULTITHREAD_ENABLED
-    /* only one instance of yield is allowed in running state*/
-    if (pTemplate->yield_thread_running) {
-        HAL_SleepMs(timeout_ms);
-        rc = QCLOUD_RET_SUCCESS;
-    } else
-#endif
-    {
-        rc = IOT_MQTT_Yield(pTemplate->mqtt, timeout_ms);
-    }
+    rc = IOT_MQTT_Yield(pTemplate->mqtt, timeout_ms);
 
     IOT_FUNC_EXIT_RC(rc);
 }

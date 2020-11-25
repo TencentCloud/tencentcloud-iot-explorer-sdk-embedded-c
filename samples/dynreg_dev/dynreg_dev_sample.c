@@ -37,10 +37,10 @@
 #define QCLOUD_IOT_NULL_DEVICE_SECRET "YOUR_IOT_PSK"
 #endif
 
-int main(int argc, char **argv)
+static int parse_arguments(int argc, char **argv)
 {
     int c;
-    while ((c = utils_getopt(argc, argv, "c:")) != EOF) switch (c) {
+    while ((c = utils_getopt(argc, argv, "c:l:")) != EOF) switch (c) {
             case 'c':
                 if (HAL_SetDevInfoFile(utils_optarg))
                     return -1;
@@ -51,19 +51,26 @@ int main(int argc, char **argv)
                     "usage: %s [options]\n"
                     "  [-c <config file for DeviceInfo>] \n",
                     argv[0]);
-
                 return -1;
         }
+    return 0;
+}
 
-    // init log level
-    IOT_Log_Set_Level(eLOG_DEBUG);
-
+int main(int argc, char **argv)
+{
     int        ret;
     DeviceInfo sDevInfo;
     bool       infoNullFlag = false;
 
+    // init log level
+    IOT_Log_Set_Level(eLOG_DEBUG);
+    // parse arguments for device info file
+    ret = parse_arguments(argc, argv);
+    if (ret != QCLOUD_RET_SUCCESS) {
+        Log_e("parse arguments error, rc = %d", ret);
+        return ret;
+    }
     memset((char *)&sDevInfo, 0, sizeof(DeviceInfo));
-
     ret = HAL_GetDevInfo(&sDevInfo);
 
 #ifndef GATEWAY_ENABLED

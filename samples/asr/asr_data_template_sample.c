@@ -22,7 +22,7 @@
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
 #include "utils_timer.h"
-
+#include "utils_getopt.h"
 
 #define ASR_RESPONSE_PROPERTY_KEY       "asr_response"
 #define DEMO_ASR_FILE                   0
@@ -340,6 +340,25 @@ static void asr_result_cb(uint32_t request_id, char *res_text, int total_resutl_
     Log_i("request_id:%d: %d/%d text:%s", request_id, resutl_seq, total_resutl_num, res_text);
 }
 
+static int parse_arguments(int argc, char **argv)
+{
+    int c;
+    while ((c = utils_getopt(argc, argv, "c:l:")) != EOF) switch (c) {
+            case 'c':
+                if (HAL_SetDevInfoFile(utils_optarg))
+                    return -1;
+                break;
+
+            default:
+                HAL_Printf(
+                    "usage: %s [options]\n"
+                    "  [-c <config file for DeviceInfo>] \n",
+                    argv[0]);
+                return -1;
+        }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     DeviceProperty *pReportDataList[TOTAL_PROPERTY_COUNT];
@@ -349,7 +368,13 @@ int main(int argc, char **argv)
     void            *data_template_client = NULL;
 
     // init log level
-    IOT_Log_Set_Level(eLOG_INFO);
+    IOT_Log_Set_Level(eLOG_DEBUG);
+    // parse arguments for device info file
+    rc = parse_arguments(argc, argv);
+    if (rc != QCLOUD_RET_SUCCESS) {
+        Log_e("parse arguments error, rc = %d", rc);
+        return rc;
+    }
 
     DeviceInfo devInfo;
     rc = HAL_GetDevInfo(&devInfo);
@@ -417,7 +442,7 @@ int main(int argc, char **argv)
         Log_d("Get data status success");
     }
 
-    sg_asr_client = IOT_Asr_Init(devInfo.product_id, devInfo.device_name,
+    sg_asr_client = IOT_Asr_Init(devInfo.product_id, devInfo.device_name,\
                                  IOT_Template_Get_MQTT_Client(data_template_client), _resource_event_usr_cb);
     if (sg_asr_client == NULL) {
         Log_e("Asr client Construct Failed");
@@ -509,6 +534,7 @@ int main(int argc, char **argv)
             } else {
                 Log_e("record file %s's asr request fail, err: %d", "test.wav", rc);
             }
+			HAL_SleepMs(1000);
         }
 
         if(DEMO_ASR == DEMO_ASR_REALTIEM) {

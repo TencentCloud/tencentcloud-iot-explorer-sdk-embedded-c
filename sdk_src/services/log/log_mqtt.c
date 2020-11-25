@@ -199,7 +199,7 @@ int qcloud_get_log_level(int *log_level)
             }
 
             /* wait for sub ack */
-            ret = qcloud_iot_mqtt_yield_mt(mqtt_client, 100);
+            ret = IOT_MQTT_Yield(mqtt_client, 100);
             if (pLogState->topic_sub_ok) {
                 break;
             }
@@ -221,7 +221,7 @@ int qcloud_get_log_level(int *log_level)
     }
 
     do {
-        ret = qcloud_iot_mqtt_yield_mt(mqtt_client, 100);
+        ret = IOT_MQTT_Yield(mqtt_client, 100);
         cntRev++;
     } while (!ret && !pLogState->result_recv_ok && cntRev < SYNC_TIMES);
 

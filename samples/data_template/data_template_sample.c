@@ -14,6 +14,7 @@
  */
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
+#include "utils_getopt.h"
 #include "lite-utils.h"
 #include "data_config.c"
 
@@ -347,6 +348,25 @@ static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
     return IOT_Template_JSON_ConstructSysInfo(handle, pJsonDoc, sizeOfBuffer, plat_info, self_info);
 }
 
+static int parse_arguments(int argc, char **argv)
+{
+    int c;
+    while ((c = utils_getopt(argc, argv, "c:l:")) != EOF) switch (c) {
+            case 'c':
+                if (HAL_SetDevInfoFile(utils_optarg))
+                    return -1;
+                break;
+
+            default:
+                HAL_Printf(
+                    "usage: %s [options]\n"
+                    "  [-c <config file for DeviceInfo>] \n",
+                    argv[0]);
+                return -1;
+        }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     int             rc;
@@ -356,6 +376,12 @@ int main(int argc, char **argv)
 
     // init log level
     IOT_Log_Set_Level(eLOG_DEBUG);
+    // parse arguments for device info file
+    rc = parse_arguments(argc, argv);
+    if (rc != QCLOUD_RET_SUCCESS) {
+        Log_e("parse arguments error, rc = %d", rc);
+        return rc;
+    }
 
     // init connection
     TemplateInitParams init_params = DEFAULT_TEMPLATE_INIT_PARAMS;
@@ -428,7 +454,7 @@ int main(int argc, char **argv)
 
     while (IOT_Template_IsConnected(client) || rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT ||
            rc == QCLOUD_RET_MQTT_RECONNECTED || QCLOUD_RET_SUCCESS == rc) {
-#ifndef MULTITHREAD_ENABLED
+           
         rc = IOT_Template_Yield(client, 200);
         if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
             HAL_SleepMs(1000);
@@ -436,7 +462,7 @@ int main(int argc, char **argv)
         } else if (rc != QCLOUD_RET_SUCCESS) {
             Log_e("Exit loop caused of errCode: %d", rc);
         }
-#endif
+
         /* handle control msg from server */
         if (sg_control_msg_arrived) {
             deal_down_stream_user_logic(client, &sg_ProductData);

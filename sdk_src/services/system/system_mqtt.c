@@ -181,7 +181,7 @@ int IOT_Get_Sys_Resource(void *pClient, eSysResourcType eType, DeviceInfo *pDevI
             }
 
             /* wait for sub ack */
-            ret = qcloud_iot_mqtt_yield_mt(mqtt_client, 300);
+            ret = IOT_MQTT_Yield(mqtt_client, 300);
             if (pSysState->topic_sub_ok) {
                 break;
             }
@@ -203,7 +203,7 @@ int IOT_Get_Sys_Resource(void *pClient, eSysResourcType eType, DeviceInfo *pDevI
     }
 
     do {
-        ret = qcloud_iot_mqtt_yield_mt(mqtt_client, 100);
+		ret = IOT_MQTT_Yield(mqtt_client, 100);
         cntRev++;
     } while (!pSysState->result_recv_ok && cntRev < SYNC_TIMES);
 

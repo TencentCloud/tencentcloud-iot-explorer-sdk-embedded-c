@@ -195,6 +195,14 @@ int IOT_MQTT_Yield(void *pClient, uint32_t timeout_ms)
 {
     Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
 
+#ifdef MULTITHREAD_ENABLED
+    /* only one instance of yield is allowed in running state*/
+    if (mqtt_client->yield_thread_running) {
+        HAL_SleepMs(timeout_ms);
+        return QCLOUD_RET_SUCCESS;
+    }
+#endif
+
     int rc = qcloud_iot_mqtt_yield(mqtt_client, timeout_ms);
 
 #ifdef LOG_UPLOAD
@@ -207,31 +215,6 @@ int IOT_MQTT_Yield(void *pClient, uint32_t timeout_ms)
 
     return rc;
 }
-
-int IOT_MQTT_Yield_MT(void *pClient, uint32_t timeout_ms)
-{
-    Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
-
-    int rc = qcloud_iot_mqtt_yield_mt(mqtt_client, timeout_ms);
-
-#ifdef LOG_UPLOAD
-    /* do instant log uploading if MQTT communication error */
-    if (rc == QCLOUD_RET_SUCCESS)
-        IOT_Log_Upload(false);
-    else
-        IOT_Log_Upload(true);
-#endif
-
-    return rc;
-}
-
-#ifdef MULTITHREAD_ENABLED
-void IOT_MQTT_Set_Yield_Thread_State(void *pClient, bool state)
-{
-    Qcloud_IoT_Client *mqtt_client    = (Qcloud_IoT_Client *)pClient;
-    mqtt_client->yield_thread_running = state;
-}
-#endif
 
 int IOT_MQTT_Publish(void *pClient, char *topicName, PublishParams *pParams)
 {
@@ -271,6 +254,89 @@ bool IOT_MQTT_IsConnected(void *pClient)
 
     IOT_FUNC_EXIT_RC(get_client_conn_state(mqtt_client) == 1)
 }
+
+#ifdef MULTITHREAD_ENABLED
+static void _mqtt_yield_thread(void *ptr)
+{
+    int                rc          = QCLOUD_RET_SUCCESS;
+    Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)ptr;
+
+	Log_d("start mqtt_yield_thread...");
+    while (mqtt_client->yield_thread_running) {
+        int rc = qcloud_iot_mqtt_yield(mqtt_client, 200);
+
+#ifdef LOG_UPLOAD
+        /* do instant log uploading if MQTT communication error */
+        if (rc == QCLOUD_RET_SUCCESS)
+            IOT_Log_Upload(false);
+        else
+            IOT_Log_Upload(true);
+#endif
+
+        if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
+            HAL_SleepMs(500);
+            continue;
+        } else if (rc == QCLOUD_RET_MQTT_MANUALLY_DISCONNECTED || rc == QCLOUD_ERR_MQTT_RECONNECT_TIMEOUT) {
+            Log_e("MQTT Yield thread exit with error: %d", rc);
+            break;
+        } else if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
+            Log_e("MQTT Yield thread error: %d", rc);
+        }
+
+        HAL_SleepMs(200);
+    }
+
+    mqtt_client->yield_thread_running   = false;
+    mqtt_client->yield_thread_exit_code = rc;
+
+#ifdef LOG_UPLOAD
+    IOT_Log_Upload(true);
+#endif
+
+}
+
+int IOT_MQTT_StartLoop(void *pClient)
+{
+    POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
+
+    Qcloud_IoT_Client *mqtt_client   = (Qcloud_IoT_Client *)pClient;
+    ThreadParams       thread_params = {0};
+    thread_params.thread_func        = _mqtt_yield_thread;
+    thread_params.thread_name        = "mqtt_yield_thread";
+    thread_params.user_arg           = pClient;
+    thread_params.stack_size         = 4096;
+    thread_params.priority           = 1;
+    mqtt_client->yield_thread_running      = true;
+
+    int rc = HAL_ThreadCreate(&thread_params);
+    if (rc) {
+        Log_e("create mqtt yield thread fail: %d", rc);
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    HAL_SleepMs(500);
+    return QCLOUD_RET_SUCCESS;
+}
+
+void IOT_MQTT_StopLoop(void *pClient)
+{
+    POINTER_SANITY_CHECK_RTN(pClient);
+
+    Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
+    mqtt_client->yield_thread_running    = false;
+    HAL_SleepMs(1000);
+    return;
+}
+
+bool IOT_MQTT_GetLoopStatus(void *pClient, int *exit_code)
+{
+    POINTER_SANITY_CHECK(pClient, false);
+    Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
+    *exit_code                     = mqtt_client->yield_thread_exit_code;
+    return mqtt_client->yield_thread_running;
+}
+
+#endif
 
 int qcloud_iot_mqtt_init(Qcloud_IoT_Client *pClient, MQTTInitParams *pParams)
 {
@@ -492,6 +558,8 @@ int qcloud_iot_mqtt_reset_network_disconnected_count(Qcloud_IoT_Client *pClient)
 
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
 }
+
+
 
 #ifdef __cplusplus
 }

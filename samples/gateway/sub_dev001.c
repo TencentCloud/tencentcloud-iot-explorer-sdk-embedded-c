@@ -568,13 +568,6 @@ void *sub_dev1_thread(void *user_arg, char *product_id, char *device_name)
         return NULL;
     }
 
-#ifdef MULTITHREAD_ENABLED
-    /*only gateway yield thread read mqtt packet*/
-    int  code;
-    bool state = IOT_Gateway_Get_Yield_Status(pGateWayClient, &code);
-    IOT_Template_Set_Yield_Status(client, state, code);
-#endif
-
     // usr init
     _usr_init();
 

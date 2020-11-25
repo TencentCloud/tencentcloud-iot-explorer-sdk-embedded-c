@@ -261,16 +261,6 @@ void IOT_Template_Stop_Yield_Thread(void *pClient);
 bool IOT_Template_Get_Yield_Status(void *pClient, int *exit_code);
 
 /**
- * @brief Set the status of yield thread
- *
- * @param pClient       handle to data_template client
- * @param code          runinng status of the thread, true = true= thread
- * running, false = thread stop
- * @param code          code of the thread
- */
-void IOT_Template_Set_Yield_Status(void *pClient, bool running_state, int code);
-
-/**
  * @brief Only release Data_Template Client resource, retain mqtt client for
  * multi-thread case
  *
