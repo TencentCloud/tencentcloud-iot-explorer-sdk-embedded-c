@@ -947,7 +947,6 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     if (rc < 0) {
         Log_e("event init failed: %d", rc);
         IOT_Template_Destroy(pTemplate);
-        HAL_Free(pTemplate);
         goto End;
     }
 #endif
@@ -957,7 +956,6 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     if (rc < 0) {
         Log_e("action init failed: %d", rc);
         IOT_Template_Destroy(pTemplate);
-        HAL_Free(pTemplate);
         goto End;
     }
 #endif
@@ -977,7 +975,6 @@ int IOT_Template_Destroy(void *pClient)
 
     Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)pClient;
     qcloud_iot_template_reset(pTemplate);
-
     IOT_MQTT_Destroy(&pTemplate->mqtt);
 
     if (NULL != pTemplate->mutex) {

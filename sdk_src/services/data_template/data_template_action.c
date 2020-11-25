@@ -391,7 +391,7 @@ static int _publish_action_to_cloud(void *c, char *pJsonDoc)
     IOT_FUNC_EXIT_RC(rc);
 }
 
-int IOT_ACTION_REPLY(void *pClient, const char *pClientToken, char *pJsonDoc, size_t sizeOfBuffer,
+int IOT_Action_Reply(void *pClient, const char *pClientToken, char *pJsonDoc, size_t sizeOfBuffer,
                      DeviceAction *pAction, sReplyPara *replyPara)
 {
     int rc;

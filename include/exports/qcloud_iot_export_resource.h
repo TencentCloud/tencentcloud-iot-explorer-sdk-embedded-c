@@ -125,12 +125,14 @@ typedef int (*OnResourceEventUsrCallback)(void *pContext, const char *msg, uint3
  *
  * @param product_id:   product Id
  * @param device_name:  device name
- * @param ch_signal:    channel: MQTT
+ * @param mqtt_client:  resouce MQTT channel
+ * @param usr_cb:       user call back
+ * @param usr_context:  user context
  *
  * @return a valid resource module handle when success, or NULL otherwise
  */
-void *IOT_Resource_Init(const char *product_id, const char *device_name, void *ch_signal,
-                        OnResourceEventUsrCallback usr_cb);
+void *IOT_Resource_Init(const char *product_id, const char *device_name, void *mqtt_client,
+								OnResourceEventUsrCallback usr_cb, void *usr_context);
 
 /**
  * @brief Destroy resource module
@@ -305,15 +307,6 @@ int IOT_Resource_GetLastError(void *handle);
 int IOT_Resource_GetReportResult(void *handle);
 
 /**
- * @brief Get the context of resource handle
- *
- * @param handle: resource module handle
- *
- * @return the context of resource handle
- */
-void *IOT_Resource_Get_Context(void *handle);
-
-/**
  * @brief publish msg to resource topic
  *
  * @param handle: resource module handle
@@ -339,12 +332,9 @@ int IOT_Resource_Report_Msg(void *handle, char *msg);
  *
  * @param res_type:  resource type to be posted
  * 
- * @param usr_context:  usr context
- *
  * @return request id (>0) when success, or err code (<0) for failure
  */
-int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res_name, char *res_version,
-                              			 char *res_type, void *usr_context);
+int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res_name, char *res_version, char *res_type);
 
 #ifdef __cplusplus
 }

@@ -575,6 +575,7 @@ static int _resource_event_usr_cb(void *pContext, const char *msg, uint32_t msgL
             // when event is IOT_RES_EVENT_DEL_RESOURCE, msg is file name. More can see
             // qcloud_resource_mqtt_del_resource
             Log_d("to delete file %s", msg);
+			_delete_file(msg);
             // also delete info file in case of download no finish
             HAL_Snprintf(local_info_file_path, RESOURCE_FILE_PATH_MAX_LEN, "./%s_info.json", msg);
             _delete_file(local_info_file_path);
@@ -626,8 +627,8 @@ static int _report_version(ResourceContextData *res_ctx)
     return QCLOUD_RET_SUCCESS;
 }
 
-// main OTA cycle
-bool process_ota(ResourceContextData *res_ctx)
+// main resource cycle
+bool process_resource(ResourceContextData *res_ctx)
 {
     bool  download_finished     = false;
     bool  upgrade_fetch_success = true;
@@ -790,7 +791,7 @@ int main(int argc, char **argv)
     }
 
     // init OTA handle
-    res_handle = IOT_Resource_Init(sg_devInfo.product_id, sg_devInfo.device_name, mqtt_client, _resource_event_usr_cb);
+    res_handle = IOT_Resource_Init(sg_devInfo.product_id, sg_devInfo.device_name, mqtt_client, _resource_event_usr_cb, NULL);
     if (!res_handle) {
         Log_e("init resource client failed");
         goto exit;
@@ -812,10 +813,10 @@ int main(int argc, char **argv)
             break;
         }
 
-        // OTA process
-        resource_update_success = process_ota(res_ctx);
+        // resource process
+        resource_update_success = process_resource(res_ctx);
         if (!resource_update_success) {
-            Log_e("OTA failed! Do it again");
+            Log_e("resource process failed! Do it again");
             HAL_SleepMs(2000);
         }
     } while (!resource_update_success);

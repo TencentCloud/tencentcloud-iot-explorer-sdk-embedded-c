@@ -264,7 +264,7 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
     DeviceProperty *pActionOutnput   = pAction->pOutput;
     *(int *)(pActionOutnput[0].data) = 0;  // set result
 
-    IOT_ACTION_REPLY(pClient, pClientToken, sg_data_report_buffer, sg_data_report_buffersize, pAction, &replyPara);
+    IOT_Action_Reply(pClient, pClientToken, sg_data_report_buffer, sg_data_report_buffersize, pAction, &replyPara);
 }
 
 static int _register_data_template_action(void *pTemplate_client)

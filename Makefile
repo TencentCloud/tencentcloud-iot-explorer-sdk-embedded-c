@@ -76,6 +76,7 @@ $(call CompLib_Map, OTA_COMM_ENABLED, \
 
 $(call CompLib_Map, RESOURCE_UPDATE_ENABLED, \
 	$(SRC_DIR)/services/resource \
+	$(SRC_DIR)/services/service_com \
 )
 
 $(call CompLib_Map, ASR_ENABLED, \

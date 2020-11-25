@@ -10,6 +10,10 @@ list(APPEND src_sdk ${src_mqtt})
 file(GLOB src_data_template ${CMAKE_CURRENT_SOURCE_DIR}/services/data_template/*.c)
 list(APPEND src_sdk ${src_data_template})
 
+# service mqtt
+file(GLOB src_service_mqtt ${CMAKE_CURRENT_SOURCE_DIR}/services/service_com/*.c)
+list(APPEND src_sdk ${src_service_mqtt})
+
 # gateway
 if(${FEATURE_GATEWAY_ENABLED} STREQUAL "ON")
 	file(GLOB src_gateway ${CMAKE_CURRENT_SOURCE_DIR}/services/gateway/*.c)
@@ -22,7 +26,7 @@ if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON")
 	list(APPEND src_sdk ${src_mqtt_ota})
 endif()
 
-# resource mqtt
+# resource
 if(${FEATURE_RESOURCE_UPDATE_ENABLED} STREQUAL "ON")
 	file(GLOB src_mqtt_resource ${CMAKE_CURRENT_SOURCE_DIR}/services/resource/*.c)
 	list(APPEND src_sdk ${src_mqtt_resource})

@@ -33,23 +33,8 @@ typedef enum {
     eRESOURCE_POST_RESULT
 } eResourceReportType;
 
-typedef void (*OnResourceMessageCallback)(void *pContext, const char *msg, uint32_t msgLen);
-
-void *qcloud_resource_mqtt_init(const char *productId, const char *deviceName, void *channel, void *context,
-                                OnResourceMessageCallback ResourceMsgCb, OnResourceEventUsrCallback usrCb);
-
-int qcloud_resource_mqtt_deinit(void *handle);
-
-int qcloud_resource_mqtt_report(void *handle, const char *msg, eResourceReportType type);
-
-int qcloud_resource_mqtt_report_version_resp(void *handle, const char *msg, uint32_t msg_len);
-
-int qcloud_resource_mqtt_del_resource(void *handle, const char *file_name, const char *version);
-
-int qcloud_resource_mqtt_resource_post_result(void *handle, const char *result_msg, uint32_t msg_len);
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* IOT_OTA_CLIENT_H_ */
+#endif /* IOT_RESOURCE_CLIENT_H_ */

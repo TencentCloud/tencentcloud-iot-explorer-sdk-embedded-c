@@ -120,7 +120,7 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
     (void)pActionOutnput;  // elimate warning
     // TO DO: add your aciont logic here and set output properties which will be reported by action_reply
 
-    IOT_ACTION_REPLY(pClient, pClientToken, sg_data_report_buffer, sg_data_report_buffersize, pAction, &replyPara);
+    IOT_Action_Reply(pClient, pClientToken, sg_data_report_buffer, sg_data_report_buffersize, pAction, &replyPara);
 }
 
 static int _register_data_template_action(void *pTemplate_client)

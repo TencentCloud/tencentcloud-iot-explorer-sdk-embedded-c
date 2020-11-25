@@ -607,7 +607,7 @@ int IOT_Post_Event_Raw(void *pClient, char *pJsonDoc, size_t sizeOfBuffer, char 
  * for failure
  */
 
-int IOT_ACTION_REPLY(void *pClient, const char *pClientToken, char *pJsonDoc, size_t sizeOfBuffer,
+int IOT_Action_Reply(void *pClient, const char *pClientToken, char *pJsonDoc, size_t sizeOfBuffer,
                      DeviceAction *pAction, sReplyPara *replyPara);
 #endif
 

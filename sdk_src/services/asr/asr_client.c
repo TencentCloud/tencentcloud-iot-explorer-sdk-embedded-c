@@ -421,11 +421,11 @@ int _request_asr_resource_result(void *handle, AsrReq *req)
     return ret;
 }
 
-static int _asr_resource_event_usr_cb(void *pResourceHandle, const char *msg, uint32_t msgLen, IOT_RES_UsrEvent event)
+static int _asr_resource_event_usr_cb(void *pContext, const char *msg, uint32_t msgLen, IOT_RES_UsrEvent event)
 {
     int ret = QCLOUD_RET_SUCCESS;
 
-    AsrHandle *asr_handle = (AsrHandle *)IOT_Resource_Get_Context(pResourceHandle);
+    AsrHandle *asr_handle = (AsrHandle *)pContext;
     char *     json_str   = (char *)msg;
     char *     request_id;
     AsrReq *   req;
@@ -473,8 +473,7 @@ exit:
     return ret;
 }
 
-void *IOT_Asr_Init(const char *product_id, const char *device_name, void *ch_signal,
-                   OnAsrResourceEventUsrCallback usr_cb)
+void *IOT_Asr_Init(const char *product_id, const char *device_name, void *mqtt_client, OnAsrResourceEventUsrCallback usr_cb)
 {
     AsrHandle *asr_handle = NULL;
     int        rc         = QCLOUD_RET_SUCCESS;
@@ -487,7 +486,7 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *ch_sig
     }
 
     // init resource client handle
-    asr_handle->resource_handle = IOT_Resource_Init(product_id, device_name, ch_signal, _asr_resource_event_usr_cb);
+    asr_handle->resource_handle = IOT_Resource_Init(product_id, device_name, mqtt_client, _asr_resource_event_usr_cb, asr_handle);
     if (!asr_handle->resource_handle) {
         Log_e("init resource client failed");
         rc = QCLOUD_ERR_FAILURE;
@@ -581,7 +580,7 @@ int IOT_Asr_RecordFile_Request(void *handle, const char *file_name, RecordAsrCon
     conf->request_timeout_ms = (conf->request_timeout_ms > 0) ? conf->request_timeout_ms : DEFAULT_REQ_TIMEOUT_MS;
 	char *type = (req->req_type == eASR_FILE)?RESOURCE_TYPE_AUDIO:RESOURCE_TYPE_VOICE;
     req->request_id =
-        IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms, file_name, time_str, type, handle);
+        IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms, file_name, time_str, type);
     if (req->request_id < 0) {
         Log_e("%s resource post request fail", file_name);
         HAL_Free(req);
@@ -666,7 +665,7 @@ int IOT_Asr_Realtime_Request(void *handle, char *audio_buff, uint32_t audio_data
 
     conf->request_timeout_ms = (conf->request_timeout_ms > 0) ? conf->request_timeout_ms : DEFAULT_REQ_TIMEOUT_MS;
     req->request_id          = IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms,
-                                                req->realtime_conf.file_name, version, RESOURCE_TYPE_VOICE, handle);
+                                                req->realtime_conf.file_name, version, RESOURCE_TYPE_VOICE);
     if (req->request_id < 0) {
         Log_e("%s resource post request fail", req->realtime_conf.file_name);
         HAL_FileRemove(req->realtime_conf.file_name);
