@@ -373,25 +373,25 @@ int gateway_publish_sync(Gateway *gateway, char *topic, PublishParams *params, i
 #ifdef AUTH_MODE_CERT
 static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff_len)
 {
-    FILE *   fp;
+    void *   fp;
     uint32_t length;
     int      ret = QCLOUD_RET_SUCCESS;
 
-    if ((fp = fopen(file_path, "r")) == NULL) {
+    if ((fp = HAL_FileOpen(file_path, "r")) == NULL) {
         Log_e("fail to open cert file %s", file_path);
         return QCLOUD_ERR_FAILURE;
     }
 
-    fseek(fp, 0L, SEEK_END);
-    length        = ftell(fp);
+    HAL_FileSeek(fp, 0L, SEEK_END);
+    length        = HAL_FileTell(fp);
     uint8_t *data = HAL_Malloc(length + 1);
     if (!data) {
         Log_e("malloc mem err");
         return QCLOUD_ERR_MALLOC;
     }
 
-    fseek(fp, 0, SEEK_SET);
-    if (length != fread(data, 1, length, fp)) {
+    HAL_FileSeek(fp, 0, SEEK_SET);
+    if (length != HAL_FileRead(data, 1, length, fp)) {
         Log_e("read data len fail");
         ret = QCLOUD_ERR_FAILURE;
         goto exit;
@@ -403,7 +403,7 @@ static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff
 exit:
 
     HAL_Free(data);
-    fclose(fp);
+    HAL_FileClose(fp);
 
     return ret;
 }

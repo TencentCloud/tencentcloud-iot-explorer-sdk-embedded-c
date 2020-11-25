@@ -150,29 +150,29 @@ bool is_log_uploader_init(void)
 #ifdef AUTH_MODE_CERT
 static int _gen_key_from_cert_file(char *sign_key, const char *file_path)
 {
-    FILE *fp;
+    void *fp;
     int   len;
     char  line_buf[128] = {0};
 
-    if ((fp = fopen(file_path, "r")) == NULL) {
+    if ((fp = HAL_FileOpen(file_path, "r")) == NULL) {
         UPLOAD_ERR("fail to open cert file %s", file_path);
         return -1;
     }
 
     /* find the begin line */
     do {
-        if (NULL == fgets(line_buf, sizeof(line_buf), fp)) {
+        if (NULL == HAL_FileGets(line_buf, sizeof(line_buf), fp)) {
             UPLOAD_ERR("fail to fgets file %s", file_path);
             return -1;
         }
     } while (strstr(line_buf, "-----BEGIN ") == NULL);
 
-    if (feof(fp)) {
+    if (HAL_FileEof(fp)) {
         UPLOAD_ERR("invalid cert file %s", file_path);
         return -1;
     }
 
-    if (NULL == fgets(line_buf, sizeof(line_buf), fp)) {
+    if (NULL == HAL_FileGets(line_buf, sizeof(line_buf), fp)) {
         UPLOAD_ERR("fail to fgets file %s", file_path);
         return -1;
     }
@@ -181,7 +181,7 @@ static int _gen_key_from_cert_file(char *sign_key, const char *file_path)
     memcpy(sign_key, line_buf, len > SIGN_KEY_SIZE ? SIGN_KEY_SIZE : len);
     UPLOAD_DBG("sign key %s", sign_key);
 
-    fclose(fp);
+    HAL_FileClose(fp);
 
     return 0;
 }

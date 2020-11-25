@@ -189,7 +189,7 @@ static void _deal_transfer(char *data, uint32_t dataLen)
 
 static int _cert_file_save(const char *fileName, char *data, uint32_t dataLen)
 {
-    FILE *   fp;
+    void *   fp;
     char     filePath[FILE_PATH_MAX_LEN];
     uint32_t len;
     int      Ret = QCLOUD_ERR_FAILURE;
@@ -197,14 +197,14 @@ static int _cert_file_save(const char *fileName, char *data, uint32_t dataLen)
     memset(filePath, 0, FILE_PATH_MAX_LEN);
     HAL_Snprintf(filePath, FILE_PATH_MAX_LEN, "./certs/%s", fileName);
 
-    if ((fp = fopen(filePath, "w+")) == NULL) {
+    if ((fp = HAL_FileOpen(filePath, "w+")) == NULL) {
         Log_e("fail to open file %s", fileName);
         goto exit;
     }
 
     _deal_transfer(data, dataLen);
     len = fprintf(fp, "%s", data);
-    fclose(fp);
+    HAL_FileClose(fp);
 
     if (len == dataLen) {
         Log_d("save %s file succes", fileName);

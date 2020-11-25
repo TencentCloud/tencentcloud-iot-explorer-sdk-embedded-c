@@ -631,9 +631,19 @@ int HAL_FileRename(const char *old_filename, const char *new_filename);
 int HAL_FileEof(void *fp);
 
 /**
+ * @brief Get the current pose of stream.
+ */
+long HAL_FileTell(void *fp);
+
+/**
  * @brief Get the stream size.
  */
 long HAL_FileSize(void *fp);
+
+/**
+ * @brief Get one line from the stream.
+ */
+char *HAL_FileGets(char *str, int n, void *fp);
 
 /**
  * @brief Flushes the output buffer of a stream.

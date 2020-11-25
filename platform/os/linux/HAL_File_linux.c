@@ -74,6 +74,11 @@ long HAL_FileSize(void *fp)
     return size;
 }
 
+char *HAL_FileGets(char *str, int n, void *fp)
+{
+    return fgets(str, n, (FILE *)fp);
+}
+
 int HAL_FileRename(const char *old_filename, const char *new_filename)
 {
     return rename(old_filename, new_filename);
