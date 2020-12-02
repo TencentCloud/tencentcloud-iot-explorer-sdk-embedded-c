@@ -43,6 +43,10 @@ extern "C" {
 #define KEY_ASR_TEXT      "res_text"
 #define ONE_PARA_STR_LEN  (25)
 
+#define ASR_RESPONSE_PROPERTY_KEY       "_sys_asr_response"
+#define ASR_SYS_PROPERTY_BUFFF_LEN		2048
+#define TOTAL_ASR_SYS_PROPERTY_COUNT 	1
+
 typedef struct _AsrHandle_ {
     void *                        resource_handle;
     OnAsrResourceEventUsrCallback usrCb;
@@ -63,6 +67,52 @@ typedef struct _AsrReq_ {
         RealTimeAsrConf realtime_conf;
     };
 } AsrReq;
+
+typedef struct _ASR_SYS_PROPERTY {
+    TYPE_DEF_TEMPLATE_STRING m_asr_response[ASR_SYS_PROPERTY_BUFFF_LEN + 1];
+} ASR_SYS_PROPERTY;
+
+static   ASR_SYS_PROPERTY     sg_asr_property;
+static 	 sDataPoint    		  sg_asr_data[TOTAL_ASR_SYS_PROPERTY_COUNT];
+static   void         		  *sg_asr_client = NULL;
+
+int _asr_result_notify(void *handle, char *asr_response);
+
+static void _init_asr_property()
+{
+    sg_asr_property.m_asr_response[0] = '\0';
+    sg_asr_data[0].data_property.data = sg_asr_property.m_asr_response;
+    sg_asr_data[0].data_property.data_buff_len = ASR_SYS_PROPERTY_BUFFF_LEN;
+    sg_asr_data[0].data_property.key  = ASR_RESPONSE_PROPERTY_KEY;
+    sg_asr_data[0].data_property.type = TYPE_TEMPLATE_STRING;
+    sg_asr_data[0].state = eNOCHANGE;
+};
+
+static void _OnAsrControlMsgCallback(void *pTemplate_client, const char *pJsonValueBuffer, uint32_t valueLength, DeviceProperty *pProperty)
+{
+	if(!strcmp(pProperty->key, ASR_RESPONSE_PROPERTY_KEY)) {
+		LITE_string_strip_char((char *)pProperty->data, '\\');		
+		int rc = _asr_result_notify(sg_asr_client, (char *)pProperty->data);
+		if(QCLOUD_RET_SUCCESS != rc) {
+			Log_e("asr result notify fail, err:%d", rc);
+		}
+	}
+}
+
+static int _register_asr_property(void *pTemplate_client)
+{
+    int i, rc;
+	
+	_init_asr_property();
+    for (i = 0; i < TOTAL_ASR_SYS_PROPERTY_COUNT; i++) {
+        rc = IOT_Template_Register_Property(pTemplate_client, &sg_asr_data[i].data_property, _OnAsrControlMsgCallback);
+        if (rc != QCLOUD_RET_SUCCESS) {
+            return rc;
+        } 
+    }
+
+    return QCLOUD_RET_SUCCESS;
+}
 
 static char *_engine_type_to_str(eAsrEngineType eType)
 {
@@ -400,6 +450,96 @@ static void _del_timeout_req_node(AsrHandle *pAsrClient)
     HAL_MutexUnlock(pAsrClient->mutex);
 }
 
+int _asr_result_notify(void *handle, char *asr_response)
+{
+    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
+    AsrHandle *asr_handle = (AsrHandle *)handle;
+    int        rc         = QCLOUD_RET_SUCCESS;
+    char *     str_result = NULL;
+    char *     asr_token  = NULL;
+    char *     str_num    = NULL;
+    char *     str_seq    = NULL;
+    char *     asr_txt    = NULL;
+
+    Log_d("asr_response:%s", asr_response);
+    str_result = LITE_json_value_of(KEY_ASR_RESULT, asr_response);
+    asr_token  = LITE_json_value_of(KEY_ASR_TOKEN, asr_response);
+    if (!str_result || !asr_token) {
+        Log_e("required result key not found in asr_response:%s", asr_response);
+        rc = QCLOUD_ERR_JSON_PARSE;
+        goto exit;
+    }
+    AsrReq *req = _get_req_node_by_asr_token(asr_handle, asr_token);
+	if(!req){
+        Log_e("asr_token: %s not found", asr_token);
+        rc = QCLOUD_ERR_FAILURE;
+		goto exit;
+	}
+
+    rc = atoi(str_result);
+    if (QCLOUD_RET_SUCCESS == rc) {
+        str_num = LITE_json_value_of(KEY_ASR_TEXT_SEGS, asr_response);
+        str_seq = LITE_json_value_of(KEY_ASR_TEXT_SEQ, asr_response);
+        if (!str_num || !str_seq) {
+            Log_e("required text key not found in asr_response");
+            rc = QCLOUD_ERR_JSON_PARSE;
+            goto exit;
+        }
+
+        int num = atoi(str_num);
+        int seq = atoi(str_seq);
+        if (req->result_cb) {
+            asr_txt = LITE_json_value_of(KEY_ASR_TEXT, asr_response);
+            if (!asr_txt) {
+                req->result_cb(req->request_id, "NULL", num, seq);
+            } else {
+                req->result_cb(req->request_id, asr_txt, num, seq);
+            }
+        }
+
+        if ((num == seq) || (num < 2)) {
+            if (req->asr_token) {
+                HAL_Free(req->asr_token);
+            }
+            HAL_MutexLock(asr_handle->mutex);
+            list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
+            HAL_MutexUnlock(asr_handle->mutex);
+        }
+    } else {
+        Log_e("%s request asr result fail:%d", asr_token, rc);
+        if (req->asr_token) {
+            HAL_Free(req->asr_token);
+        }
+        HAL_MutexLock(asr_handle->mutex);
+        list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
+        HAL_MutexUnlock(asr_handle->mutex);
+    }
+
+exit:
+
+    if (str_result) {
+        HAL_Free(str_result);
+    }
+
+    if (asr_token) {
+        HAL_Free(asr_token);
+    }
+
+    if (str_num) {
+        HAL_Free(str_num);
+    }
+
+    if (str_seq) {
+        HAL_Free(str_seq);
+    }
+
+    if (asr_txt) {
+        HAL_Free(asr_txt);
+    }
+
+    return rc;
+}
+
 int _request_asr_resource_result(void *handle, AsrReq *req)
 {
     char asr_request_buff[ASR_REQUEST_BUFF_LEN];
@@ -473,10 +613,16 @@ exit:
     return ret;
 }
 
-void *IOT_Asr_Init(const char *product_id, const char *device_name, void *mqtt_client, OnAsrResourceEventUsrCallback usr_cb)
+void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTemplate_client, OnAsrResourceEventUsrCallback usr_cb)
 {
     AsrHandle *asr_handle = NULL;
     int        rc         = QCLOUD_RET_SUCCESS;
+	
+	rc = _register_asr_property(pTemplate_client);
+	if(QCLOUD_RET_SUCCESS != rc){
+		Log_e("register asr system property fail,rc:%d",rc);
+		goto exit;
+	}
 
     asr_handle = HAL_Malloc(sizeof(AsrHandle));
     if (!asr_handle) {
@@ -486,7 +632,8 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *mqtt_c
     }
 
     // init resource client handle
-    asr_handle->resource_handle = IOT_Resource_Init(product_id, device_name, mqtt_client, _asr_resource_event_usr_cb, asr_handle);
+    asr_handle->resource_handle = IOT_Resource_Init(product_id, device_name, IOT_Template_Get_MQTT_Client(pTemplate_client),
+    												_asr_resource_event_usr_cb, asr_handle);
     if (!asr_handle->resource_handle) {
         Log_e("init resource client failed");
         rc = QCLOUD_ERR_FAILURE;
@@ -508,6 +655,7 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *mqtt_c
         rc = QCLOUD_ERR_FAILURE;
     }
     asr_handle->usrCb = usr_cb;
+	sg_asr_client = asr_handle;
 
 exit:
 
@@ -689,97 +837,6 @@ exit:
     return (rc == QCLOUD_RET_SUCCESS) ? req->request_id : rc;
 #undef VERSION_LEN
 }
-
-int IOT_Asr_Result_Notify(void *handle, char *asr_response)
-{
-    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
-    AsrHandle *asr_handle = (AsrHandle *)handle;
-    int        rc         = QCLOUD_RET_SUCCESS;
-    char *     str_result = NULL;
-    char *     asr_token  = NULL;
-    char *     str_num    = NULL;
-    char *     str_seq    = NULL;
-    char *     asr_txt    = NULL;
-
-    Log_d("asr_response:%s", asr_response);
-    str_result = LITE_json_value_of(KEY_ASR_RESULT, asr_response);
-    asr_token  = LITE_json_value_of(KEY_ASR_TOKEN, asr_response);
-    if (!str_result || !asr_token) {
-        Log_e("required result key not found in asr_response:%s", asr_response);
-        rc = QCLOUD_ERR_JSON_PARSE;
-        goto exit;
-    }
-    AsrReq *req = _get_req_node_by_asr_token(asr_handle, asr_token);
-	if(!req){
-        Log_e("asr_token: %s not found", asr_token);
-        rc = QCLOUD_ERR_FAILURE;
-		goto exit;
-	}
-
-    rc = atoi(str_result);
-    if (QCLOUD_RET_SUCCESS == rc) {
-        str_num = LITE_json_value_of(KEY_ASR_TEXT_SEGS, asr_response);
-        str_seq = LITE_json_value_of(KEY_ASR_TEXT_SEQ, asr_response);
-        if (!str_num || !str_seq) {
-            Log_e("required text key not found in asr_response");
-            rc = QCLOUD_ERR_JSON_PARSE;
-            goto exit;
-        }
-
-        int num = atoi(str_num);
-        int seq = atoi(str_seq);
-        if (req->result_cb) {
-            asr_txt = LITE_json_value_of(KEY_ASR_TEXT, asr_response);
-            if (!asr_txt) {
-                req->result_cb(req->request_id, "NULL", num, seq);
-            } else {
-                req->result_cb(req->request_id, asr_txt, num, seq);
-            }
-        }
-
-        if ((num == seq) || (num < 2)) {
-            if (req->asr_token) {
-                HAL_Free(req->asr_token);
-            }
-            HAL_MutexLock(asr_handle->mutex);
-            list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
-            HAL_MutexUnlock(asr_handle->mutex);
-        }
-    } else {
-        Log_e("%s request asr result fail:%d", asr_token, rc);
-        if (req->asr_token) {
-            HAL_Free(req->asr_token);
-        }
-        HAL_MutexLock(asr_handle->mutex);
-        list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
-        HAL_MutexUnlock(asr_handle->mutex);
-    }
-
-exit:
-
-    if (str_result) {
-        HAL_Free(str_result);
-    }
-
-    if (asr_token) {
-        HAL_Free(asr_token);
-    }
-
-    if (str_num) {
-        HAL_Free(str_num);
-    }
-
-    if (str_seq) {
-        HAL_Free(str_seq);
-    }
-
-    if (asr_txt) {
-        HAL_Free(asr_txt);
-    }
-
-    return rc;
-}
-
 #ifdef __cplusplus
 }
 #endif
