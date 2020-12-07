@@ -164,8 +164,6 @@ static void *_HAL_thread_func_wrapper_(void *ptr)
 
     params->thread_func(params->user_arg);
 
-    pthread_detach(pthread_self());
-    pthread_exit(0);
     return NULL;
 }
 

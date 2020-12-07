@@ -529,7 +529,7 @@ int send_mqtt_packet(Qcloud_IoT_Client *pClient, size_t length, Timer *timer)
     POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
     POINTER_SANITY_CHECK(timer, QCLOUD_ERR_INVAL);
 
-    int    rc      = QCLOUD_RET_SUCCESS;
+    int    rc      = QCLOUD_ERR_FAILURE;
     size_t sentLen = 0, sent = 0;
 
     if (length >= pClient->write_buf_size) {
@@ -1194,6 +1194,12 @@ static int _handle_publish_packet(Qcloud_IoT_Client *pClient, Timer *timer)
         IOT_FUNC_EXIT_RC(rc);
     }
 
+    if (expired(timer)) {
+        /* send timeout */
+        //Log_w("puback timer expired! left:%d, increase a bit", left_ms(timer));
+        countdown_ms(timer, 100);
+    }
+
     rc = send_mqtt_packet(pClient, len, timer);
     if (QCLOUD_RET_SUCCESS != rc) {
         HAL_MutexUnlock(pClient->lock_write_buf);
@@ -1222,6 +1228,12 @@ static int _handle_pubrec_packet(Qcloud_IoT_Client *pClient, Timer *timer)
     if (QCLOUD_RET_SUCCESS != rc) {
         HAL_MutexUnlock(pClient->lock_write_buf);
         IOT_FUNC_EXIT_RC(rc);
+    }
+
+    if (expired(timer)) {
+        /* send timeout */
+        //Log_w("pubrec timer expired! left:%d, increase a bit", left_ms(timer));
+        countdown_ms(timer, 100);
     }
 
     /* send the PUBREL packet */

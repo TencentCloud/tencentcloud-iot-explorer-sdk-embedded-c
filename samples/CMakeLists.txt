@@ -69,7 +69,7 @@ if(${FEATURE_RESOURCE_UPDATE_ENABLED} STREQUAL "ON")
 endif()
 
 # ASR
-if(${FEATURE_RESOURCE_UPDATE_ENABLED} STREQUAL "ON")
+if(${FEATURE_ASR_ENABLED} STREQUAL "ON")
 	file(GLOB src_asr_sample 				${PROJECT_SOURCE_DIR}/samples/asr/asr_data_template_sample.c)
 	add_executable(asr_data_template_sample				${src_asr_sample})
 	target_link_libraries(asr_data_template_sample			 ${lib})
