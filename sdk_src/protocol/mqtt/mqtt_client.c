@@ -347,8 +347,9 @@ int qcloud_iot_mqtt_init(Qcloud_IoT_Client *pClient, MQTTInitParams *pParams)
 
     memset(pClient, 0x0, sizeof(Qcloud_IoT_Client));
 
-    int size = HAL_Snprintf(pClient->host_addr, HOST_STR_LENGTH, "%s.%s", pParams->product_id,
-                            iot_get_mqtt_domain(pParams->region));
+    int size =
+        HAL_Snprintf(pClient->host_addr, HOST_STR_LENGTH, "%s.%s", STRING_PTR_PRINT_SANITY_CHECK(pParams->product_id),
+                     STRING_PTR_PRINT_SANITY_CHECK(iot_get_mqtt_domain(pParams->region)));
     if (size < 0 || size > HOST_STR_LENGTH - 1) {
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
@@ -415,8 +416,8 @@ int qcloud_iot_mqtt_init(Qcloud_IoT_Client *pClient, MQTTInitParams *pParams)
 #ifndef AUTH_WITH_NOTLS
 // device param for TLS connection
 #ifdef AUTH_MODE_CERT
-    Log_d("cert file: %s", pParams->cert_file);
-    Log_d("key file: %s", pParams->key_file);
+    Log_d("cert file: %s", STRING_PTR_PRINT_SANITY_CHECK(pParams->cert_file));
+    Log_d("key file: %s", STRING_PTR_PRINT_SANITY_CHECK(pParams->key_file));
 
     strncpy(pClient->cert_file_path, pParams->cert_file, FILE_PATH_MAX_LEN - 1);
     strncpy(pClient->key_file_path, pParams->key_file, FILE_PATH_MAX_LEN - 1);
@@ -440,8 +441,9 @@ int qcloud_iot_mqtt_init(Qcloud_IoT_Client *pClient, MQTTInitParams *pParams)
     }
 
     memset(pClient->network_stack.ssl_connect_params.psk_id, 0, MAX_SIZE_OF_CLIENT_ID);
-    HAL_Snprintf(pClient->network_stack.ssl_connect_params.psk_id, MAX_SIZE_OF_CLIENT_ID, "%s%s", pParams->product_id,
-                 pParams->device_name);
+    HAL_Snprintf(pClient->network_stack.ssl_connect_params.psk_id, MAX_SIZE_OF_CLIENT_ID, "%s%s",
+                 STRING_PTR_PRINT_SANITY_CHECK(pParams->product_id),
+                 STRING_PTR_PRINT_SANITY_CHECK(pParams->device_name));
     pClient->network_stack.ssl_connect_params.ca_crt     = NULL;
     pClient->network_stack.ssl_connect_params.ca_crt_len = 0;
 #endif

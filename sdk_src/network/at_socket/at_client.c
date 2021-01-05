@@ -596,7 +596,8 @@ static void client_parser(void *userContex)
             const char *cmd     = NULL;
             int         cmdsize = 0;
             cmd                 = at_get_last_cmd(&cmdsize);
-            Log_d("last_cmd:(%.*s), readline:%s", cmdsize, cmd, client->recv_buffer);
+            Log_d("last_cmd:(%.*s), readline:%s", cmdsize, STRING_PTR_PRINT_SANITY_CHECK(cmd),
+                  STRING_PTR_PRINT_SANITY_CHECK(client->recv_buffer));
 #endif
             if ((urc = get_urc_obj(client)) != NULL) {
                 /* current receive is request, try to execute related operations */
@@ -677,7 +678,8 @@ void at_client_yeild(at_urc *expect_urc, uint32_t timeout)
             const char *cmd = NULL;
             int cmdsize = 0;
             cmd = at_get_last_cmd(&cmdsize);
-            Log_d("last_cmd:(%.*s), readline:%s", cmdsize, cmd, client->recv_buffer);
+            Log_d("last_cmd:(%.*s), readline:%s", cmdsize, STRING_PTR_PRINT_SANITY_CHECK(cmd),
+                  STRING_PTR_PRINT_SANITY_CHECK(client->recv_buffer));
 #endif
             if ((urc = get_urc_obj(client)) != NULL) {
                 /* current receive is request, try to execute related operations */

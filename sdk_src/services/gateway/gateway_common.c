@@ -378,7 +378,7 @@ static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff
     int      ret = QCLOUD_RET_SUCCESS;
 
     if ((fp = HAL_FileOpen(file_path, "r")) == NULL) {
-        Log_e("fail to open cert file %s", file_path);
+        Log_e("fail to open cert file %s", STRING_PTR_PRINT_SANITY_CHECK(file_path));
         return QCLOUD_ERR_FAILURE;
     }
 
@@ -398,7 +398,7 @@ static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff
     }
 
     utils_md5_str(data, length, (uint8_t *)keybuff);
-    Log_d("sign key: %s", keybuff);
+    Log_d("sign key: %s", STRING_PTR_PRINT_SANITY_CHECK(keybuff));
 
 exit:
 

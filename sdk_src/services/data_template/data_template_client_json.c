@@ -111,8 +111,9 @@ int put_json_node(char *jsonBuffer, size_t sizeOfBuffer, DeviceProperty *pJsonNo
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
-    rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\":", pKey);
-    rc             = check_snprintf_return(rc_of_snprintf, remain_size);
+    rc_of_snprintf =
+        HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\":", STRING_PTR_PRINT_SANITY_CHECK(pKey));
+    rc = check_snprintf_return(rc_of_snprintf, remain_size);
     if (rc != QCLOUD_RET_SUCCESS) {
         return rc;
     }
@@ -187,8 +188,9 @@ int template_put_json_node(char *jsonBuffer, size_t sizeOfBuffer, const char *pK
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
-    rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\":", pKey);
-    rc             = check_snprintf_return(rc_of_snprintf, remain_size);
+    rc_of_snprintf =
+        HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\":", STRING_PTR_PRINT_SANITY_CHECK(pKey));
+    rc = check_snprintf_return(rc_of_snprintf, remain_size);
     if (rc != QCLOUD_RET_SUCCESS) {
         return rc;
     }
@@ -239,8 +241,8 @@ int template_put_json_node(char *jsonBuffer, size_t sizeOfBuffer, const char *pK
 
 void build_empty_json(uint32_t *tokenNumber, char *pJsonBuffer, char *tokenPrefix)
 {
-    HAL_Snprintf(pJsonBuffer, MAX_SIZE_OF_JSON_WITH_CLIENT_TOKEN, "{\"clientToken\":\"%s-%u\"}", tokenPrefix,
-                 (*tokenNumber)++);
+    HAL_Snprintf(pJsonBuffer, MAX_SIZE_OF_JSON_WITH_CLIENT_TOKEN, "{\"clientToken\":\"%s-%u\"}",
+                 STRING_PTR_PRINT_SANITY_CHECK(tokenPrefix), (*tokenNumber)++);
 }
 
 bool parse_client_token(char *pJsonDoc, char **pClientToken)

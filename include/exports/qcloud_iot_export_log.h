@@ -200,6 +200,8 @@ void IOT_Log_Gen(const char *file, const char *func, const int line, const int l
 #endif
 #define UPLOAD_ERR(fmt, ...) HAL_Printf(">>LOG-ERR>>%s(%d): " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
+#define STRING_PTR_PRINT_SANITY_CHECK(ptr) ((ptr) ? (ptr) : "null")
+
 #ifdef __cplusplus
 }
 #endif

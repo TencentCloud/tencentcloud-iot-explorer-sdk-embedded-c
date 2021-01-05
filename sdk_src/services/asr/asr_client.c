@@ -88,7 +88,8 @@ static void _init_asr_property()
     sg_asr_data[0].state = eNOCHANGE;
 };
 
-static void _OnAsrControlMsgCallback(void *pTemplate_client, const char *pJsonValueBuffer, uint32_t valueLength, DeviceProperty *pProperty)
+static void _OnAsrControlMsgCallback(void *pTemplate_client, const char *pJsonValueBuffer, uint32_t valueLength,
+                                     DeviceProperty *pProperty)
 {
 	if(!strcmp(pProperty->key, ASR_RESPONSE_PROPERTY_KEY)) {
 		LITE_string_strip_char((char *)pProperty->data, '\\');		
@@ -169,14 +170,15 @@ static int _gen_record_asr_request_msg(char *msg_buff, int len, AsrReq *req)
                        "{\"method\":\"request_asr\",\"params\":{\"req_type\":%d,"
                        "\"engine_type\":\"%s\",\"channel_num\":%d,\"resource_token\":\"%s\",",
                        req->req_type, _engine_type_to_str(req->record_conf.engine_type), req->record_conf.ch_num,
-                       req->asr_token);
+                       STRING_PTR_PRINT_SANITY_CHECK(req->asr_token));
 
     // option parameters
     if (req->record_conf.speaker_diarization) {
         if ((remain_size = len - strlen(msg_buff)) < 2 * ONE_PARA_STR_LEN) {
             return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
         }
-        ret = HAL_Snprintf(msg_buff + strlen(msg_buff), remain_size, "\"speaker_diarization\":%d,\"speaker_number\":%d,",
+        ret =
+            HAL_Snprintf(msg_buff + strlen(msg_buff), remain_size, "\"speaker_diarization\":%d,\"speaker_number\":%d,",
                          req->record_conf.speaker_diarization, req->record_conf.speaker_number);
     }
 
@@ -200,7 +202,8 @@ static int _gen_record_asr_request_msg(char *msg_buff, int len, AsrReq *req)
         if ((remain_size = len - strlen(msg_buff)) < ONE_PARA_STR_LEN) {
             return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
         }
-        ret = HAL_Snprintf(msg_buff + strlen(msg_buff), remain_size, "\"filter_punc\":%d,", req->record_conf.filter_punc);
+        ret =
+            HAL_Snprintf(msg_buff + strlen(msg_buff), remain_size, "\"filter_punc\":%d,", req->record_conf.filter_punc);
     }
 
     if (req->record_conf.convert_num_mode) {
@@ -231,6 +234,7 @@ static int _gen_realtime_asr_request_msg(char *msg_buff, int len, AsrReq *req)
 {
     int ret, remain_size;
     POINTER_SANITY_CHECK(msg_buff, QCLOUD_ERR_INVAL);
+    POINTER_SANITY_CHECK(req, QCLOUD_ERR_INVAL);
     memset(msg_buff, 0, len);
     // required parameters
     ret = HAL_Snprintf(msg_buff, len,
@@ -239,7 +243,8 @@ static int _gen_realtime_asr_request_msg(char *msg_buff, int len, AsrReq *req)
                        "\"seq\":%d,\"end\":%d,\"voice_id\":\"%s\",\"resource_token\":\"%s\",",
                        req->req_type, _engine_type_to_str(req->realtime_conf.engine_type), req->realtime_conf.res_type,
                        req->realtime_conf.voice_format, req->realtime_conf.seq, req->realtime_conf.end,
-                       req->realtime_conf.voice_id, req->asr_token);
+                       STRING_PTR_PRINT_SANITY_CHECK(req->realtime_conf.voice_id),
+                       STRING_PTR_PRINT_SANITY_CHECK(req->asr_token));
 
     // option parameters
     if (req->realtime_conf.need_vad) {
@@ -349,7 +354,7 @@ static AsrReq *_get_req_node_by_request_id(AsrHandle *pAsrClient, uint32_t reque
                 break;
             } else {
                 if (expired(&req->timer)) {
-                    Log_e("%s timeout removed from list", req->request_id);
+                    Log_e("%d timeout removed from list", req->request_id);
                     list_remove(pAsrClient->asr_req_list, node);
                 }
                 req = NULL;
@@ -395,7 +400,7 @@ static AsrReq *_get_req_node_by_asr_token(AsrHandle *pAsrClient, const char *asr
                 }
             } else {
                 if (expired(&req->timer)) {
-                    Log_e("%s timeout removed from list", req->request_id);
+                    Log_e("%d timeout removed from list", req->request_id);
                     list_remove(pAsrClient->asr_req_list, node);
                 }
                 req = NULL;
@@ -436,7 +441,7 @@ static void _del_timeout_req_node(AsrHandle *pAsrClient)
             }
             req = (AsrReq *)node->val;
             if (expired(&req->timer)) {
-                Log_e("%s timeout removed from list", req->request_id);
+                Log_e("%d timeout removed from list", req->request_id);
                 if (req->req_type == eASR_REALTIME) {
                     Log_d("remove file %s", req->realtime_conf.file_name);
                     HAL_FileRemove(req->realtime_conf.file_name);
@@ -453,6 +458,8 @@ static void _del_timeout_req_node(AsrHandle *pAsrClient)
 int _asr_result_notify(void *handle, char *asr_response)
 {
     POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
+    POINTER_SANITY_CHECK(asr_response, QCLOUD_ERR_INVAL);
+
     AsrHandle *asr_handle = (AsrHandle *)handle;
     int        rc         = QCLOUD_RET_SUCCESS;
     char *     str_result = NULL;
@@ -613,7 +620,8 @@ exit:
     return ret;
 }
 
-void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTemplate_client, OnAsrResourceEventUsrCallback usr_cb)
+void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTemplate_client,
+                   OnAsrResourceEventUsrCallback usr_cb)
 {
     AsrHandle *asr_handle = NULL;
     int        rc         = QCLOUD_RET_SUCCESS;
@@ -632,8 +640,9 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTempl
     }
 
     // init resource client handle
-    asr_handle->resource_handle = IOT_Resource_Init(product_id, device_name, IOT_Template_Get_MQTT_Client(pTemplate_client),
-    												_asr_resource_event_usr_cb, asr_handle);
+    asr_handle->resource_handle =
+        IOT_Resource_Init(product_id, device_name, IOT_Template_Get_MQTT_Client(pTemplate_client),
+                          _asr_resource_event_usr_cb, asr_handle);
     if (!asr_handle->resource_handle) {
         Log_e("init resource client failed");
         rc = QCLOUD_ERR_FAILURE;
@@ -730,7 +739,7 @@ int IOT_Asr_RecordFile_Request(void *handle, const char *file_name, RecordAsrCon
     req->request_id =
         IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms, file_name, time_str, type);
     if (req->request_id < 0) {
-        Log_e("%s resource post request fail", file_name);
+        Log_e("%s resource post request fail", STRING_PTR_PRINT_SANITY_CHECK(file_name));
         HAL_Free(req);
         rc = QCLOUD_ERR_FAILURE;
         goto exit;

@@ -123,7 +123,7 @@ static void _on_event_reply_callback(void *pClient, MQTTMessage *message, void *
         // Log_d("no status return");
     }
 
-    Log_d("eventToken:%s code:%d  ", client_token, code);
+    Log_d("eventToken:%s code:%d  ", STRING_PTR_PRINT_SANITY_CHECK(client_token), code);
 
     if (template_client != NULL)
         _traverse_event_list(template_client, template_client->inner_data.event_list, client_token, message,
@@ -253,12 +253,14 @@ static int _iot_construct_event_json(void *handle, char *jsonBuffer, size_t size
                 rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
                                               "{\"eventId\":\"%s\", \"type\":\"%s\", "
                                               "\"timestamp\":0, \"params\":{",
-                                              pEvent->event_name, pEvent->type);
+                                              STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name),
+                                              STRING_PTR_PRINT_SANITY_CHECK(pEvent->type));
             } else {  // accurate UTC time is second,change to ms
                 rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
                                               "{\"eventId\":\"%s\", \"type\":\"%s\", "
                                               "\"timestamp\":%u000, \"params\":{",
-                                              pEvent->event_name, pEvent->type, pEvent->timestamp);
+                                              STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name),
+                                              STRING_PTR_PRINT_SANITY_CHECK(pEvent->type), pEvent->timestamp);
             }
 
             rc = check_snprintf_return(rc_of_snprintf, remain_size);
@@ -313,12 +315,14 @@ static int _iot_construct_event_json(void *handle, char *jsonBuffer, size_t size
         if (0 == pEvent->timestamp) {  // no accurate UTC time, set 0
             rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
                                           "\"eventId\":\"%s\", \"type\":\"%s\", \"timestamp\":0, \"params\":{",
-                                          pEvent->event_name, pEvent->type);
+                                          STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name),
+                                          STRING_PTR_PRINT_SANITY_CHECK(pEvent->type));
         } else {  // accurate UTC time is second,change to ms
             rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
                                           "\"eventId\":\"%s\", \"type\":\"%s\", "
                                           "\"timestamp\":%u000, \"params\":{",
-                                          pEvent->event_name, pEvent->type, pEvent->timestamp);
+                                          STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name),
+                                          STRING_PTR_PRINT_SANITY_CHECK(pEvent->type), pEvent->timestamp);
         }
 
         rc = check_snprintf_return(rc_of_snprintf, remain_size);

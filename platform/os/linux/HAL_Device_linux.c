@@ -159,7 +159,7 @@ int HAL_GetDevInfoFromFile(const char *file_name, void *dev_info)
 
     fp = fopen(file_name, "r");
     if (NULL == fp) {
-        Log_e("open device info file \"%s\" failed", file_name);
+        Log_e("open device info file \"%s\" failed", STRING_PTR_PRINT_SANITY_CHECK(file_name));
         ret = QCLOUD_ERR_FAILURE;
         goto exit;
     }
@@ -167,7 +167,7 @@ int HAL_GetDevInfoFromFile(const char *file_name, void *dev_info)
     fseek(fp, 0L, SEEK_END);
     len = ftell(fp);
     if (len > MAX_DEV_INFO_FILE_LEN) {
-        Log_e("device info file \"%s\" is too big!", file_name);
+        Log_e("device info file \"%s\" is too big!", STRING_PTR_PRINT_SANITY_CHECK(file_name));
         ret = QCLOUD_ERR_FAILURE;
         goto exit;
     }

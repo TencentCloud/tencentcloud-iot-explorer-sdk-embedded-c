@@ -49,11 +49,13 @@ static int _gen_service_mqtt_topic_info(const char *productId, const char *devic
 	int ret;
 	
     memset(sg_service_pub_topic, '\0', MAX_SIZE_OF_CLOUD_TOPIC);
-    ret = HAL_Snprintf(sg_service_pub_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/up/service/%s/%s", productId, deviceName);
+    ret = HAL_Snprintf(sg_service_pub_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/up/service/%s/%s",
+                       STRING_PTR_PRINT_SANITY_CHECK(productId), STRING_PTR_PRINT_SANITY_CHECK(deviceName));
     if (ret < 0) {
         goto exit;
     }
-	ret = HAL_Snprintf(sub_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/service/%s/%s", productId, deviceName);
+    ret = HAL_Snprintf(sub_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/service/%s/%s",
+                       STRING_PTR_PRINT_SANITY_CHECK(productId), STRING_PTR_PRINT_SANITY_CHECK(deviceName));
 
 exit:
 
@@ -90,15 +92,15 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
 {
 	eServiceEvent evt;
 
-	if(!strcmp(method, METHOD_RES_REPORT_VERSION_RSP) || !strcmp(method, METHOD_RES_UPDATE_RESOURCE)
-		||!strcmp(method, METHOD_RES_DELETE_RESOURCE) || !strcmp(method, METHOD_RES_REQ_URL_RESP)){
-		evt = eSERVICE_RESOURCE;
-	}else if(!strcmp(method, METHOD_FACE_AI_REPLY)){
-		evt = eSERVICE_FACE_AI;
-	}else{
-		Log_i("not support service method %s", method);
-		evt = eSERVICE_DEFAULT;
-	}
+    if (!strcmp(method, METHOD_RES_REPORT_VERSION_RSP) || !strcmp(method, METHOD_RES_UPDATE_RESOURCE) ||
+        !strcmp(method, METHOD_RES_DELETE_RESOURCE) || !strcmp(method, METHOD_RES_REQ_URL_RESP)) {
+        evt = eSERVICE_RESOURCE;
+    } else if (!strcmp(method, METHOD_FACE_AI_REPLY)) {
+        evt = eSERVICE_FACE_AI;
+    } else {
+        Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));
+        evt = eSERVICE_DEFAULT;
+    }
 
 	return evt;
 }
@@ -191,11 +193,11 @@ int qcloud_service_mqtt_init(const char *productId, const char *deviceName, void
 		Log_e("gen service topic fail");
 	}
 
-	if(IOT_MQTT_IsSubReady(mqtt_client, topic_name)){
-		Log_d("%s has been already subscribed");
-		return QCLOUD_RET_SUCCESS;	
-	}
-	
+    if (IOT_MQTT_IsSubReady(mqtt_client, topic_name)) {
+        Log_d("%s has been already subscribed", topic_name);
+        return QCLOUD_RET_SUCCESS;
+    }
+
     SubscribeParams sub_params      = DEFAULT_SUB_PARAMS;
     sub_params.on_message_handler   = _service_mqtt_cb;
     sub_params.on_sub_event_handler = _service_mqtt_sub_event_handler;

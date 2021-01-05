@@ -125,8 +125,9 @@ void IOT_Log_Gen(const char *file, const char *func, const int line, const int l
     memset(tmp_buf, 0, sizeof(sg_text_buf));
     char time_str[TIME_FORMAT_STR_LEN] = {0};
 
-    o += HAL_Snprintf(o, sizeof(sg_text_buf), "%s|%s|%s|%s(%d): ", level_str[level], HAL_Timer_current(time_str),
-                      file_name, func, line);
+    o += HAL_Snprintf(o, sizeof(sg_text_buf), "%s|%s|%s|%s(%d): ", level_str[level],
+                      STRING_PTR_PRINT_SANITY_CHECK(HAL_Timer_current(time_str)),
+                      STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(func), line);
 
     va_list ap;
     va_start(ap, fmt);

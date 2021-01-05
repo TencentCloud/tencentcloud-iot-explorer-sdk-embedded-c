@@ -43,7 +43,7 @@ void at_print_raw_cmd(const char *name, const char *buf, int size)
     int i, j;
 
     for (i = 0; i < size; i += WIDTH_SIZE) {
-        HAL_Printf("%s: %04X-%04X: ", name, i, i + WIDTH_SIZE);
+        HAL_Printf("%s: %04X-%04X: ", STRING_PTR_PRINT_SANITY_CHECK(name), i, i + WIDTH_SIZE);
         for (j = 0; j < WIDTH_SIZE; j++) {
             if (i + j < size) {
                 HAL_Printf("%02X ", buf[i + j]);

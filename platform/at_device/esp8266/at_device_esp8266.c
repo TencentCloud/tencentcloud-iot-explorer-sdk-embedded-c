@@ -246,7 +246,7 @@ static int esp8266_init(void)
 
     /* show module version */
     for (i = 0; i < resp->line_counts - 1; i++) {
-        Log_d("%s", at_resp_get_line(resp, i + 1));
+        Log_d("%s", STRING_PTR_PRINT_SANITY_CHECK(at_resp_get_line(resp, i + 1)));
     }
 
     at_delayms(100);

@@ -80,7 +80,7 @@ static void _free_mebedtls(TLSDataParams *pParams)
 #define DEBUG_LEVEL 0
 static void _ssl_debug(void *ctx, int level, const char *file, int line, const char *str)
 {
-    Log_i("[mbedTLS]:[%s]:[%d]: %s\r\n", file, line, str);
+    Log_i("[mbedTLS]:[%s]:[%d]: %s\r\n", STRING_PTR_PRINT_SANITY_CHECK(file), line, STRING_PTR_PRINT_SANITY_CHECK(str));
 }
 
 #endif
@@ -143,8 +143,9 @@ static int _mbedtls_client_init(TLSDataParams *pDataParams, TLSConnectParams *pC
             return QCLOUD_ERR_SSL_CERT;
         }
     } else {
-        Log_d("cert_file/key_file is empty!|cert_file=%s|key_file=%s", pConnectParams->cert_file,
-              pConnectParams->key_file);
+        Log_d("cert_file/key_file is empty!|cert_file=%s|key_file=%s",
+              STRING_PTR_PRINT_SANITY_CHECK(pConnectParams->cert_file),
+              STRING_PTR_PRINT_SANITY_CHECK(pConnectParams->key_file));
     }
 #else
     if (pConnectParams->psk != NULL && pConnectParams->psk_id != NULL) {
@@ -263,7 +264,7 @@ uintptr_t HAL_TLS_Connect(TLSConnectParams *pConnectParams, const char *host, in
                         mbedtls_net_recv_timeout);
 
     Log_d("Performing the SSL/TLS handshake...");
-    Log_d("Connecting to /%s/%d...", host, port);
+    Log_d("Connecting to /%s/%d...", STRING_PTR_PRINT_SANITY_CHECK(host), port);
     if ((ret = _mbedtls_tcp_connect(&(pDataParams->socket_fd), host, port)) != QCLOUD_RET_SUCCESS) {
         goto error;
     }
@@ -285,7 +286,7 @@ uintptr_t HAL_TLS_Connect(TLSConnectParams *pConnectParams, const char *host, in
 
     mbedtls_ssl_conf_read_timeout(&(pDataParams->ssl_conf), 100);
 
-    Log_d("connected with /%s/%d...", host, port);
+    Log_d("connected with /%s/%d...", STRING_PTR_PRINT_SANITY_CHECK(host), port);
 
     return (uintptr_t)pDataParams;
 

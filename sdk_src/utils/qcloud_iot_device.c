@@ -45,7 +45,8 @@ int iot_device_info_set(DeviceInfo *device_info, const char *product_id, const c
 
     /* construct device-id(@product_id+@device_name) */
     memset(device_info->client_id, 0x0, MAX_SIZE_OF_CLIENT_ID);
-    int ret = HAL_Snprintf(device_info->client_id, MAX_SIZE_OF_CLIENT_ID, "%s%s", product_id, device_name);
+    int ret = HAL_Snprintf(device_info->client_id, MAX_SIZE_OF_CLIENT_ID, "%s%s",
+                           STRING_PTR_PRINT_SANITY_CHECK(product_id), STRING_PTR_PRINT_SANITY_CHECK(device_name));
     if ((ret < 0) || (ret >= MAX_SIZE_OF_CLIENT_ID)) {
         Log_e("set device info failed");
         return QCLOUD_ERR_FAILURE;

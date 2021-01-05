@@ -61,7 +61,7 @@ static int _qcloud_otalib_get_firmware_fixlen_para(const char *json_doc, const c
 
     char *value = LITE_json_value_of(key_bak, json_doc_bak);
     if (value == NULL) {
-        Log_e("Not '%s' key in json doc of OTA", key);
+        Log_e("Not '%s' key in json doc of OTA", STRING_PTR_PRINT_SANITY_CHECK(key));
         ret = IOT_OTA_ERR_FAIL;
     } else {
         uint32_t val_len = strlen(value);
@@ -244,7 +244,8 @@ int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, const char
     IOT_FUNC_ENTRY;
 
     int ret;
-    ret = HAL_Snprintf(buf, bufLen, "{\"type\": \"report_version\", \"report\":{\"version\":\"%s\"}}", version);
+    ret = HAL_Snprintf(buf, bufLen, "{\"type\": \"report_version\", \"report\":{\"version\":\"%s\"}}",
+                       STRING_PTR_PRINT_SANITY_CHECK(version));
 
     if (ret < 0) {
         Log_e("HAL_Snprintf failed");
@@ -269,7 +270,7 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
                                "{\"progress\": {\"state\":\"downloading\", "
                                "\"percent\":\"0\", \"result_code\":\"0\", "
                                "\"result_msg\":\"\"}, \"version\": \"%s\"}}",
-                               version);
+                               STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
         /* report OTA download progress */
         case IOT_OTAR_DOWNLOADING:
@@ -278,7 +279,7 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
                                "{\"progress\": {\"state\":\"downloading\", "
                                "\"percent\":\"%d\", \"result_code\":\"0\", "
                                "\"result_msg\":\"\"}, \"version\": \"%s\"}}",
-                               progress, version);
+                               progress, STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
         case IOT_OTAR_DOWNLOAD_TIMEOUT:
         case IOT_OTAR_FILE_NOT_EXIST:
@@ -290,7 +291,7 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
                                "{\"progress\": {\"state\":\"fail\", "
                                "\"result_code\":\"%d\", \"result_msg\":\"time_out\"}, "
                                "\"version\": \"%s\"}}",
-                               reportType, version);
+                               reportType, STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
         /* report OTA upgrade begin */
         case IOT_OTAR_UPGRADE_BEGIN:
@@ -299,7 +300,7 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
                                "\"report\":{\"progress\":{\"state\":"
                                "\"burning\", \"result_code\":\"0\", "
                                "\"result_msg\":\"\"}, \"version\":\"%s\"}}",
-                               version);
+                               STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         /* report OTA upgrade finish */
@@ -309,7 +310,7 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
                                "\"report\":{\"progress\":{\"state\":"
                                "\"done\", \"result_code\":\"0\", "
                                "\"result_msg\":\"\"}, \"version\":\"%s\"}}",
-                               version);
+                               STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         default:

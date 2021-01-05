@@ -105,7 +105,8 @@ static void _ota_callback(void *pcontext, const char *msg, uint32_t msg_len)
         goto End;
     } else {
         if (strcmp(json_type, UPDATE_FIRMWARE) != 0) {
-            Log_e("Netheir Report version result nor update firmware! type: %s", json_type);
+            Log_e("Netheir Report version result nor update firmware! type: %s",
+                  STRING_PTR_PRINT_SANITY_CHECK(json_type));
             goto End;
         }
 

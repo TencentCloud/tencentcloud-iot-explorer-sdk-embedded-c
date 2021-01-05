@@ -87,15 +87,15 @@ typedef struct {
     int   err;       /* last error code */
     int   report_rc; /* result of _resource_report_upgrade_result in IOT_Resource_FetchYield*/
     Timer report_timer;
-	
-	OnResourceEventUsrCallback usr_cb;
+
+    OnResourceEventUsrCallback usr_cb;
 } ResourceHandle;
 
 typedef struct {
     int   request_id;
     char *res_name;
     char *res_version;
-	char *res_type;
+    char *res_type;
     Timer post_timer;
 } ResPostInfo;
 
@@ -135,9 +135,11 @@ static int _gen_resource_ver_info(char *buf, size_t bufLen, uint16_t res_num, re
             return QCLOUD_ERR_FAILURE;
         }
 
-        ret = HAL_Snprintf(buf + strlen(buf), bufLen - strlen(buf),
-                           "{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"},", pInfo->res_name,
-                           pInfo->res_ver, pInfo->res_type);
+        ret =
+            HAL_Snprintf(buf + strlen(buf), bufLen - strlen(buf),
+                         "{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"},",
+                         STRING_PTR_PRINT_SANITY_CHECK(pInfo->res_name), STRING_PTR_PRINT_SANITY_CHECK(pInfo->res_ver),
+                         STRING_PTR_PRINT_SANITY_CHECK(pInfo->res_type));
         if (ret < 0) {
             Log_e("HAL_Snprintf failed");
             return QCLOUD_ERR_FAILURE;
@@ -155,8 +157,8 @@ static int _gen_resource_ver_info(char *buf, size_t bufLen, uint16_t res_num, re
     return QCLOUD_RET_SUCCESS;
 }
 
-static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_name, const char *version, const char *type, 
-											int progress, IOT_RES_ReportType reportType)
+static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_name, const char *version,
+                                    const char *type, int progress, IOT_RES_ReportType reportType)
 {
     IOT_FUNC_ENTRY;
 
@@ -169,7 +171,7 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                                "{\"method\": \"report_progress\", \"report\": {\"progress\": "
                                "{\"resource_name\":\"%s\",\"state\":\"downloading\", \"percent\":\"0\", "
                                "\"result_code\":\"0\", \"result_msg\":\"\"}, \"version\": \"%s\"}}",
-                               file_name, version);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
         /* report download progress */
         case IOT_RES_TYPE_DOWNLOADING:
@@ -177,7 +179,8 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                                "{\"method\": \"report_progress\", \"report\": {\"progress\": "
                                "{\"resource_name\":\"%s\",\"state\":\"downloading\", \"percent\":\"%d\", "
                                "\"result_code\":\"0\", \"result_msg\":\"\"}, \"version\": \"%s\"}}",
-                               file_name, progress, version);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name), progress,
+                               STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         case IOT_RES_TYPE_SPACE_NOT_ENOUGH:
@@ -185,7 +188,8 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                                "{\"method\": \"report_result\", \"report\": {\"progress\": "
                                "{\"resource_name\":\"%s\",\"state\":\"done\", \"result_code\":\"%d\", "
                                "\"result_msg\":\"space not enough\"}, \"version\": \"%s\"}}",
-                               file_name, reportType, version);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name), reportType,
+                               STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         case IOT_RES_TYPE_MD5_NOT_MATCH:
@@ -193,7 +197,8 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                                "{\"method\": \"report_result\", \"report\": {\"progress\": "
                                "{\"resource_name\":\"%s\",\"state\":\"done\", \"result_code\":\"%d\", "
                                "\"result_msg\":\"md5 check fail\"}, \"version\": \"%s\"}}",
-                               file_name, reportType, version);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name), reportType,
+                               STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         case IOT_RES_TYPE_DOWNLOAD_TIMEOUT:
@@ -204,7 +209,8 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                                "{\"method\": \"report_result\", \"report\": {\"progress\": "
                                "{\"resource_name\":\"%s\",\"state\":\"done\", \"result_code\":\"%d\", "
                                "\"result_msg\":\"time_out\"}, \"version\": \"%s\"}}",
-                               file_name, reportType, version);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name), reportType,
+                               STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         case IOT_RES_TYPE_UPGRADE_BEGIN:
@@ -212,7 +218,7 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                                "{\"method\": \"report_progress\", "
                                "\"report\":{\"progress\":{\"resource_name\":\"%s\",\"state\":\"burning\", "
                                "\"result_code\":\"0\", \"result_msg\":\"\"}, \"version\":\"%s\"}}",
-                               file_name, version);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         /* report OTA upgrade finish */
@@ -221,7 +227,7 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                                "{\"method\":\"report_result\", "
                                "\"report\":{\"progress\":{\"resource_name\":\"%s\",\"state\":\"done\", "
                                "\"result_code\":\"0\",\"result_msg\":\"success\"}, \"version\":\"%s\"}}",
-                               file_name, version);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         case IOT_RES_TYPE_FILE_DEL_SUCCESS:
@@ -229,7 +235,7 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                 buf, bufLen,
                 "{\"method\": \"del_result\", \"report\":{\"progress\":{\"resource_name\":\"%s\",\"state\":\"done\", "
                 "\"result_code\":\"0\", \"result_msg\":\"success\"}, \"version\":\"%s\"}}",
-                file_name, version);
+                STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         case IOT_RES_TYPE_FILE_DEL_FAIL:
@@ -237,7 +243,7 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
                 buf, bufLen,
                 "{\"method\": \"del_result\", \"report\":{\"progress\":{\"resource_name\":\"%s\",\"state\":\"done\", "
                 "\"result_code\":\"%d\", \"result_msg\":\"file del fail\"}, \"version\":\"%s\"}}",
-                file_name, reportType, version);
+                STRING_PTR_PRINT_SANITY_CHECK(file_name), reportType, STRING_PTR_PRINT_SANITY_CHECK(version));
 
             break;
 
@@ -245,7 +251,8 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
             ret = HAL_Snprintf(buf, bufLen,
                                "{\"method\":\"request_url\",\"request_id\":\"%d\","
                                "\"report\":{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"}}",
-                               progress, file_name, version, type);
+                               progress, STRING_PTR_PRINT_SANITY_CHECK(file_name),
+                               STRING_PTR_PRINT_SANITY_CHECK(version), STRING_PTR_PRINT_SANITY_CHECK(type));
 
             break;
 
@@ -253,7 +260,7 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
             ret = HAL_Snprintf(buf, bufLen,
                                "{\"method\":\"report_post_result\",\"report\":{\"progress\":{\"resource_token\":\"%s\","
                                "\"state\":\"done\",\"result_code\":\"0\", \"result_msg\":\"success\"}}}",
-                               file_name);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name));
 
             break;
 
@@ -261,7 +268,7 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
             ret = HAL_Snprintf(buf, bufLen,
                                "{\"method\":\"report_post_result\",\"report\":{\"progress\":{\"resource_token\":\"%s\","
                                "\"state\":\"done\",\"result_code\":\"-1\", \"result_msg\":\"post_fail\"}}}",
-                               file_name);
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name));
             break;
 
         default:
@@ -322,8 +329,8 @@ static int _resource_report_progress(void *handle, int progress, IOT_RES_ReportT
         return QCLOUD_ERR_FAILURE;
     }
 
-    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, pHandle->file_name, pHandle->version, NULL,
-    								progress, reportType);
+    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, pHandle->file_name, pHandle->version, NULL, progress,
+                                   reportType);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("generate resource inform message failed");
         pHandle->err = ret;
@@ -331,7 +338,7 @@ static int _resource_report_progress(void *handle, int progress, IOT_RES_ReportT
         goto exit;
     }
 
-	ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_reported, QOS0);
+    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_reported, QOS0);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("Report progress failed");
         pHandle->err = IOT_RES_ERR_REPORT_PROGRESS;
@@ -389,7 +396,7 @@ static int _resource_report_upgrade_result(void *handle, const char *version, IO
         goto exit;
     }
 
-	ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_upgrade, QOS1);
+    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_upgrade, QOS1);
     if (0 > ret) {
         Log_e("Report result failed");
         pHandle->err = IOT_RES_ERR_REPORT_UPGRADE_RESULT;
@@ -431,8 +438,8 @@ static int _resource_report_post_result(void *handle, const char *res_token, IOT
         ret          = QCLOUD_ERR_FAILURE;
         goto exit;
     }
-	
-	ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_post, QOS1);
+
+    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_post, QOS1);
     if (0 > ret) {
         Log_e("Report result failed");
         pHandle->err = IOT_RES_ERR_REPORT_UPGRADE_RESULT;
@@ -528,10 +535,11 @@ static int _post_resource_to_cos(const char *resource_url, ResPostInfo *info)
     char *data_buf      = NULL;
     void *pUploadHandle = NULL;
 
-    Log_d("post %s(%d) %s to cos", info->res_name, info->request_id, info->res_version);
+    Log_d("post %s(%d) %s to cos", STRING_PTR_PRINT_SANITY_CHECK(info->res_name), info->request_id,
+          STRING_PTR_PRINT_SANITY_CHECK(info->res_version));
     void *fp = HAL_FileOpen(info->res_name, "rb");
     if (NULL == fp) {
-        Log_e("can not open file %s!", info->res_name);
+        Log_e("can not open file %s!", STRING_PTR_PRINT_SANITY_CHECK(info->res_name));
         return QCLOUD_ERR_FAILURE;
     }
 
@@ -603,10 +611,10 @@ exit:
 /* callback when resource topic msg is received */
 static void _resource_msg_callback(void *handle, const char *msg, uint32_t msg_len)
 {
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-    char *json_method = NULL;
-    char *json_str    = (char *)msg;
-	int rc;
+    ResourceHandle *pHandle     = (ResourceHandle *)handle;
+    char *          json_method = NULL;
+    char *          json_str    = (char *)msg;
+    int             rc;
 
     if (pHandle->state >= IOT_RES_STATE_FETCHING) {
         Log_i("In downloading or downloaded state(%d)", pHandle->state);
@@ -635,7 +643,7 @@ static void _resource_msg_callback(void *handle, const char *msg, uint32_t msg_l
             pHandle->state = IOT_RES_STATE_FETCHED;
         } else {
             Log_i("Report resource version success!");
-			pHandle->usr_cb(pHandle->usr_context, json_str, msg_len, IOT_RES_EVENT_REPORT_VERSION_RESP);
+            pHandle->usr_cb(pHandle->usr_context, json_str, msg_len, IOT_RES_EVENT_REPORT_VERSION_RESP);
         }
 
         HAL_Free(result_code);
@@ -682,7 +690,8 @@ static void _resource_msg_callback(void *handle, const char *msg, uint32_t msg_l
             _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_FILE_DEL_FAIL);
             goto exit;
         }
-		rc = pHandle->usr_cb(pHandle->usr_context, pHandle->file_name, strlen(pHandle->file_name), IOT_RES_EVENT_DEL_RESOURCE);
+        rc = pHandle->usr_cb(pHandle->usr_context, pHandle->file_name, strlen(pHandle->file_name),
+                             IOT_RES_EVENT_DEL_RESOURCE);
         if (0 != rc) {
             Log_e("Delete resource file(%s) fail", pHandle->file_name);
             _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_FILE_DEL_FAIL);
@@ -725,7 +734,7 @@ static void _resource_msg_callback(void *handle, const char *msg, uint32_t msg_l
                          "{\"resource_token\": \"%s\",\"request_id\": \"%s\", \"result\": \"%d\"}", res_token,
                          request_id, ret);
             Log_d("res_msg:%s", res_msg);
-			pHandle->usr_cb(pHandle->usr_context, json_str, msg_len, IOT_RES_EVENT_REQUEST_URL_RESP);
+            pHandle->usr_cb(pHandle->usr_context, json_str, msg_len, IOT_RES_EVENT_REQUEST_URL_RESP);
             HAL_Free(res_token);
             HAL_Free(res_url);
             HAL_Free(info->res_name);
@@ -748,12 +757,12 @@ exit:
 
 /* init & destroy */
 void *IOT_Resource_Init(const char *product_id, const char *device_name, void *mqtt_client,
-							OnResourceEventUsrCallback usr_cb, void *usr_context)
+                        OnResourceEventUsrCallback usr_cb, void *usr_context)
 {
     POINTER_SANITY_CHECK(product_id, NULL);
     POINTER_SANITY_CHECK(device_name, NULL);
     POINTER_SANITY_CHECK(mqtt_client, NULL);
-	int rc;
+    int rc;
 
     ResourceHandle *handle;
     handle = HAL_Malloc(sizeof(ResourceHandle));
@@ -763,22 +772,22 @@ void *IOT_Resource_Init(const char *product_id, const char *device_name, void *m
     }
 
     memset(handle, 0, sizeof(ResourceHandle));
-	handle->usr_cb = usr_cb;
-	handle->ch_signal = mqtt_client;
-	
-	//init service
-	rc = qcloud_service_mqtt_init(product_id, device_name, mqtt_client);
-	if(rc < 0){
-		 Log_e("service init failed: %d", rc);
-		 goto exit;
-	}
-	
-	rc = qcloud_service_mqtt_event_register(eSERVICE_RESOURCE, _resource_msg_callback, handle);
-	if(QCLOUD_RET_SUCCESS != rc){
-		Log_e("register service event %d fail", eSERVICE_RESOURCE);
+    handle->usr_cb    = usr_cb;
+    handle->ch_signal = mqtt_client;
+
+    // init service
+    rc = qcloud_service_mqtt_init(product_id, device_name, mqtt_client);
+    if (rc < 0) {
+        Log_e("service init failed: %d", rc);
         goto exit;
-	}
-	
+    }
+
+    rc = qcloud_service_mqtt_event_register(eSERVICE_RESOURCE, _resource_msg_callback, handle);
+    if (QCLOUD_RET_SUCCESS != rc) {
+        Log_e("register service event %d fail", eSERVICE_RESOURCE);
+        goto exit;
+    }
+
     handle->md5 = utils_md5_create();
     if (!handle->md5) {
         Log_e("initialize md5 failed");
@@ -788,7 +797,7 @@ void *IOT_Resource_Init(const char *product_id, const char *device_name, void *m
     handle->product_id         = product_id;
     handle->device_name        = device_name;
     handle->state              = IOT_RES_STATE_INITTED;
-	handle->usr_context 	   = usr_context;
+    handle->usr_context        = usr_context;
     handle->request_id         = 0;
     handle->res_wait_post_list = list_new();
     if (handle->res_wait_post_list) {
@@ -807,12 +816,12 @@ void *IOT_Resource_Init(const char *product_id, const char *device_name, void *m
     return handle;
 
 exit:
-	qcloud_service_mqtt_event_register(eSERVICE_RESOURCE, NULL, NULL);
+    qcloud_service_mqtt_event_register(eSERVICE_RESOURCE, NULL, NULL);
     if (handle) {
-		if(handle->md5){
-			utils_md5_delete(handle->md5);
-		}
-        
+        if (handle->md5) {
+            utils_md5_delete(handle->md5);
+        }
+
         if (handle->res_wait_post_list) {
             list_destroy(handle->res_wait_post_list);
         }
@@ -1060,7 +1069,7 @@ int IOT_Resource_ReportVersion(void *handle, uint16_t res_num, resInfo *res_list
         goto do_exit;
     }
 
-	ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_informed, QOS1);
+    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_informed, QOS1);
     if (0 > ret) {
         Log_e("Report version failed");
         pHandle->err = IOT_RES_ERR_REPORT_VERSION;
@@ -1070,7 +1079,7 @@ int IOT_Resource_ReportVersion(void *handle, uint16_t res_num, resInfo *res_list
 
 do_exit:
     HAL_Free(msg_informed);
-	
+
     return ret;
 }
 
@@ -1239,10 +1248,10 @@ int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res
     info->request_id  = pHandle->request_id;
     info->res_name    = strdup(res_name);
     info->res_version = strdup(res_version);
-    info->res_type = strdup(res_type);	
+    info->res_type    = strdup(res_type);
     InitTimer(&(info->post_timer));
     countdown(&(info->post_timer), timeout_ms);
-    ret              = _add_resouce_info_to_post_list(handle, info);
+    ret = _add_resouce_info_to_post_list(handle, info);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("add resource to post list fail,rc:%d", ret);
         goto exit;
@@ -1260,14 +1269,14 @@ int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res
     } else {
         file_name_post += 1;
     }
-    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, file_name_post, res_version, res_type, 
-    								pHandle->request_id, IOT_RES_TYPE_REQUEST_URL);
+    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, file_name_post, res_version, res_type,
+                                   pHandle->request_id, IOT_RES_TYPE_REQUEST_URL);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("generate resource inform message failed");
         goto exit;
     }
     Log_d("request:%s", msg_reported);
-	ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_reported, QOS1);
+    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_reported, QOS1);
     if (ret < 0) {
         Log_e("Request url msg publish failed");
         goto exit;
@@ -1287,7 +1296,7 @@ int IOT_Resource_Report_Msg(void *handle, char *msg)
     POINTER_SANITY_CHECK(handle, IOT_OTA_ERR_INVALID_PARAM);
     ResourceHandle *pHandle = (ResourceHandle *)handle;
 
-	return qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg, QOS0);
+    return qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg, QOS0);
 }
 
 #ifdef __cplusplus

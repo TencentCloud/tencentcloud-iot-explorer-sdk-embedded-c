@@ -45,13 +45,13 @@ static int _parse_action_input(DeviceAction *pAction, char *pInput)
         if (JSTRING == pActionInput[i].type) {
             pActionInput[i].data = LITE_json_value_of(pActionInput[i].key, pInput);
             if (NULL == pActionInput[i].data) {
-                Log_e("action input data [%s] not found!", pActionInput[i].key);
+                Log_e("action input data [%s] not found!", STRING_PTR_PRINT_SANITY_CHECK(pActionInput[i].key));
                 return -1;
             }
         } else {
             temp = LITE_json_value_of(pActionInput[i].key, pInput);
             if (NULL == temp) {
-                Log_e("action input data [%s] not found!", pActionInput[i].key);
+                Log_e("action input data [%s] not found!", STRING_PTR_PRINT_SANITY_CHECK(pActionInput[i].key));
                 return -1;
             }
             if (JINT32 == pActionInput[i].type) {
@@ -292,7 +292,7 @@ static int _iot_action_json_init(void *handle, char *jsonBuffer, size_t sizeOfBu
     int32_t rc_of_snprintf;
     memset(jsonBuffer, 0, sizeOfBuffer);
     rc_of_snprintf = HAL_Snprintf(jsonBuffer, sizeOfBuffer, "{\"method\":\"%s\", \"clientToken\":\"%s\", ",
-                                  REPORT_ACTION, pClientToken);
+                                  REPORT_ACTION, STRING_PTR_PRINT_SANITY_CHECK(pClientToken));
 
     return check_snprintf_return(rc_of_snprintf, sizeOfBuffer);
 }

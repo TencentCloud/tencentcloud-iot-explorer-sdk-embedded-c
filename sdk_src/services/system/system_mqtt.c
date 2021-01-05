@@ -54,7 +54,7 @@ static void _system_mqtt_message_callback(void *pClient, MQTTMessage *message, v
     rcv_buf[len]        = '\0';  // jsmn_parse relies on a string
     SysMQTTState *state = (SysMQTTState *)pUserData;
 
-    Log_d("Recv Msg Topic:%s, payload:%s", message->ptopic, rcv_buf);
+    Log_d("Recv Msg Topic:%s, payload:%s", STRING_PTR_PRINT_SANITY_CHECK(message->ptopic), rcv_buf);
 
     if (strstr(rcv_buf, RESOURCE_TIME_STR)) {
         char *time = LITE_json_value_of(RESOURCE_TIME_STR, rcv_buf);

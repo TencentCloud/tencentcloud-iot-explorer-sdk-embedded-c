@@ -39,7 +39,7 @@ static bool _get_json_log_level(char *json, int32_t *res)
 {
     char *v = LITE_json_value_of("log_level", json);
     if (v == NULL) {
-        Log_e("Invalid log level from JSON: %s", json);
+        Log_e("Invalid log level from JSON: %s", STRING_PTR_PRINT_SANITY_CHECK(json));
         return false;
     }
     if (LITE_get_int32(res, v) != QCLOUD_RET_SUCCESS) {
@@ -65,7 +65,7 @@ static void _log_level_sub_cb(void *pClient, MQTTMessage *message, void *pUserDa
     memcpy(json_buf, message->payload, json_buf_len);
     json_buf[json_buf_len] = '\0';  // json_parse relies on a string
 
-    Log_d("Recv Msg Topic:%s, payload:%s", message->ptopic, json_buf);
+    Log_d("Recv Msg Topic:%s, payload:%s", STRING_PTR_PRINT_SANITY_CHECK(message->ptopic), json_buf);
     int log_level;
     if (!_get_json_log_level(json_buf, &log_level)) {
         return;

@@ -155,31 +155,31 @@ static int _gen_key_from_cert_file(char *sign_key, const char *file_path)
     char  line_buf[128] = {0};
 
     if ((fp = HAL_FileOpen(file_path, "r")) == NULL) {
-        UPLOAD_ERR("fail to open cert file %s", file_path);
+        UPLOAD_ERR("fail to open cert file %s", STRING_PTR_PRINT_SANITY_CHECK(file_path));
         return -1;
     }
 
     /* find the begin line */
     do {
         if (NULL == HAL_FileGets(line_buf, sizeof(line_buf), fp)) {
-            UPLOAD_ERR("fail to fgets file %s", file_path);
+            UPLOAD_ERR("fail to fgets file %s", STRING_PTR_PRINT_SANITY_CHECK(file_path));
             return -1;
         }
     } while (strstr(line_buf, "-----BEGIN ") == NULL);
 
     if (HAL_FileEof(fp)) {
-        UPLOAD_ERR("invalid cert file %s", file_path);
+        UPLOAD_ERR("invalid cert file %s", STRING_PTR_PRINT_SANITY_CHECK(file_path));
         return -1;
     }
 
     if (NULL == HAL_FileGets(line_buf, sizeof(line_buf), fp)) {
-        UPLOAD_ERR("fail to fgets file %s", file_path);
+        UPLOAD_ERR("fail to fgets file %s", STRING_PTR_PRINT_SANITY_CHECK(file_path));
         return -1;
     }
 
     len = strlen(line_buf);
     memcpy(sign_key, line_buf, len > SIGN_KEY_SIZE ? SIGN_KEY_SIZE : len);
-    UPLOAD_DBG("sign key %s", sign_key);
+    UPLOAD_DBG("sign key %s", STRING_PTR_PRINT_SANITY_CHECK(sign_key));
 
     HAL_FileClose(fp);
 
@@ -448,11 +448,11 @@ static bool _get_json_ret_code(char *json, int32_t *res)
 {
     char *v = LITE_json_value_of("Retcode", json);
     if (v == NULL) {
-        UPLOAD_ERR("Invalid json content: %s", json);
+        UPLOAD_ERR("Invalid json content: %s", STRING_PTR_PRINT_SANITY_CHECK(json));
         return false;
     }
     if (LITE_get_int32(res, v) != QCLOUD_RET_SUCCESS) {
-        UPLOAD_ERR("Invalid json content: %s", json);
+        UPLOAD_ERR("Invalid json content: %s", STRING_PTR_PRINT_SANITY_CHECK(json));
         HAL_Free(v);
         return false;
     }

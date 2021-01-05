@@ -311,8 +311,9 @@ int IOT_Gateway_Subdev_Bind(void *client, GatewayParam *param, DeviceInfo *pBind
     Gateway *gateway = (Gateway *)client;
 
     memset(topic, 0, MAX_SIZE_OF_CLOUD_TOPIC);
-    size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC + 1, GATEWAY_TOPIC_OPERATION_FMT, param->product_id,
-                        param->device_name);
+    size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC + 1, GATEWAY_TOPIC_OPERATION_FMT,
+                        STRING_PTR_PRINT_SANITY_CHECK(param->product_id),
+                        STRING_PTR_PRINT_SANITY_CHECK(param->device_name));
     if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC) {
         Log_e("buf size < topic length!");
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
@@ -376,8 +377,9 @@ int IOT_Gateway_Subdev_Unbind(void *client, GatewayParam *param, DeviceInfo *pSu
     Gateway *gateway = (Gateway *)client;
 
     memset(topic, 0, MAX_SIZE_OF_CLOUD_TOPIC);
-    size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC + 1, GATEWAY_TOPIC_OPERATION_FMT, param->product_id,
-                        param->device_name);
+    size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC + 1, GATEWAY_TOPIC_OPERATION_FMT,
+                        STRING_PTR_PRINT_SANITY_CHECK(param->product_id),
+                        STRING_PTR_PRINT_SANITY_CHECK(param->device_name));
     if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC) {
         Log_e("buf size < topic length!");
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
