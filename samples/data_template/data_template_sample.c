@@ -232,7 +232,8 @@ static int _setup_connect_init_params(TemplateInitParams *initParams)
     initParams->command_timeout        = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
     initParams->keep_alive_interval_ms = QCLOUD_IOT_MQTT_KEEP_ALIVE_INTERNAL;
     initParams->auto_connect_enable    = 1;
-    initParams->event_handle.h_fp      = event_handler;
+    initParams->event_handle.h_fp      = event_handler;	
+    initParams->usr_control_handle         = NULL;
 
     return QCLOUD_RET_SUCCESS;
 }
@@ -337,12 +338,12 @@ static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
         {.key = "imei", .type = TYPE_TEMPLATE_STRING, .data = "11-22-33-44"},
         {.key = "lat", .type = TYPE_TEMPLATE_STRING, .data = "22.546015"},
         {.key = "lon", .type = TYPE_TEMPLATE_STRING, .data = "113.941125"},
-        {NULL, NULL, 0}  // end
+        {.key = NULL, .data = NULL}  // end
     };
 
     /*self define info*/
     DeviceProperty self_info[] = {
-        {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"}, {NULL, NULL, 0}  // end
+        {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"}, {.key = NULL, .data = NULL}  // end
     };
 
     return IOT_Template_JSON_ConstructSysInfo(handle, pJsonDoc, sizeOfBuffer, plat_info, self_info);

@@ -415,9 +415,9 @@ int main(int argc, char **argv)
 exit:
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-    if (0 != sub_dev1_thread_params.thread_id) {
-        pthread_join(sub_dev1_thread_params.thread_id, NULL);
-    }
+    while(0 != sub_dev1_thread_params.thread_id){
+		HAL_SleepMs(1000);
+	}
 #endif
 
     // set GateWay device info

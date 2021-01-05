@@ -60,6 +60,7 @@ typedef struct _Template {
     MQTTEventHandler      event_handle;
     TemplateInnerData     inner_data;
     DataTemplateDestroyCb DataTemplateDestroyCb;
+	ControlMsgCb	      usr_control_handle;
 
 #ifdef MULTITHREAD_ENABLED
     bool yield_thread_running;

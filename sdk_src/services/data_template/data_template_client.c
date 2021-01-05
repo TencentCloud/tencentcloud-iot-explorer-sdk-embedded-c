@@ -332,7 +332,7 @@ int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size
     for (i = 0; i < count; i++) {
         DeviceProperty *pJsonNode = pDeviceProperties[i];
         if (pJsonNode != NULL && pJsonNode->key != NULL) {
-            rc = put_json_node(jsonBuffer, remain_size, pJsonNode->key, pJsonNode->data, pJsonNode->type);
+            rc = put_json_node(jsonBuffer, remain_size, pJsonNode);
 
             if (rc != QCLOUD_RET_SUCCESS) {
                 return rc;
@@ -490,7 +490,7 @@ int IOT_Template_JSON_ConstructSysInfo(void *pClient, char *jsonBuffer, size_t s
 
     DeviceProperty *pJsonNode = pPlatInfo;
     while ((NULL != pJsonNode) && (NULL != pJsonNode->key)) {
-        rc = put_json_node(jsonBuffer, remain_size, pJsonNode->key, pJsonNode->data, pJsonNode->type);
+        rc = put_json_node(jsonBuffer, remain_size, pJsonNode);
         if (rc != QCLOUD_RET_SUCCESS) {
             return rc;
         }
@@ -524,7 +524,7 @@ int IOT_Template_JSON_ConstructSysInfo(void *pClient, char *jsonBuffer, size_t s
     }
 
     while ((NULL != pJsonNode) && (NULL != pJsonNode->key)) {
-        rc = put_json_node(jsonBuffer, remain_size, pJsonNode->key, pJsonNode->data, pJsonNode->type);
+        rc = put_json_node(jsonBuffer, remain_size, pJsonNode);
         if (rc != QCLOUD_RET_SUCCESS) {
             return rc;
         }
@@ -856,7 +856,8 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
 #endif
 
     pTemplate->mqtt                        = mqtt_client;
-    pTemplate->event_handle                = pParams->event_handle;
+    pTemplate->event_handle                = pParams->event_handle;	
+	pTemplate->usr_control_handle          = pParams->usr_control_handle;
     pTemplate->inner_data.upstream_topic   = NULL;
     pTemplate->inner_data.downstream_topic = NULL;
     pTemplate->inner_data.token_num        = 0;

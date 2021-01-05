@@ -36,6 +36,7 @@ class TEMPLATE_CONSTANTS:
     UNITDESC = "unitDesc"
     REQUIRED = "required"
     MODE = "mode"
+    SPECS = "specs"
 
 class iot_enum:
     def __init__(self, parent, name, index):
@@ -58,6 +59,8 @@ class iot_field:
         self.prefix = prefix
         self.name = name
         self.type_name = field_obj["define"]["type"]
+        self.struct_fields = []
+        self.struct_field_id = 0
 
         if self.type_name == "bool":
             self.type_define = "TYPE_DEF_TEMPLATE_BOOL"
@@ -110,6 +113,17 @@ class iot_field:
             self.type_define = "TYPE_DEF_TEMPLATE_TIME"
             self.type_id = "TYPE_TEMPLATE_TIME"
             self.default_value = 0
+        elif self.type_name == "struct":
+            self.type_define = "TYPE_DEF_TEMPLATE_OBJECT"
+            self.type_id = "TYPE_TEMPLATE_JOBJECT"
+            self.default_value = self.get_id_struct_data_point_name()
+            if TEMPLATE_CONSTANTS.SPECS not in field_obj["define"]:
+                raise ValueError("错误：字段定义中未找到 specs 字段")
+            for member in field_obj["define"]["specs"]:
+                # 使用define替代dataType，复用iot_field接口
+                member['define'] = member['dataType']
+                self.struct_fields.append(iot_field("", member["id"], member["name"], self.struct_field_id, member))
+                self.struct_field_id += 1
         else:
             raise ValueError('{} 字段 数据类型 type={} 取值非法，有效值应为：bool,enum,int,float,string'.format(name, field_obj["type"]))
 
@@ -121,6 +135,18 @@ class iot_field:
 
     def get_id_default_value(self):
         return "{}".format(self.default_value)
+
+    def get_id_struct_property_count_macro(self):
+        return "TOTAL_PROPERTY_STRUCT_{}_COUNT".format(self.id.upper())
+
+    def get_id_struct_var_name(self):
+        return "sg_StructData{}".format(self.id.title())
+
+    def get_id_struct_data_point_name(self):
+        return "sg_StructTemplate{}".format(self.id.title())
+
+    def get_id_struct_init_function_name(self):
+        return "_init_struct_{}".format(self.id)
 
     def get_id_define_str(self):
         return "#define {} {}".format(self.get_id_c_macro_name(), self.index)
@@ -327,18 +353,23 @@ class iot_struct:
         result += "static   " + struct_name + "     "+var_gname + ";\n\n"
         return result
 
-    def property_data_initializer(self, struct_name="ProductDataDefine", var_gProduct="sg_ProductData", var_gTemplate="sg_DataTemplate"):
+    def property_data_initializer(self, fields, function_name="_init_data_template", struct_name="ProductDataDefine", var_gProduct="sg_ProductData", var_gTemplate="sg_DataTemplate"):
         count = 0
         init_str = ""
-        init_str += "static void _init_data_template(void)\n{\n"
+        init_str += "static void %s(void)\n{\n"%(function_name)
         #init_str += "    memset((void *) & {}, 0, sizeof({}));\n".format(var_gProduct, struct_name)
 
-        for field in self.fields:
+        for field in fields:
 
             if field.type_define == "TYPE_DEF_TEMPLATE_STRING":
                 init_str += "    {}.{}[0] = {};\n".format(var_gProduct, field.get_id_c_member_name(), "'\\0'")
                 init_str += "    {}[{}].data_property.data = {}.{};\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name())
-                init_str += "    {}[{}].data_property.data_buff_len = sizeof({}.{})/sizeof({}.{}[{}]);\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name(),var_gProduct, field.get_id_c_member_name(), count)
+                init_str += "    {}[{}].data_property.data_buff_len = sizeof({}.{})/sizeof({}.{}[{}]);\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name(),var_gProduct, field.get_id_c_member_name(), 0)
+            elif field.type_define == "TYPE_DEF_TEMPLATE_OBJECT":
+                init_str += "    {}();\n".format(field.get_id_struct_init_function_name())
+                init_str += "    {}.{} = (void *)&{};\n".format(var_gProduct, field.get_id_c_member_name(), field.get_id_default_value())
+                init_str += "    {}[{}].data_property.data = {}.{};\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name())
+                init_str += "    {}[{}].data_property.struct_obj_num = {};\n".format(var_gTemplate, count, field.get_id_struct_property_count_macro())
             else:
                 init_str += "    {}.{} = {};\n".format(var_gProduct, field.get_id_c_member_name(),field.get_id_default_value())
                 init_str += "    {}[{}].data_property.data = &{}.{};\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name())
@@ -346,14 +377,43 @@ class iot_struct:
             init_str += "    {}[{}].data_property.type = {};\n".format(var_gTemplate, count, field.type_id)
             init_str += "    {}[{}].state = eCHANGED;\n\n".format(var_gTemplate, count)
             count += 1
-        init_str += "};\n"
+        init_str += "};\n\n"
         return init_str
+
+    def declare_struct_data(self, prefix="StructDefine", var_gname="sg_StructData", struct_Template="sDataPoint",var_gTemplate="sg_StructDataTemplate"):
+        result = ""
+        for field in self.fields:
+            if field.type_id == "TYPE_TEMPLATE_JOBJECT":
+                # 定义结构体成员数目
+                result += "#define {} {}\n\n".format(field.get_id_struct_property_count_macro(), field.struct_field_id)
+                # 定义数据模版结构体
+                result += "static " + struct_Template + "    " + field.get_id_struct_data_point_name() + "[{}];\n\n".format(field.get_id_struct_property_count_macro())
+                # 定义结构体类型和结构体变量
+                result += "typedef struct _" + prefix + field.id.title() + " {\n"
+                for struct_field in field.struct_fields:
+                    result += "    {}\n".format(struct_field.get_struct_field_declare())
+                result += "} " + prefix + field.id.title() + ";\n\n"
+                result += "static   " + prefix + field.id.title() + "    " + field.get_id_struct_var_name() + ";\n\n"
+
+        return result
+
+    def declare_struct_init_function(self):
+        result = ""
+        for field in self.fields:
+            if field.type_id == "TYPE_TEMPLATE_JOBJECT":
+                f_name = field.get_id_struct_init_function_name()
+                var_name = field.get_id_struct_var_name()
+                template_name = field.get_id_struct_data_point_name()
+                result += self.property_data_initializer(field.struct_fields, f_name, var_gProduct=var_name, var_gTemplate=template_name)
+        return result
 
     def gen_data_config(self):
         data_config = ""
         data_config +="{}".format(self.data_config_macro_define())
         data_config +="{}".format(self.declare_product_data_struct())
-        data_config += "{}".format(self.property_data_initializer())
+        data_config +="{}".format(self.declare_struct_data())
+        data_config +="{}".format(self.declare_struct_init_function())
+        data_config += "{}".format(self.property_data_initializer(self.fields))
         return data_config
 
     def gen_event_config(self):

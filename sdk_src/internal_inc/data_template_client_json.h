@@ -141,12 +141,10 @@ void insert_str(char *pDestStr, char *pSourceStr, int pos);
  *
  * @param jsonBuffer   	JSON string buffer
  * @param sizeOfBuffer  size of buffer
- * @param pKey          key of JSON node
- * @param pData         value of JSON node
- * @param type          value type of JSON node
+ * @param pJsonNode     JSON node
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int put_json_node(char *jsonBuffer, size_t sizeOfBuffer, const char *pKey, void *pData, JsonDataType type);
+int put_json_node(char *jsonBuffer, size_t sizeOfBuffer, DeviceProperty *pJsonNode);
 
 /**
  * add a JSON node to JSON string, data_template's bool type not the same to

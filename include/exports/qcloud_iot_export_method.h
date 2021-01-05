@@ -55,10 +55,13 @@ typedef enum { JINT32, JINT16, JINT8, JUINT32, JUINT16, JUINT8, JFLOAT, JDOUBLE,
  * @brief Define a device property, as a JSON document node
  */
 typedef struct _JSONNode {
-    char *       key;            // Key of this JSON node
-    void *       data;           // Value of this JSON node
-    uint16_t     data_buff_len;  // data buff len, for string type value update
-    JsonDataType type;           // Data type of this JSON node
+    char *key;   // Key of this JSON node
+    void *data;  // Value of this JSON node
+    union {
+        uint16_t data_buff_len;   // data buff len, for string type value update
+        uint16_t struct_obj_num;  // member number of struct
+    };
+    JsonDataType type;  // Data type of this JSON node
 } DeviceProperty;
 
 /**

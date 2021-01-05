@@ -456,7 +456,11 @@ static void _handle_template_reply_callback(Qcloud_IoT_Template *pTemplate, List
                 if (parse_template_get_control(sg_template_cloud_rcv_buf, &control_str)) {
                     Log_d("control data from get_status_reply");
                     _set_control_clientToken(pClientToken);
-                    _handle_control(pTemplate, control_str);
+					if(NULL != pTemplate->usr_control_handle){ //call usr's cb if delta_handle registered,otherwise use _handle_delta
+						pTemplate->usr_control_handle(pTemplate, control_str, eGET_CTL);
+					}else{
+						_handle_control(pTemplate, control_str);
+					}
                     HAL_Free(control_str);
                     *((ReplyAck *)request->user_context) = ACK_ACCEPTED;  // prepare for clear_control
                 }
@@ -522,7 +526,11 @@ static void _on_template_downstream_topic_handler(void *pClient, MQTTMessage *me
         if (parse_template_cmd_control(sg_template_cloud_rcv_buf, &control_str)) {
             // Log_d("control_str:%s", control_str);
             _set_control_clientToken(client_token);
-            _handle_control(template_client, control_str);
+			if(NULL != template_client->usr_control_handle){ //call usr's cb if delta_handle registered,otherwise use _handle_delta
+				template_client->usr_control_handle(template_client, control_str, eOPERATION_CTL);
+			}else{
+				_handle_control(template_client, control_str);
+			}
             HAL_Free(control_str);
         }
 

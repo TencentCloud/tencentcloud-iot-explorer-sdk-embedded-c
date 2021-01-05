@@ -62,6 +62,7 @@ void insert_str(char *pDestStr, char *pSourceStr, int pos)
 static int _direct_update_value(char *value, DeviceProperty *pProperty)
 {
     int rc = QCLOUD_RET_SUCCESS;
+    uint16_t index = 0;
 
     if (pProperty->type == JBOOL) {
         rc = LITE_get_boolean(pProperty->data, value);
@@ -84,7 +85,12 @@ static int _direct_update_value(char *value, DeviceProperty *pProperty)
     } else if (pProperty->type == JSTRING) {
         rc = LITE_get_string(pProperty->data, value, pProperty->data_buff_len);
     } else if (pProperty->type == JOBJECT) {
-        Log_d("Json type wait to be deal,%s", value);
+        for (index = 0; index < pProperty->struct_obj_num; index++) {
+            DeviceProperty *pJsonNode = &((((sDataPoint *)(pProperty->data)) + index)->data_property);
+            if ((pJsonNode != NULL) && (pJsonNode->key != NULL)) {
+                update_value_if_key_match(value, pJsonNode);
+            }
+        }
     } else {
         Log_e("pProperty type unknow,%d", pProperty->type);
     }
@@ -92,11 +98,14 @@ static int _direct_update_value(char *value, DeviceProperty *pProperty)
     return rc;
 }
 
-int put_json_node(char *jsonBuffer, size_t sizeOfBuffer, const char *pKey, void *pData, JsonDataType type)
+int put_json_node(char *jsonBuffer, size_t sizeOfBuffer, DeviceProperty *pJsonNode)
 {
     int     rc;
     int32_t rc_of_snprintf = 0;
     size_t  remain_size    = 0;
+    char *pKey = pJsonNode->key;
+    void *pData = pJsonNode->data;
+    JsonDataType type = pJsonNode->type;
 
     if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
@@ -143,7 +152,23 @@ int put_json_node(char *jsonBuffer, size_t sizeOfBuffer, const char *pKey, void 
         } else if (type == JSTRING) {
             rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\",", (char *)(pData));
         } else if (type == JOBJECT) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%s,", (char *)(pData));
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "{");
+            rc = check_snprintf_return(rc_of_snprintf, remain_size);
+            if (rc != QCLOUD_RET_SUCCESS) {
+                return rc;
+            }
+            uint16_t index = 0;
+
+            for (index = 0; index < pJsonNode->struct_obj_num; index++) {
+                DeviceProperty *pNode = &((((sDataPoint *)(pJsonNode->data)) + index)->data_property);
+                if ((pNode != NULL) && (pNode->key) != NULL) {
+                    rc = put_json_node(jsonBuffer + strlen(jsonBuffer), remain_size, pNode);
+                    if (rc != QCLOUD_RET_SUCCESS) {
+                        return rc;
+                    }
+                }
+            }
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "},");
         }
     }
 

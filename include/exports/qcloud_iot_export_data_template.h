@@ -82,6 +82,12 @@ typedef struct _sEvent_ {
 
 #endif
 
+typedef enum{
+	eGET_CTL,
+	eOPERATION_CTL,	
+}eControlType;
+typedef void (*ControlMsgCb)(void *pClient, char *control_str, eControlType type);
+
 /* The structure of data_template init parameters */
 typedef struct {
     char *region;  // region
@@ -105,8 +111,8 @@ typedef struct {
     uint8_t auto_connect_enable;  // flag of auto reconnection, 1 is enable and
     // recommended
 
-    MQTTEventHandler event_handle;  // event callback
-
+    MQTTEventHandler event_handle;   // event callback
+	ControlMsgCb	 usr_control_handle; // user can register cb to handle control msg instend of sdk's handle 
 } TemplateInitParams;
 
 #ifdef AUTH_MODE_CERT
