@@ -81,6 +81,9 @@ set(FEATURE_AT_OS_USED OFF)
 # 是否打开AT模组调试功能
 set(FEATURE_AT_DEBUG OFF)
 
+# 是否打开 WIFI 配网功能
+set(FEATURE_WIFI_CONFIG_ENABLED ON)
+
 # 使用SDK AT组件实现通用TCP模组网络读写需要配置 <---end
 
 ######################CONFIG END######################################
@@ -147,7 +150,7 @@ option(SYSTEM_COMM "Enable SYSTEM_COMM" ${FEATURE_SYSTEM_COMM_ENABLED})
 option(LOG_UPLOAD "Enable LOG_UPLOAD" ${FEATURE_LOG_UPLOAD_ENABLED})
 option(RESOURCE_UPDATE_ENABLED "Enable Resource update" ${FEATURE_RESOURCE_UPDATE_ENABLED})
 option(ASR_ENABLED "Enable ASR" ${FEATURE_ASR_ENABLED})
-
+option(WIFI_CONFIG_ENABLED "Enable WIFI CONFIG" ${FEATURE_WIFI_CONFIG_ENABLED})
 
 if(${FEATURE_AUTH_WITH_NOTLS} STREQUAL "ON" )
 	option(OTA_USE_HTTPS "Enable OTA_USE_HTTPS" OFF)
@@ -182,7 +185,8 @@ include_directories(${PROJECT_SOURCE_DIR}/include
 					${PROJECT_SOURCE_DIR}/include/exports 
 					${PROJECT_SOURCE_DIR}/platform/at_device/esp8266 
 					${PROJECT_SOURCE_DIR}/sdk_src/internal_inc
-					${PROJECT_SOURCE_DIR}/external_libs/mbedtls/include)
+					${PROJECT_SOURCE_DIR}/external_libs/mbedtls/include
+					${PROJECT_SOURCE_DIR}/external_libs/cJSON)
 					
 file(GLOB src_include ${PROJECT_SOURCE_DIR}/include/*.h)
 file(GLOB src_inc_export ${PROJECT_SOURCE_DIR}/include/exports/*.h)
@@ -206,6 +210,9 @@ if(NOT DEFINED SAMPLE_ONLY)
 	add_subdirectory(${PROJECT_SOURCE_DIR}/sdk_src)
 	add_subdirectory(${PROJECT_SOURCE_DIR}/platform)
 	add_subdirectory(${PROJECT_SOURCE_DIR}/external_libs/mbedtls)
+if(FEATURE_WIFI_CONFIG_ENABLED STREQUAL "ON")
+	add_subdirectory(${PROJECT_SOURCE_DIR}/external_libs/cJSON)
+endif()
 endif()
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/samples)

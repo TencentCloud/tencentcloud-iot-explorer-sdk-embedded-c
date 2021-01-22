@@ -91,6 +91,10 @@ $(call CompLib_Map, GATEWAY_ENABLED, \
 	$(SRC_DIR)/services/gateway \
 )
 
+$(call CompLib_Map, WIFI_CONFIG_ENABLED, \
+    $(SRC_DIR)/wifi_config \
+)
+
 IOTSDK_SRC_FILES := \
 
 $(foreach v, \
@@ -133,6 +137,11 @@ ifneq (,$(filter -DAT_TCP_ENABLED,$(CFLAGS)))
 	PLATFORM_LIB_COMPONENTS += \
     $(PLATFORM_DIR)/at_device/$(PLATFORM_AT_DEV)
 endif
+
+ifneq (,$(filter -DWIFI_CONFIG_ENABLED,$(CFLAGS)))
+	PLATFORM_LIB_COMPONENTS += \
+    $(PLATFORM_DIR)/wifi_config_adapter
+endif
    
 IOTPLATFORM_SRC_FILES := \
 
@@ -150,6 +159,7 @@ COMP_LIB_COMPONENTS_INCLUDES := \
     $(EXP_INC_DIR) \
     $(INT_INC_DIR) \
     external_libs/mbedtls/include \
+	external_libs/cJSON \
     
 IOTSDK_INCLUDE_FILES := \
 

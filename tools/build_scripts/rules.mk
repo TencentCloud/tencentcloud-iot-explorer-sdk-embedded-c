@@ -1,9 +1,9 @@
 iot_sdk_objects = $(patsubst %.c,%.o, $(IOTSDK_SRC_FILES))
 iot_platform_objects = $(patsubst %.c,%.o, $(IOTPLATFORM_SRC_FILES))
 
-.PHONY: config mbedtls clean final-out samples tests
+.PHONY: config mbedtls cJSON clean final-out samples tests
 
-all: config mbedtls ${COMP_LIB} ${PLATFORM_LIB} final-out samples tests 
+all: config mbedtls cJSON ${COMP_LIB} ${PLATFORM_LIB} final-out samples tests 
 	$(call Compile_Result)
 
 ${COMP_LIB}: ${iot_sdk_objects}
@@ -43,6 +43,17 @@ ifeq (,$(filter -DAUTH_WITH_NOTLS,$(CFLAGS)))
 						&& $(AR) x libmbedcrypto.a
 endif
 
+cJSON:
+ifneq (,$(filter -DWIFI_CONFIG_ENABLED,$(CFLAGS)))
+	$(TOP_Q) \
+	make -s -C $(THIRD_PARTY_PATH)/cJSON static CC=$(PLATFORM_CC) AR=$(PLATFORM_AR)
+	
+	$(TOP_Q) \
+	cp -RP  $(THIRD_PARTY_PATH)/cJSON/libcjson.* $(TEMP_DIR)
+	$(TOP_Q) \
+	cd $(TEMP_DIR) && $(AR) x libcjson.a
+endif
+
 ${iot_sdk_objects}:%.o:%.c
 	$(TOP_Q) echo '' > $(TOP_DIR)/include/config.h
 	$(call Brief_Log,"CC")
@@ -71,7 +82,12 @@ final-out :
 	
 	$(TOP_Q) \
 	cp -rf $(TOP_DIR)/device_info.json $(FINAL_DIR)/bin/
-	
+
+ifneq (,$(filter -DWIFI_CONFIG_ENABLED,$(CFLAGS)))	
+	$(TOP_Q) \
+	cp -rf $(TEMP_DIR)/libcjson.a $(FINAL_DIR)/lib/
+endif
+
 ifeq (,$(filter -DAUTH_WITH_NOTLS,$(CFLAGS)))
 	$(TOP_Q) \
 	mv ${TEMP_DIR}/*.a ${FINAL_DIR}/lib/
@@ -92,6 +108,7 @@ samples:
 	make -s -C $(SAMPLE_DIR)
 
 TLSDIR = $(THIRD_PARTY_PATH)/mbedtls
+cJSONDIR = $(THIRD_PARTY_PATH)/cJSON
 clean:
 	$(TOP_Q) \
 	rm -rf ${TEMP_DIR}
@@ -103,6 +120,13 @@ ifeq (,$(filter -DAUTH_WITH_NOTLS,$(CFLAGS)))
 ifeq ($(TLSDIR), $(wildcard $(THIRD_PARTY_PATH)/mbedtls))
 	$(TOP_Q) \
 	make -s -C $(THIRD_PARTY_PATH)/mbedtls clean
+endif
+endif
+
+ifneq (,$(filter -DWIFI_CONFIG_ENABLED,$(CFLAGS)))
+ifeq ($(cJSONDIR), $(wildcard $(THIRD_PARTY_PATH)/cJSON))
+	$(TOP_Q) \
+	make -s -C $(THIRD_PARTY_PATH)/cJSON clean
 endif
 endif
 

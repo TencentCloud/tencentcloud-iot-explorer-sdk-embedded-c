@@ -84,6 +84,11 @@ list(APPEND src_sdk ${src_socket})
 file(GLOB src_network ${CMAKE_CURRENT_SOURCE_DIR}/network/*.c)
 list(APPEND src_sdk ${src_network})
 
+# WIFI Config
+if(FEATURE_WIFI_CONFIG_ENABLED STREQUAL "ON")
+file(GLOB src_wifi_config ${CMAKE_CURRENT_SOURCE_DIR}/wifi_config/*.c)
+list(APPEND src_sdk ${src_wifi_config})
+endif()
 
 # code output
 if(${EXTRACT_SRC} STREQUAL  "ON")
