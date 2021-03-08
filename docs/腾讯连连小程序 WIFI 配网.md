@@ -70,68 +70,100 @@ CSDK 实现了接收小程序发送的 token 并向物联网开发发起绑定�
 ```
 ### 1. softap 适配
 ```
-文件：platform/wifi_config/adapter/HAL_Soft_ap.c
-函数：start_device_softAP 用于将 wifi 切换为 ap 模式，并设置默认 IP 地址为 192.168.4.1 掩码 255.255.255.0 并开启 DHCP Server 功能。
-函数：stop_device_softAP 用于将 wifi 的 ap 模式停止，如切换 wifi 为 station 模式等。
+适配文件：platform/wifi_config/adapter/HAL_Soft_ap.c
+函数：start_device_softAP 用于将 wifi 切换为 ap 模式，需要设置默认 IP 地址为 192.168.4.1 掩码 255.255.255.0，开启 DHCP Server 功能；函数不能阻塞。
+函数：stop_device_softAP 用于将 wifi 的 ap 模式停止，如切换 wifi 为 station 模式等；函数不能阻塞。
 函数：_soft_ap_config_task 用于监控 softap 的配网结果和目标 ap 的连接状态， wifi_config_event_cb 函数指针将发起设备向平台的绑定流程。
 
-文件：platform/wifi_config/adapter/HAL_WIFI_api.c
-函数：HAL_Wifi_StaConnect 用于设备切换到 station 模式并连接到目标 ap，保存目标 ap ssid password 信息，函数返回 0 SDK 将认为设备连接目标 ap 成功。
+适配文件：platform/wifi_config/adapter/HAL_WIFI_api.c
+函数：HAL_Wifi_StaConnect 用于设备切换到 station 模式并连接到目标 ap，保存目标 ap ssid password 信息，函数返回 0 SDK 将认为设备连接目标 ap 成功；函数需要阻塞获取 wifi 连接结果并返回成功/失败/超时。
 根据文件中 TO-DO 注释去调用状态/结果设置的函数。
 ```
 
 ### 2. airkiss 适配
 ```
-文件：platform/wifi_config/adapter/HAL_Airkiss.c
-函数：start_device_airkiss 用于开启 wifi 的 airkiss 配网模式。
+适配文件：platform/wifi_config/adapter/HAL_Airkiss.c
+函数：start_device_airkiss 用于启动 wifi 的 airkiss 配网模式。
 函数：stop_device_airkiss 用于关闭 wifi 的 airkiss 配网模式。
 函数：airkiss_task 用于监控 airkiss 的配网结果和目标 ap 的连接状态， 调用 wifi_config_event_cb 函数指针发起设备向平台的绑定流程。
+注：设备通过 airkiss 方式获取到 SSID PASSWORD 后应自行发起 WIFI 连接过程监控连接结果；在 airkiss 获取 SSID PASSWORD 过程中根据成功或失败调用 set_airkiss_config_state 函数设置 airkiss 执行的结果。
 根据文件中 TO-DO 注释去调用状态/结果设置的函数。
 ```
 
 ### 3. smartconfig 适配
 ```
-文件：platform/wifi_config/adapter/HAL_Smart_config.c
-函数：start_device_smartconfig 用于开启 wifi 的 smartconfig 配网模式。
+适配文件：platform/wifi_config/adapter/HAL_Smart_config.c
+函数：start_device_smartconfig 用于启动 wifi 的 smartconfig 配网模式。
 函数：stop_device_smartconfig 用于关闭 wifi 的 smartconfig 配网模式。
 函数：smart_config_task 用于监控 smartconfig 的配网结果和目标 ap 的连接状态， 调用 wifi_config_event_cb 函数指针发起设备向平台的绑定流程。
+注：设备通过 smartconfig 方式获取到 SSID PASSWORD 后应自行发起 WIFI 连接过程监控连接结果；在 smartconfig 获取 SSID PASSWORD 过程中根据成功或失败调用 set_smart_config_state 函数设置 smartconfig 执行的结果。
 根据文件中 TO-DO 注释去调用状态/结果设置的函数。
 ```
 
 ### 4. simpleconfig 适配
 ```
-文件：platform/wifi_config/adapter/HAL_Simple_config.c
-函数：start_device_simpleconfig 用于开启 wifi 的 simpleconfig 配网模式。
+适配文件：platform/wifi_config/adapter/HAL_Simple_config.c
+函数：start_device_simpleconfig 用于启动 wifi 的 simpleconfig 配网模式。
 函数：stop_device_simpleconfig 用于关闭 wifi 的 simpleconfig 配网模式。
 函数：simple_config_task 用于监控 simpleconfig 的配网结果和目标 ap 的连接状态， 调用 wifi_config_event_cb 函数指针发起设备向平台的绑定流程。
+注：设备通过 simpleconfig 方式获取到 SSID PASSWORD 后应自行发起 WIFI 连接过程监控连接结果；在 simpleconfig 获取 SSID PASSWORD 过程中根据成功或失败调用 set_simple_config_state 函数设置 simpleconfig 执行的结果。
 根据文件中 TO-DO 注释去调用状态/结果设置的函数。
 ```
 
 ### 5. 蓝牙 combo 适配
 ```
-文件：platform/wifi_config/adapter/HAL_BTCombo_config.c
-函数：start_device_btcomboconfig 用于开启 wifi 的蓝牙 combo 配网模式。
+适配文件：platform/wifi_config/adapter/HAL_BTCombo_config.c
+函数：start_device_btcomboconfig 用于启动 wifi 的蓝牙 combo 配网模式。
 函数：stop_device_btcomboconfig 用于关闭 wifi 的蓝牙 combo 配网模式。
 函数：bt_combo_config_task 用于监控蓝牙 combo 的配网结果和目标 ap 的连接状态， 调用 wifi_config_event_cb 函数指针发起设备向平台的绑定流程。调用 bt_combo_report_bind_result 函数向小程序发送设备 token 绑定结果。
 函数：bt_combo_send_message 用于设备通过蓝牙向小程序发送消息。
+注：设备通过 BLE 方式获取到 SSID PASSWORD 后应自行发起 WIFI 连接过程监控连接结果；在 BLE 获取 SSID PASSWORD 过程中根据成功或失败调用 set_bt_combo_config_state 函数设置 BLE 获取 SSID PASSWORD的结果；BLE 获取到 token 时调用 qiot_device_bind_set_token 函数设置 token。
+注：蓝牙 combo 配网过程中设备与小程序的蓝牙交互必须要按照 docs/腾讯连连蓝牙辅助配网协议V1.1.pdf 文档开发。
 根据文件中 TO-DO 注释去调用状态/结果设置的函数。
 ```
 
 ### 6. Log 适配
 ```
 Log 是 WIFI 配网阶段产生的日志数据。
-文件：platform/wifi_config/adapter/HAL_Soft_ap.c
-函数：start_device_softAP 用于将 wifi 切换为 ap 模式，并设置默认 IP 地址为 192.168.4.1 掩码 255.255.255.0 并开启 DHCP Server 功能。
+适配文件：platform/wifi_config/adapter/HAL_Soft_ap.c
+函数：start_device_softAP 用于将 wifi 切换为 ap 模式，需要设置默认 IP 地址为 192.168.4.1 掩码 255.255.255.0，开启 DHCP Server 功能。
 函数：stop_device_softAP 用于将 wifi 的 ap 模式停止，如切换 wifi 为 station 模式等。
+以上函数适配后，当配网失败时，调用函数 qiot_wifi_config_send_log 开启日志上报，小程序可以连接到设备 SosftAP 上，获取配网日志到小程序。
 
 文件：platform/wifi_config/adapter/HAL_WIFI_api.c
 函数：HAL_Wifi_save_err_log 用于保存设备配网期间的出错日志。
 函数：HAL_Wifi_check_err_log 用于获取保存的设备在配网期间出错的日志数量。
 函数：HAL_Wifi_load_err_log 用于读取保存的设备在配网期间出错的日志。
 函数：HAL_Wifi_clear_err_log 用于清除保存的设备在配网期间的出错日志。
-
-
 ```
+
+### 7. 配网必须适配
+```
+适配文件：platform/wifi_config/adapter/HAL_WIFI_api.c
+函数：HAL_Wifi_IsConnected 用于配网流程中判断设备是否连接 WIFI 成功并获取到了 IP 地址，从而进行设备绑定过程。
+```
+
+### 8. UDP 通信适配
+```
+适配文件：platform/os/xxx/HAL_UDP_xxx.c
+函数：HAL_UDP_CreateBind 用于创建本地 UDP socket，绑定本地端口号 8266
+函数：HAL_UDP_ReadTimeoutPeerInfo 用于超时读取数据并返回 UDP 对端 IP Port 信息，以供回复使用
+函数：HAL_UDP_WriteTo 用于发送数据给入参的 host 和 port
+函数：HAL_UDP_Close 用于关闭本地 UDP socket
+函数：HAL_UDP_GetErrno 获取最近一次 socket 通信的 errno 值
+函数：HAL_UDP_GetErrnoStr 获取最近一次的 socket 通信的 errno 对应的字符串。
+以上函数 SDK 已适配了 platform/os/linux/HAL_UDP_linux.c platform/os/windows/HAL_UDP_win.c platform/os/freertos/HAL_UDP_lwip.c，使用 lwip tcp/ip 协议栈的可使用 platform/os/freertos/HAL_UDP_lwip.c 该文件；其他的 tcp/ip 协议栈请自行参考适配。
+```
+
+### 9. 配网时序图
+SoftAP 配网绑定时序图
+![softp 时序图](https://main.qcloudimg.com/raw/9a53ecc101db5d11827fd15e92fdace7.png)
+
+Airkiss/Smartconfig/Simpleconfig 配网绑定时序图
+![airkiss 时序图](https://main.qcloudimg.com/raw/590d10b07942df6fc4c69c1620369cee.png)
+
+BLE Combo 配网绑定时序图
+![BLE Combo 时序图](https://main.qcloudimg.com/raw/c38dd46f85d0a09869ecf10bd7f0e535.png)
 
 ## 4. 编译 SDK 运行示例程序
 

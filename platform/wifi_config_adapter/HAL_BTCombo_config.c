@@ -27,7 +27,6 @@
 #if WIFI_PROV_BT_COMBO_CONFIG_ENABLE
 
 static bool             sg_bt_combo_config_start = false;
-static bool             sg_bt_combo_config_token = false;
 static eWiFiConfigState ap_connect_state         = WIFI_CONFIG_ING;
 
 void set_bt_combo_config_state(eWiFiConfigState state)
@@ -40,19 +39,15 @@ static eWiFiConfigState get_bt_combo_config_state(void)
     return ap_connect_state;
 }
 
-static void set_bt_combo_token_state(bool is_get)
-{
-    sg_bt_combo_config_token = is_get;
-}
-
-static bool get_bt_combo_token_state(void)
-{
-    return sg_bt_combo_config_token;
-}
-
 static int bt_combo_send_message(char *buff, int buff_len)
 {
+    // TO-DO
     return QCLOUD_RET_SUCCESS;
+}
+
+static void bt_combo_report_wificonn_success()
+{
+    // TO-DO subtype 0x04
 }
 
 static int bt_combo_report_bind_result(int token_status)
@@ -70,7 +65,7 @@ static int bt_combo_report_bind_result(int token_status)
     HAL_Snprintf(json_str, sizeof(json_str), "{\"status\":%d,\"productID\":\"%s\",\"deviceName\":\"%s\"}\r\n",
                  token_status, devinfo.product_id, devinfo.device_name);
 
-    // TO-DO BLE Send json_str to wechat applet
+    // TO-DO BLE Send json_str to wechat applet subtype 0x05
     bt_combo_send_message(json_str, strlen(json_str));
 
     return ret;
@@ -86,8 +81,8 @@ static void bt_combo_config_task(void *params)
         // check bt combo config result, call set_bt_combo_apconn_state set result
         // call set_bt_combo_token_state set token is getted
 
-        if ((WIFI_CONFIG_SUCCESS == get_bt_combo_config_state()) && (true == get_bt_combo_token_state()) &&
-            (true == HAL_Wifi_IsConnected())) {
+        if ((WIFI_CONFIG_SUCCESS == get_bt_combo_config_state()) && (true == HAL_Wifi_IsConnected())) {
+            bt_combo_report_wificonn_success();
             wifi_config_event_cb(EVENT_WIFI_CONFIG_SUCCESS, NULL);
             if (true == qiot_device_bind_get_cloud_reply_code(&bind_reply_code)) {
                 bt_combo_report_bind_result(bind_reply_code);
@@ -105,8 +100,7 @@ static void bt_combo_config_task(void *params)
         }
     }
 
-    Log_d("task end connect_success :%d, task_run :%d, bt_set_token:%d", get_bt_combo_config_state(),
-          sg_bt_combo_config_start, get_bt_combo_token_state());
+    Log_d("task end connect_success :%d, task_run :%d", get_bt_combo_config_state(), sg_bt_combo_config_start);
 
     if (0 == time_count) {
         wifi_config_event_cb(EVENT_WIFI_CONFIG_TIMEOUT, NULL);
@@ -134,11 +128,13 @@ int _bt_combo_config_task_start(void *params)
 
 int start_device_btcomboconfig(void)
 {
+    // TO-DO
     return QCLOUD_RET_SUCCESS;
 }
 
 int stop_device_btcomboconfig(void)
 {
+    // TO-DO
     return QCLOUD_RET_SUCCESS;
 }
 
@@ -155,7 +151,6 @@ int HAL_BTComboConfig_Start(void *params, WifiConfigEventCallBack event_cb)
 {
     int ret = QCLOUD_RET_SUCCESS;
 #if WIFI_PROV_BT_COMBO_CONFIG_ENABLE
-    set_bt_combo_token_state(false);
     set_bt_combo_config_state(WIFI_CONFIG_ING);
 
     // TO-DO device platform start bt combo config
@@ -182,7 +177,6 @@ int HAL_BTComboConfig_Stop(void)
 {
     int ret = QCLOUD_RET_SUCCESS;
 #if WIFI_PROV_BT_COMBO_CONFIG_ENABLE
-    set_bt_combo_token_state(false);
     set_bt_combo_config_state(WIFI_CONFIG_ING);
 
     if (sg_bt_combo_config_start) {

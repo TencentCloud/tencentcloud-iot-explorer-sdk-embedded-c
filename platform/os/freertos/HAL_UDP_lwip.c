@@ -184,7 +184,7 @@ int HAL_UDP_CreateBind(const char *host, unsigned short port)
     hints.ai_family   = AF_INET;
     hints.ai_protocol = IPPROTO_UDP;
 
-    Log_d("establish tcp connection with server(host=%s port=%s)", host, port_str);
+    Log_d("establish udp connection with server(host=%s port=%s)", host, port_str);
 
     if (getaddrinfo(host, port_str, &hints, &addr_list) != 0) {
         Log_e("getaddrinfo error,errno:%s", strerror(errno));
@@ -198,7 +198,7 @@ int HAL_UDP_CreateBind(const char *host, unsigned short port)
             continue;
         }
 
-        Log_d("establish tcp connection with server(host=%d port=%d)", ((struct sockaddr_in *)cur->ai_addr)->sin_addr,
+        Log_d("establish udp connection with server(host=%d port=%d)", ((struct sockaddr_in *)cur->ai_addr)->sin_addr,
               ((struct sockaddr_in *)cur->ai_addr)->sin_port);
 
         if (0 == bind(fd, cur->ai_addr, cur->ai_addrlen)) {
