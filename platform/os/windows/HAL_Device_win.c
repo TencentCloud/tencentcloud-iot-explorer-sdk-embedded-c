@@ -66,6 +66,20 @@ static char sg_sub_device_product_id[MAX_SIZE_OF_PRODUCT_ID + 1] = "PRODUCT_ID";
 static char sg_sub_device_name[MAX_SIZE_OF_DEVICE_NAME + 1] = "YOUR_SUB_DEV_NAME";
 #endif
 
+#ifdef GATEWAY_ENABLED
+
+#ifdef DEBUG_DEV_INFO_USED
+/* sub-device list  */
+static DeviceInfo sg_subdevList[] = {
+    {.product_id = "WPDA0S6S08", .device_name = "dev001"},  {.product_id = "WPDA0S6S08", .device_name = "dev002"},
+    {.product_id = "WPDA0S6S08", .device_name = "dev003"},
+
+    {.product_id = "Y8T6NB8DM0", .device_name = "test001"}, {.product_id = "Y8T6NB8DM0", .device_name = "test002"},
+    {.product_id = "Y8T6NB8DM0", .device_name = "test003"}};
+#endif
+
+#endif
+
 static int device_info_copy(void *pdst, void *psrc, uint8_t max_len)
 {
     if (strlen(psrc) > max_len) {

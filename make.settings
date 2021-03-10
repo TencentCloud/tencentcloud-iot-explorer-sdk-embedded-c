@@ -79,5 +79,7 @@ FEATURE_AT_OS_USED                      = y
 # 是否打开AT模组调试功能
 FEATURE_AT_DEBUG                        = y
 
+# 是否打开WIFI配网功能
+FEATURE_WIFI_CONFIG_ENABLED             = y
 
 

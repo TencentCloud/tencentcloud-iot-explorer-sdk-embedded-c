@@ -21,8 +21,14 @@ endif()
 
 if(CMAKE_COMPILER_IS_GNUCC)
 	set(lib -Wl,--start-group ${link_lib} -Wl,--end-group)
+if(FEATURE_WIFI_CONFIG_ENABLED STREQUAL "ON")
+	set(lib -Wl,--start-group ${link_lib} -lcjson -Wl,--end-group)
+endif()
 else()
 	set(lib ${link_lib})
+if(FEATURE_WIFI_CONFIG_ENABLED STREQUAL "ON")
+	set(lib ${link_lib} cjson)
+endif()
 endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
@@ -81,3 +87,11 @@ if(${FEATURE_DEV_DYN_REG_ENABLED} STREQUAL "ON")
 	add_executable(dynreg_dev_sample 		${src_dynreg_dev_sample})
 	target_link_libraries(dynreg_dev_sample 	 ${lib})
 endif()
+
+# WIFI_CONFIG
+if(${FEATURE_WIFI_CONFIG_ENABLED} STREQUAL "ON")
+	file(GLOB src_wifi_config_sample		${PROJECT_SOURCE_DIR}/samples/wifi_config/wifi_config_sample.c)
+	add_executable(wifi_config_sample 		${src_wifi_config_sample})
+	target_link_libraries(wifi_config_sample 	 ${lib})
+endif()
+

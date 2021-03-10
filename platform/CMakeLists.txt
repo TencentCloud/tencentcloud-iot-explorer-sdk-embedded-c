@@ -28,6 +28,16 @@ endif()
 # target
 set(platform_target "iot_platform")
 
+if(FEATURE_WIFI_CONFIG_ENABLED STREQUAL "ON")
+	file(GLOB src_wifi_config_adapter ./wifi_config_adapter/*.c)
+	list(APPEND src_wifi_config_adapter ${src_platform_tls})
+if(${EXTRACT_SRC} STREQUAL "ON")
+	file(COPY ${src_wifi_config_adapter} DESTINATION ${PROJECT_SOURCE_DIR}/output/qcloud_iot_c_sdk/platform/)
+endif()	
+endif()
+
+list(APPEND src_platform ${src_wifi_config_adapter})
+
 # add library
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/lib/)  
 if(AT_TCP_ENABLED STREQUAL "ON")

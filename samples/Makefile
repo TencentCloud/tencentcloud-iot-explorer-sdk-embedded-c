@@ -31,6 +31,9 @@ LDFLAGS             += $(IOT_LIB_DIR)/libmbedtls.a $(IOT_LIB_DIR)/libmbedx509.a 
 endif
 LDFLAGS             += $(IOT_LIB_DIR)/libiot_platform.a -Wl,--end-group
 
+ifeq ($(FEATURE_WIFI_CONFIG_ENABLED),y)
+LDFLAGS += $(IOT_LIB_DIR)/libcjson.a
+endif
 
 CFLAGS += -Wall -Wno-error=sign-compare -Wno-error=format -Os -pthread -DFORCE_SSL_VERIFY
 CFLAGS += ${IOT_INC_CFLAGS}
@@ -39,9 +42,9 @@ ifeq ($(FEATURE_AUTH_MODE),CERT)
 CFLAGS += -DAUTH_MODE_CERT
 endif
 
-.PHONY: ota_mqtt_sample resource_mqtt_sample data_template_sample asr_data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample
+.PHONY: ota_mqtt_sample resource_mqtt_sample data_template_sample asr_data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample wifi_config_sample
 
-all: ota_mqtt_sample resource_mqtt_sample data_template_sample	asr_data_template_sample gateway_sample	mqtt_sample dynreg_dev_sample
+all: ota_mqtt_sample resource_mqtt_sample data_template_sample	asr_data_template_sample gateway_sample	mqtt_sample dynreg_dev_sample wifi_config_sample
 
 
 ifneq (,$(filter -DOTA_COMM_ENABLED,$(CFLAGS)))
@@ -110,6 +113,15 @@ ifneq (,$(filter -DDEV_DYN_REG_ENABLED,$(CFLAGS)))
 dynreg_dev_sample:
 	$(TOP_Q) \
 	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/dynreg_dev/$@.c $(LDFLAGS) -o $@
+
+	$(TOP_Q) \
+	mv $@ $(FINAL_DIR)/bin
+endif
+
+ifneq (,$(filter -DWIFI_CONFIG_ENABLED,$(CFLAGS)))
+wifi_config_sample:
+	$(TOP_Q) \
+	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/wifi_config/$@.c $(LDFLAGS) -o $@
 
 	$(TOP_Q) \
 	mv $@ $(FINAL_DIR)/bin

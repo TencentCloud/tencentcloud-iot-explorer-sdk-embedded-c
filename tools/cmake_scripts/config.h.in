@@ -21,3 +21,4 @@
 #cmakedefine GATEWAY_DYN_BIND_SUBDEV_ENABLED
 #cmakedefine ASR_ENABLED
 #cmakedefine RESOURCE_UPDATE_ENABLED
+#cmakedefine WIFI_CONFIG_ENABLED
