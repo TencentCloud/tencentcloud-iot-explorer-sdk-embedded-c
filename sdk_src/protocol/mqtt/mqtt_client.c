@@ -263,7 +263,7 @@ static void _mqtt_yield_thread(void *ptr)
 
     Log_d("start mqtt_yield_thread...");
     while (mqtt_client->yield_thread_running) {
-        int rc = qcloud_iot_mqtt_yield(mqtt_client, 200);
+        rc = qcloud_iot_mqtt_yield(mqtt_client, 200);
 
 #ifdef LOG_UPLOAD
         /* do instant log uploading if MQTT communication error */

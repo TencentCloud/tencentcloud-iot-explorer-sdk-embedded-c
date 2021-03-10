@@ -80,6 +80,6 @@ FEATURE_AT_OS_USED                      = y
 FEATURE_AT_DEBUG                        = y
 
 # 是否打开WIFI配网功能
-FEATURE_WIFI_CONFIG_ENABLED             = y
+FEATURE_WIFI_CONFIG_ENABLED             = n
 
 
