@@ -190,7 +190,7 @@ EXIT:
 int IOT_Action_Init(void *c)
 {
     Qcloud_IoT_Template *pTemplate                           = (Qcloud_IoT_Template *)c;
-    static char          topic_name[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
+    char          topic_name[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
 
     int size = HAL_Snprintf(topic_name, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/action/%s/%s",
                             pTemplate->device_info.product_id, pTemplate->device_info.device_name);
