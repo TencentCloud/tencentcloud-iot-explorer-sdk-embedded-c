@@ -423,7 +423,7 @@ static int _http_client_retrieve_content(HTTPClient *client, char *data, int len
                     foundCrlf = IOT_TRUE;
                     break;
                 }
-                find_from += len;  // Update search_from, dont search [0-len] again
+                find_from = find_from > (len - 1) ? find_from : (len - 1);
                 /* Try to read more */
                 if (len >= HTTP_CLIENT_CHUNK_SIZE) {
                     IOT_FUNC_EXIT_RC(QCLOUD_ERR_HTTP);
