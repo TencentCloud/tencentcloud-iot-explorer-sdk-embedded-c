@@ -866,12 +866,12 @@ int at_client_init(at_client_t *pClient)
         if (NULL != client->parser) {
 #define AT_PARSER_THREAD_STACK    6144
 #define AT_PARSER_THREAD_PRIORITY 0
-            ThreadParams thread_params = {0};
-            thread_params.thread_func  = client->parser;
-            thread_params.thread_name  = "at_client_parser";
-            thread_params.user_arg     = client;
-            thread_params.stack_size   = AT_PARSER_THREAD_STACK;
-            thread_params.priority     = AT_PARSER_THREAD_PRIORITY;
+            static ThreadParams thread_params = {0};
+            thread_params.thread_func         = client->parser;
+            thread_params.thread_name         = "at_client_parser";
+            thread_params.user_arg            = client;
+            thread_params.stack_size          = AT_PARSER_THREAD_STACK;
+            thread_params.priority            = AT_PARSER_THREAD_PRIORITY;
 
             result = HAL_ThreadCreate(&thread_params);
             if (QCLOUD_RET_SUCCESS == result) {

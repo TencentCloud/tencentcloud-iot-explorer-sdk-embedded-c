@@ -211,7 +211,7 @@ static int _cal_exist_resource_md5(ResourceContextData *res_ctx)
 
     size_t size = res_ctx->downloaded_size;
 
-    while ((size > 0) && (!HAL_FileEof(fp))) {
+    while (((ssize_t)size > 0) && (!HAL_FileEof(fp))) {
         rlen = (size > RESOURCE_BUF_LEN) ? RESOURCE_BUF_LEN : size;
         if (rlen != HAL_FileRead(buff, 1, rlen, fp)) {
             Log_e("read data len not expected");
@@ -576,7 +576,7 @@ static int _resource_event_usr_cb(void *pContext, const char *msg, uint32_t msgL
             // when event is IOT_RES_EVENT_DEL_RESOURCE, msg is file name. More can see
             // qcloud_resource_mqtt_del_resource
             Log_d("to delete file %s", msg);
-			_delete_file(msg);
+            _delete_file(msg);
             // also delete info file in case of download no finish
             HAL_Snprintf(local_info_file_path, RESOURCE_FILE_PATH_MAX_LEN, "./%s_info.json", msg);
             _delete_file(local_info_file_path);
@@ -779,21 +779,21 @@ int main(int argc, char **argv)
     void *               res_handle  = NULL;
 
     IOT_Log_Set_Level(eLOG_DEBUG);
-	// parse arguments for device info file
+    // parse arguments for device info file
     rc = parse_arguments(argc, argv);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("parse arguments error, rc = %d", rc);
         return rc;
     }
-	
+
     res_ctx = (ResourceContextData *)HAL_Malloc(sizeof(ResourceContextData));
     if (res_ctx == NULL) {
         Log_e("malloc failed");
         goto exit;
     }
     memset(res_ctx, 0, sizeof(ResourceContextData));
-	
-	DeviceInfo sg_devInfo;
+
+    DeviceInfo sg_devInfo;
     rc = HAL_GetDevInfo(&sg_devInfo);
     if (QCLOUD_RET_SUCCESS != rc) {
         Log_e("get device info failed: %d", rc);
@@ -818,7 +818,8 @@ int main(int argc, char **argv)
     }
 
     // init OTA handle
-    res_handle = IOT_Resource_Init(sg_devInfo.product_id, sg_devInfo.device_name, mqtt_client, _resource_event_usr_cb, NULL);
+    res_handle =
+        IOT_Resource_Init(sg_devInfo.product_id, sg_devInfo.device_name, mqtt_client, _resource_event_usr_cb, NULL);
     if (!res_handle) {
         Log_e("init resource client failed");
         goto exit;

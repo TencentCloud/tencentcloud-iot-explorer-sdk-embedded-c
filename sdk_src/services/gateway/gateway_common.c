@@ -113,8 +113,7 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
 
     if (!get_json_devices(cloud_rcv_buf, &devices)) {
         Log_e("Fail to parse devices from msg: %s", cloud_rcv_buf);
-        HAL_Free(type);
-        return;
+        goto exit;
     }
 
     if (devices[0] == '[') {
@@ -125,32 +124,21 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
 
     if (!get_json_result(devices_strip, &result)) {
         Log_e("Fail to parse result from msg: %s", cloud_rcv_buf);
-        HAL_Free(type);
-        HAL_Free(devices);
-        return;
+        goto exit;
     }
     if (!get_json_product_id(devices_strip, &product_id)) {
         Log_e("Fail to parse product_id from msg: %s", cloud_rcv_buf);
-        HAL_Free(type);
-        HAL_Free(devices);
-        return;
+        goto exit;
     }
     if (!get_json_device_name(devices_strip, &device_name)) {
         Log_e("Fail to parse device_name from msg: %s", cloud_rcv_buf);
-        HAL_Free(type);
-        HAL_Free(devices);
-        HAL_Free(product_id);
-        return;
+        goto exit;
     }
 
     size = HAL_Snprintf(client_id, MAX_SIZE_OF_CLIENT_ID + 1, GATEWAY_CLIENT_ID_FMT, product_id, device_name);
     if (size < 0 || size > MAX_SIZE_OF_CLIENT_ID) {
         Log_e("generate client_id fail.");
-        HAL_Free(type);
-        HAL_Free(devices);
-        HAL_Free(product_id);
-        HAL_Free(device_name);
-        return;
+        goto exit;
     }
 
     if (strncmp(type, GATEWAY_ONLINE_OP_STR, sizeof(GATEWAY_ONLINE_OP_STR) - 1) == 0) {
@@ -175,10 +163,15 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
         }
     }
 
-    HAL_Free(type);
-    HAL_Free(devices);
-    HAL_Free(product_id);
-    HAL_Free(device_name);
+exit:
+    if (type)
+        HAL_Free(type);
+    if (devices)
+        HAL_Free(devices);
+    if (product_id)
+        HAL_Free(product_id);
+    if (device_name)
+        HAL_Free(device_name);
     return;
 }
 

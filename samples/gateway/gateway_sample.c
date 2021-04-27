@@ -201,7 +201,6 @@ static void sub_dev_thread(void *user_arg)
 }
 #endif
 
-
 /**
  * show gateway dynamic bind/unbind sub-devices
  */
@@ -209,10 +208,10 @@ static void sub_dev_thread(void *user_arg)
 static int add_new_binded_sub_dev(GatewayDeviceInfo *pGateway, DeviceInfo *pNewSubDev)
 {
     int ret;
-    if(pGateway->sub_dev_num < MAX_NUM_SUB_DEV) {
+    if (pGateway->sub_dev_num < MAX_NUM_SUB_DEV) {
         memcpy((char *)&pGateway->sub_dev_info[pGateway->sub_dev_num], (char *)pNewSubDev, sizeof(DeviceInfo));
         pGateway->sub_dev_num++;
-        ret = QCLOUD_RET_SUCCESS; //you can save gateway info to local flash for persistent storage
+        ret = QCLOUD_RET_SUCCESS;  // you can save gateway info to local flash for persistent storage
     } else {
         ret = QCLOUD_ERR_FAILURE;
     }
@@ -224,7 +223,7 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
 {
     int rc;
 
-    //ajust for your bind device info
+    // ajust for your bind device info
     DeviceInfo subDev;
     memset((char *)&subDev, 0, sizeof(DeviceInfo));
     strncpy(subDev.product_id, "BIND_PID", MAX_SIZE_OF_PRODUCT_ID);
@@ -238,12 +237,12 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
 #endif
     Log_d("bind subdev %s/%s", subDev.product_id, subDev.device_name);
 
-    //bind sub dev
+    // bind sub dev
     rc = IOT_Gateway_Subdev_Bind(client, param, &subDev);
-    if(QCLOUD_ERR_BIND_REPEATED_REQ == rc) {
+    if (QCLOUD_ERR_BIND_REPEATED_REQ == rc) {
         Log_d("%s/%s has been binded", subDev.product_id, subDev.device_name);
         rc = IOT_Gateway_Subdev_Unbind(client, param, &subDev);
-        if(QCLOUD_RET_SUCCESS != rc) {
+        if (QCLOUD_RET_SUCCESS != rc) {
             Log_e("unbind %s/%s fail,rc:%d", subDev.product_id, subDev.device_name, rc);
         } else {
             Log_d("unbind %s/%s success", subDev.product_id, subDev.device_name);
@@ -251,7 +250,7 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
         }
     }
 
-    if(QCLOUD_RET_SUCCESS == rc) {
+    if (QCLOUD_RET_SUCCESS == rc) {
         Log_d("bind %s/%s success", subDev.product_id, subDev.device_name);
         add_new_binded_sub_dev(&sg_GWdevInfo, &subDev);
     } else {
@@ -262,7 +261,6 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
 }
 
 #endif
-
 
 /*Gateway should enable multithread*/
 int main(int argc, char **argv)
@@ -277,7 +275,7 @@ int main(int argc, char **argv)
     DeviceInfo *       subDevInfo;
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-    ThreadParams sub_dev1_thread_params = {0};
+    static ThreadParams sub_dev1_thread_params = {0};
 #endif
 
     IOT_Log_Set_Level(eLOG_DEBUG);
@@ -313,9 +311,8 @@ int main(int argc, char **argv)
     param.product_id  = gw->gw_info.product_id;
     param.device_name = gw->gw_info.device_name;
 
-
 #ifdef GATEWAY_DYN_BIND_SUBDEV_ENABLED
-    //show gateway dynamic bind/unbind sub-devices
+    // show gateway dynamic bind/unbind sub-devices
     show_subdev_bind_unbind(client, &param);
 #endif
 
@@ -415,9 +412,9 @@ int main(int argc, char **argv)
 exit:
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-    while(0 != sub_dev1_thread_params.thread_id){
-		HAL_SleepMs(1000);
-	}
+    while (0 != sub_dev1_thread_params.thread_id) {
+        HAL_SleepMs(1000);
+    }
 #endif
 
     // set GateWay device info

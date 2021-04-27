@@ -112,29 +112,28 @@ static void _on_message_callback(void *pClient, MQTTMessage *message, void *user
     Log_i("msg payload: %s", buf);
 
     cJSON *root = cJSON_Parse(buf);
+    HAL_Free(buf);
     if (!root) {
         Log_e("Parsing JSON Error");
         push_error_log(ERR_TOKEN_REPLY, ERR_APP_CMD_JSON_FORMAT);
+        return;
+    }
+    cJSON *code_json = cJSON_GetObjectItem(root, "code");
+    if (code_json) {
+        TokenHandleData *app_data = (TokenHandleData *)userData;
+        app_data->reply_code      = code_json->valueint;
+        Log_d("token reply code = %d", code_json->valueint);
+
+        sg_bind_reply_code = app_data->reply_code;
+
+        if (app_data->reply_code)
+            push_error_log(ERR_TOKEN_REPLY, app_data->reply_code);
     } else {
-        cJSON *code_json = cJSON_GetObjectItem(root, "code");
-        if (code_json) {
-            TokenHandleData *app_data = (TokenHandleData *)userData;
-            app_data->reply_code      = code_json->valueint;
-            Log_d("token reply code = %d", code_json->valueint);
-
-            sg_bind_reply_code = app_data->reply_code;
-
-            if (app_data->reply_code)
-                push_error_log(ERR_TOKEN_REPLY, app_data->reply_code);
-        } else {
-            Log_e("Parsing reply code Error");
-            push_error_log(ERR_TOKEN_REPLY, ERR_APP_CMD_JSON_FORMAT);
-        }
-
-        cJSON_Delete(root);
+        Log_e("Parsing reply code Error");
+        push_error_log(ERR_TOKEN_REPLY, ERR_APP_CMD_JSON_FORMAT);
     }
 
-    HAL_Free(buf);
+    cJSON_Delete(root);
 }
 
 // subscrib MQTT topic
@@ -172,10 +171,9 @@ static int _subscribe_topic_wait_result(void *client, DeviceInfo *dev_info, Toke
 
     if (wait_cnt > 0) {
         return QCLOUD_RET_SUCCESS;
-    } else {
-        Log_w("wait for subscribe result timeout!");
-        return QCLOUD_ERR_FAILURE;
     }
+    Log_w("wait for subscribe result timeout!");
+    return QCLOUD_ERR_FAILURE;
 }
 
 // publish MQTT msg

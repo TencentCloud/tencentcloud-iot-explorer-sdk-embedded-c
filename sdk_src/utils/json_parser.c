@@ -115,7 +115,8 @@ char *json_get_next_object(int type, char *str, char **key, int *key_len, char *
                 iValueLen = 4;
                 // p_cPos = p_cValue + iValueLen;
                 break;
-            } else if ((*p_cValue == 'f' || *p_cValue == 'F') && len >= 5 &&
+            }
+            if ((*p_cValue == 'f' || *p_cValue == 'F') && len >= 5 &&
                        (!strncmp(p_cValue, "false", 5) || !strncmp(p_cValue, "FALSE", 5))) {
                 iValueLen = 5;
                 // p_cPos = p_cValue + iValueLen;
@@ -166,9 +167,8 @@ char *json_get_next_object(int type, char *str, char **key, int *key_len, char *
     *val_type = iValueType;
     if (iValueType == JSSTRING) {
         return p_cValue + iValueLen + 1;
-    } else {
-        return p_cValue + iValueLen;
     }
+    return p_cValue + iValueLen;
 }
 
 int json_parse_name_value(char *p_cJsonStr, int iStrLen, json_parse_cb pfnCB, void *p_CBData)
@@ -232,9 +232,8 @@ int json_get_value_by_name_cb(char *p_cName, int iNameLen, char *p_cValue, int i
         p_stNameValue->vLen  = iValueLen;
         p_stNameValue->vType = iValueType;
         return JSON_PARSE_FINISH;
-    } else {
-        return JSON_PARSE_OK;
     }
+    return JSON_PARSE_OK;
 }
 
 char *json_get_value_by_name(char *p_cJsonStr, int iStrLen, char *p_cName, int *p_iValueLen, int *p_iValueType)

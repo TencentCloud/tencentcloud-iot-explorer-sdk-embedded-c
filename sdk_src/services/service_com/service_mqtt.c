@@ -29,37 +29,30 @@ extern "C" {
 #include "service_mqtt.h"
 #include "json_parser.h"
 
-
 typedef struct {
-    eServiceEvent eventid;
+    eServiceEvent            eventid;
     OnServiceMessageCallback callback;
-    void *context;
+    void *                   context;
 } Service_Event_Struct_t;
 
-static Service_Event_Struct_t sg_service_event_map[] = {
-    {eSERVICE_RESOURCE,  NULL, NULL},
-    {eSERVICE_FACE_AI,   NULL, NULL}
-};
+static Service_Event_Struct_t sg_service_event_map[] = {{eSERVICE_RESOURCE, NULL, NULL},
+                                                        {eSERVICE_FACE_AI, NULL, NULL}};
 
 static char sg_service_pub_topic[MAX_SIZE_OF_CLOUD_TOPIC];
 
 /* gen service topic: "$thing/down/service/$(product_id)/$(device_name)" */
 static int _gen_service_mqtt_topic_info(const char *productId, const char *deviceName, char *sub_topic)
 {
-	int ret;
-	
+    int ret;
+
     memset(sg_service_pub_topic, '\0', MAX_SIZE_OF_CLOUD_TOPIC);
     ret = HAL_Snprintf(sg_service_pub_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/up/service/%s/%s",
                        STRING_PTR_PRINT_SANITY_CHECK(productId), STRING_PTR_PRINT_SANITY_CHECK(deviceName));
-    if (ret < 0) {
-        goto exit;
-    }
-    ret = HAL_Snprintf(sub_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/service/%s/%s",
-                       STRING_PTR_PRINT_SANITY_CHECK(productId), STRING_PTR_PRINT_SANITY_CHECK(deviceName));
+    if (ret >= 0)
+        ret = HAL_Snprintf(sub_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/service/%s/%s",
+                           STRING_PTR_PRINT_SANITY_CHECK(productId), STRING_PTR_PRINT_SANITY_CHECK(deviceName));
 
-exit:
-
-	return ret;
+    return ret;
 }
 
 static char *_get_service_mqtt_topic_info(void)
@@ -83,14 +76,14 @@ static int _set_service_event_handle(eServiceEvent evt, OnServiceMessageCallback
     }
 
     sg_service_event_map[evt].callback = callback;
-    sg_service_event_map[evt].context = context;
+    sg_service_event_map[evt].context  = context;
 
     return QCLOUD_RET_SUCCESS;
 }
 
 static eServiceEvent _service_mqtt_parse_event(char *method)
 {
-	eServiceEvent evt;
+    eServiceEvent evt;
 
     if (!strcmp(method, METHOD_RES_REPORT_VERSION_RSP) || !strcmp(method, METHOD_RES_UPDATE_RESOURCE) ||
         !strcmp(method, METHOD_RES_DELETE_RESOURCE) || !strcmp(method, METHOD_RES_REQ_URL_RESP)) {
@@ -102,43 +95,43 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
         evt = eSERVICE_DEFAULT;
     }
 
-	return evt;
+    return evt;
 }
 
 /* callback after resource topic is subscribed */
 static void _service_mqtt_cb(void *pClient, MQTTMessage *message, void *pContext)
 {
-	int len = message->payload_len;
+    int len = message->payload_len;
 
     Log_d("topic=%.*s", message->topic_len, message->ptopic);
     Log_d("len=%u, topic_msg=%.*s", message->payload_len, message->payload_len, (char *)message->payload);
-	
-    //parse msg and dispatch to event callback according to sg_service_event_map 
-    char *recv_payload = HAL_Malloc(message->payload_len + 1);
-	if(!recv_payload){
-		Log_e("malloc %dbytes mem fail", message->payload_len);
-		return;
-	}	
-	memset(recv_payload, '\0', len + 1);
-	strncpy(recv_payload, message->payload, len);
-    char * json_method = LITE_json_value_of(FIELD_METHOD, recv_payload);
-	if(json_method){
-		eServiceEvent event = _service_mqtt_parse_event(json_method);
-	    Service_Event_Struct_t *handle = _get_service_event_handle(event);
-	    if(handle->callback) {
-	        handle->callback(handle->context, recv_payload, len);
-	    }
-		HAL_Free(json_method);
-	}else{
-		Log_e("no method found");
-	}
 
-	HAL_Free(recv_payload);
+    // parse msg and dispatch to event callback according to sg_service_event_map
+    char *recv_payload = HAL_Malloc(message->payload_len + 1);
+    if (!recv_payload) {
+        Log_e("malloc %dbytes mem fail", message->payload_len);
+        return;
+    }
+    memset(recv_payload, '\0', len + 1);
+    strncpy(recv_payload, message->payload, len);
+    char *json_method = LITE_json_value_of(FIELD_METHOD, recv_payload);
+    if (json_method) {
+        eServiceEvent           event  = _service_mqtt_parse_event(json_method);
+        Service_Event_Struct_t *handle = _get_service_event_handle(event);
+        if (handle->callback) {
+            handle->callback(handle->context, recv_payload, len);
+        }
+        HAL_Free(json_method);
+    } else {
+        Log_e("no method found");
+    }
+
+    HAL_Free(recv_payload);
 }
 
 static int _service_mqtt_publish(void *mqtt_client, int qos, const char *msg)
 {
-    int  ret;
+    int           ret;
     PublishParams pub_params = DEFAULT_PUB_PARAMS;
 
     if (0 == qos) {
@@ -148,7 +141,7 @@ static int _service_mqtt_publish(void *mqtt_client, int qos, const char *msg)
     }
     pub_params.payload     = (void *)msg;
     pub_params.payload_len = strlen(msg);
-    ret = IOT_MQTT_Publish(mqtt_client, _get_service_mqtt_topic_info(), &pub_params);
+    ret                    = IOT_MQTT_Publish(mqtt_client, _get_service_mqtt_topic_info(), &pub_params);
     if (ret < 0) {
         Log_e("publish to topic: %s failed", _get_service_mqtt_topic_info());
     }
@@ -186,12 +179,12 @@ int qcloud_service_mqtt_init(const char *productId, const char *deviceName, void
 {
     int ret;
 
-	char topic_name[MAX_SIZE_OF_CLOUD_TOPIC];
-	memset(topic_name, '\0', MAX_SIZE_OF_CLOUD_TOPIC);
-	ret = _gen_service_mqtt_topic_info(productId, deviceName, topic_name);
-	if(ret < 0){
-		Log_e("gen service topic fail");
-	}
+    char topic_name[MAX_SIZE_OF_CLOUD_TOPIC];
+    memset(topic_name, '\0', MAX_SIZE_OF_CLOUD_TOPIC);
+    ret = _gen_service_mqtt_topic_info(productId, deviceName, topic_name);
+    if (ret < 0) {
+        Log_e("gen service topic fail");
+    }
 
     if (IOT_MQTT_IsSubReady(mqtt_client, topic_name)) {
         Log_d("%s has been already subscribed", topic_name);
@@ -202,14 +195,14 @@ int qcloud_service_mqtt_init(const char *productId, const char *deviceName, void
     sub_params.on_message_handler   = _service_mqtt_cb;
     sub_params.on_sub_event_handler = _service_mqtt_sub_event_handler;
     sub_params.qos                  = QOS1;
-	
+
     ret = IOT_MQTT_Subscribe(mqtt_client, topic_name, &sub_params);
     if (ret < 0) {
         Log_e("service topic subscribe failed!");
-		return QCLOUD_ERR_FAILURE;
-    }	
-    
-	int wait_cnt = 10;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    int wait_cnt = 10;
     while (!IOT_MQTT_IsSubReady(mqtt_client, topic_name) && (wait_cnt > 0)) {
         // wait for subscription result
         ret = IOT_MQTT_Yield(mqtt_client, 1000);
@@ -222,10 +215,10 @@ int qcloud_service_mqtt_init(const char *productId, const char *deviceName, void
 
     if (wait_cnt == 0) {
         Log_e("service topic subscribe timeout!");
-         return QCLOUD_ERR_FAILURE;
+        return QCLOUD_ERR_FAILURE;
     }
 
-    return QCLOUD_RET_SUCCESS;	
+    return QCLOUD_RET_SUCCESS;
 }
 
 void qcloud_service_mqtt_deinit(void *mqtt_client)
@@ -241,8 +234,8 @@ int qcloud_service_mqtt_post_msg(void *mqtt_client, const char *msg, int qos)
 }
 
 int qcloud_service_mqtt_event_register(eServiceEvent evt, OnServiceMessageCallback callback, void *context)
-{	
-	return _set_service_event_handle(evt, callback, context);
+{
+    return _set_service_event_handle(evt, callback, context);
 }
 
 #ifdef __cplusplus

@@ -60,7 +60,6 @@ int main(int argc, char **argv)
 {
     int        ret;
     DeviceInfo sDevInfo;
-    bool       infoNullFlag = false;
 
     // init log level
     IOT_Log_Set_Level(eLOG_DEBUG);
@@ -84,42 +83,40 @@ int main(int argc, char **argv)
     if (!strcmp(sDevInfo.dev_cert_file_name, QCLOUD_IOT_NULL_CERT_FILENAME) ||
         !strcmp(sDevInfo.dev_key_file_name, QCLOUD_IOT_NULL_KEY_FILENAME)) {
         Log_d("dev Cert not exist!");
-        infoNullFlag = true;
     } else {
         Log_d("dev Cert exist");
+        return 0;
     }
 #else
     /* just demo the PSK is empty */
     if (!strcmp(sDevInfo.device_secret, QCLOUD_IOT_NULL_DEVICE_SECRET)) {
         Log_d("dev psk not exist!");
-        infoNullFlag = true;
     } else {
         Log_d("dev psk exist");
+        return 0;
     }
 #endif
 
     /* device cert/key files or PSK is empty, do dynamic register to fetch */
-    if (infoNullFlag) {
-        if (QCLOUD_RET_SUCCESS == IOT_DynReg_Device(&sDevInfo)) {
-            ret = HAL_SetDevInfo(&sDevInfo);
-            if (QCLOUD_RET_SUCCESS != ret) {
-                Log_e("devices info save fail");
-            } else {
+    if (QCLOUD_RET_SUCCESS != IOT_DynReg_Device(&sDevInfo)) {
+        Log_e("%s dynamic register fail", sDevInfo.device_name);
+        return QCLOUD_ERR_FAILURE;
+    }
+    ret = HAL_SetDevInfo(&sDevInfo);
+    if (QCLOUD_RET_SUCCESS != ret) {
+        Log_e("devices info save fail");
+    } else {
 #ifdef AUTH_MODE_CERT
-                Log_d(
-                    "dynamic register success, productID: %s, devName: %s, CertFile: "
-                    "%s, KeyFile: %s",
-                    sDevInfo.product_id, sDevInfo.device_name, sDevInfo.dev_cert_file_name, sDevInfo.dev_key_file_name);
+        Log_d(
+            "dynamic register success, productID: %s, devName: %s, CertFile: "
+            "%s, KeyFile: %s",
+            sDevInfo.product_id, sDevInfo.device_name, sDevInfo.dev_cert_file_name, sDevInfo.dev_key_file_name);
 #else
-                Log_d(
-                    "dynamic register success,productID: %s, devName: %s, "
-                    "device_secret: %s",
-                    sDevInfo.product_id, sDevInfo.device_name, sDevInfo.device_secret);
+        Log_d(
+            "dynamic register success,productID: %s, devName: %s, "
+            "device_secret: %s",
+            sDevInfo.product_id, sDevInfo.device_name, sDevInfo.device_secret);
 #endif
-            }
-        } else {
-            Log_e("%s dynamic register fail", sDevInfo.device_name);
-        }
     }
 
     return ret;

@@ -249,9 +249,8 @@ static int _parse_devinfo(char *jdoc, DeviceInfo *pDevInfo)
         Log_e("Invalid json content: %s", jdoc);
         ret = QCLOUD_ERR_FAILURE;
         goto exit;
-    } else {
-        Log_d("payload:%s", payload);
     }
+    Log_d("payload:%s", payload);
 
     ret = qcloud_iot_utils_base64decode((uint8_t *)decodeBuff, sizeof(decodeBuff), &len, (uint8_t *)payload,
                                         strlen(payload));
@@ -268,10 +267,7 @@ static int _parse_devinfo(char *jdoc, DeviceInfo *pDevInfo)
     memset(iv, '0', UTILS_AES_BLOCK_LEN);
     ret = utils_aes_cbc((uint8_t *)decodeBuff, datalen, (uint8_t *)decodeBuff, DECODE_BUFF_LEN, UTILS_AES_DECRYPT,
                         (uint8_t *)key, keybits, iv);
-    if (QCLOUD_RET_SUCCESS == ret) {
-        // Log_d("The decrypted data is:%s", decodeBuff);
-
-    } else {
+    if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("data decry err,ret:%d", ret);
         goto exit;
     }

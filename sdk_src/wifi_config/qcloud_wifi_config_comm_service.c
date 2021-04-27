@@ -204,23 +204,21 @@ static int _app_handle_recv_data(comm_peer_t *peer, char *pdata, int len)
                     set_soft_ap_config_result(WIFI_CONFIG_FAIL);
 #endif
                     return -1;
-                } else {
-                    Log_d("wifi_sta_connect success");
-#if WIFI_PROV_SOFT_AP_ENABLE
-                    set_soft_ap_config_result(WIFI_CONFIG_SUCCESS);
-#endif
                 }
+                Log_d("wifi_sta_connect success");
+#if WIFI_PROV_SOFT_AP_ENABLE
+                set_soft_ap_config_result(WIFI_CONFIG_SUCCESS);
+#endif
                 cJSON_Delete(root);
 
                 /* return 1 as device alreay switch to STA mode and unable to recv cmd anymore
                  * 1: Everything OK and we've finished the job */
                 return 1;
-            } else {
-                cJSON_Delete(root);
-                Log_e("invlaid ssid/password/token!");
-                app_send_error_log(peer, CUR_ERR, ERR_APP_CMD, ERR_APP_CMD_AP_INFO);
-                return -1;
             }
+            cJSON_Delete(root);
+            Log_e("invlaid ssid/password/token!");
+            app_send_error_log(peer, CUR_ERR, ERR_APP_CMD, ERR_APP_CMD_AP_INFO);
+            return -1;
         } break;
 
         case CMD_LOG_QUERY:
@@ -288,23 +286,23 @@ static void _qiot_comm_service_task(void *pvParameters)
 
             get_and_post_error_log(&peer_client);
             continue;
-        } else if (0 == ret) {
+        }
+        if (0 == ret) {
             select_err_cnt = 0;
             Log_d("wait for read...");
             if (peer_client.peer_addr != NULL) {
                 get_and_post_error_log(&peer_client);
             }
             continue;
-        } else {
-            select_err_cnt++;
-            Log_w("select-recv error: %d, cnt: %d", HAL_UDP_GetErrno(), select_err_cnt);
-            if (select_err_cnt > 3) {
-                Log_e("select-recv error: %d, cnt: %d", HAL_UDP_GetErrno(), select_err_cnt);
-                push_error_log(ERR_SOCKET_SELECT, HAL_UDP_GetErrno());
-                break;
-            }
-            HAL_SleepMs(500);
         }
+        select_err_cnt++;
+        Log_w("select-recv error: %d, cnt: %d", HAL_UDP_GetErrno(), select_err_cnt);
+        if (select_err_cnt > 3) {
+            Log_e("select-recv error: %d, cnt: %d", HAL_UDP_GetErrno(), select_err_cnt);
+            push_error_log(ERR_SOCKET_SELECT, HAL_UDP_GetErrno());
+            break;
+        }
+        HAL_SleepMs(500);
     }
 
 end_of_task:

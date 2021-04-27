@@ -227,134 +227,75 @@ static int _iot_construct_event_json(void *handle, char *jsonBuffer, size_t size
     }
     // Log_d("event_count:%d, Doc_init:%s",event_count, jsonBuffer);
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
-    if (event_count > SIGLE_EVENT) {  // mutlti event
+    if (event_count > SINGLE_EVENT) {  // mutlti event
         rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"events\":[");
         rc             = check_snprintf_return(rc_of_snprintf, remain_size);
         if (rc != QCLOUD_RET_SUCCESS) {
             return rc;
         }
 
-        if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+        if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+            return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
+        }
+    }
+
+    for (i = 0; i < event_count; i++) {
+        sEvent *pEvent = pEventArry[i];
+        if (NULL == pEvent) {
+            Log_e("%dth/%d null event", i, event_count);
+            return QCLOUD_ERR_INVAL;
+        }
+
+        rc_of_snprintf =
+            HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
+                         "{\"eventId\":\"%s\", \"type\":\"%s\", "
+                         "\"timestamp\":%llu, \"params\":{",
+                         STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name), STRING_PTR_PRINT_SANITY_CHECK(pEvent->type),
+                         ((uint64_t)(pEvent->timestamp) * 1000));
+        rc = check_snprintf_return(rc_of_snprintf, remain_size);
+        if (rc != QCLOUD_RET_SUCCESS) {
+            return rc;
+        }
+
+        if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
             return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
         }
 
-        for (i = 0; i < event_count; i++) {
-            sEvent *pEvent = pEventArry[i];
-            if (NULL == pEvent) {
-                Log_e("%dth/%d null event", i, event_count);
+        DeviceProperty *pJsonNode = pEvent->pEventData;
+        for (j = 0; j < pEvent->eventDataNum; j++) {
+            if (pJsonNode == NULL || pJsonNode->key == NULL) {
+                Log_e("%dth/%d null event property data", i, pEvent->eventDataNum);
                 return QCLOUD_ERR_INVAL;
             }
+            rc = template_put_json_node(jsonBuffer, remain_size, pJsonNode->key, pJsonNode->data, pJsonNode->type);
 
-            if (0 == pEvent->timestamp) {  // no accurate UTC time, set 0
-                rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
-                                              "{\"eventId\":\"%s\", \"type\":\"%s\", "
-                                              "\"timestamp\":0, \"params\":{",
-                                              STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name),
-                                              STRING_PTR_PRINT_SANITY_CHECK(pEvent->type));
-            } else {  // accurate UTC time is second,change to ms
-                rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
-                                              "{\"eventId\":\"%s\", \"type\":\"%s\", "
-                                              "\"timestamp\":%u000, \"params\":{",
-                                              STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name),
-                                              STRING_PTR_PRINT_SANITY_CHECK(pEvent->type), pEvent->timestamp);
-            }
-
-            rc = check_snprintf_return(rc_of_snprintf, remain_size);
             if (rc != QCLOUD_RET_SUCCESS) {
                 return rc;
             }
-
-            if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
-                return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
-            }
-
-            DeviceProperty *pJsonNode = pEvent->pEventData;
-            for (j = 0; j < pEvent->eventDataNum; j++) {
-                if (pJsonNode != NULL && pJsonNode->key != NULL) {
-                    rc = template_put_json_node(jsonBuffer, remain_size, pJsonNode->key, pJsonNode->data,
-                                                pJsonNode->type);
-
-                    if (rc != QCLOUD_RET_SUCCESS) {
-                        return rc;
-                    }
-                } else {
-                    Log_e("%dth/%d null event property data", i, pEvent->eventDataNum);
-                    return QCLOUD_ERR_INVAL;
-                }
-                pJsonNode++;
-            }
-            if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
-                return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
-            }
-
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "}},");
-
-            rc = check_snprintf_return(rc_of_snprintf, remain_size);
-            if (rc != QCLOUD_RET_SUCCESS) {
-                return rc;
-            }
-
-            pEvent++;
+            pJsonNode++;
+        }
+        if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+            return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
         }
 
+        rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "}},");
+
+        rc = check_snprintf_return(rc_of_snprintf, remain_size);
+        if (rc != QCLOUD_RET_SUCCESS) {
+            return rc;
+        }
+    }
+
+    if (event_count > SINGLE_EVENT) {
         if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
             return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
         }
         rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "]");
         rc             = check_snprintf_return(rc_of_snprintf, remain_size);
-        if (rc != QCLOUD_RET_SUCCESS) {
-            return rc;
-        }
-
-    } else {  // single
-        sEvent *pEvent = pEventArry[0];
-        if (0 == pEvent->timestamp) {  // no accurate UTC time, set 0
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
-                                          "\"eventId\":\"%s\", \"type\":\"%s\", \"timestamp\":0, \"params\":{",
-                                          STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name),
-                                          STRING_PTR_PRINT_SANITY_CHECK(pEvent->type));
-        } else {  // accurate UTC time is second,change to ms
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size,
-                                          "\"eventId\":\"%s\", \"type\":\"%s\", "
-                                          "\"timestamp\":%u000, \"params\":{",
-                                          STRING_PTR_PRINT_SANITY_CHECK(pEvent->event_name),
-                                          STRING_PTR_PRINT_SANITY_CHECK(pEvent->type), pEvent->timestamp);
-        }
-
-        rc = check_snprintf_return(rc_of_snprintf, remain_size);
-        if (rc != QCLOUD_RET_SUCCESS) {
-            return rc;
-        }
-
-        if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
-            return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
-        }
-
-        DeviceProperty *pJsonNode = pEvent->pEventData;
-        for (i = 0; i < pEvent->eventDataNum; i++) {
-            if (pJsonNode != NULL && pJsonNode->key != NULL) {
-                rc = template_put_json_node(jsonBuffer, remain_size, pJsonNode->key, pJsonNode->data, pJsonNode->type);
-
-                if (rc != QCLOUD_RET_SUCCESS) {
-                    return rc;
-                }
-            } else {
-                Log_e("%dth/%d null event property data", i, pEvent->eventDataNum);
-                return QCLOUD_ERR_INVAL;
-            }
-            pJsonNode++;
-        }
-        if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
-            return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
-        }
-
-        rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "}");
-
-        rc = check_snprintf_return(rc_of_snprintf, remain_size);
         if (rc != QCLOUD_RET_SUCCESS) {
             return rc;
         }

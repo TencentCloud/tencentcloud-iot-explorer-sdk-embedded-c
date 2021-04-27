@@ -266,15 +266,14 @@ int qcloud_iot_mqtt_yield(Qcloud_IoT_Client *pClient, uint32_t timeout_ms)
         if (rc == QCLOUD_ERR_MQTT_NO_CONN) {
             pClient->counter_network_disconnected++;
 
-            if (pClient->options.auto_connect_enable == 1) {
-                pClient->current_reconnect_wait_interval = _get_random_interval();
-                countdown_ms(&(pClient->reconnect_delay_timer), pClient->current_reconnect_wait_interval);
-
-                // reconnect timeout
-                rc = QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT;
-            } else {
+            if (pClient->options.auto_connect_enable != 1) {
                 break;
             }
+            pClient->current_reconnect_wait_interval = _get_random_interval();
+            countdown_ms(&(pClient->reconnect_delay_timer), pClient->current_reconnect_wait_interval);
+
+            // reconnect timeout
+            rc = QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT;
         } else if (rc != QCLOUD_RET_SUCCESS) {
             break;
         }

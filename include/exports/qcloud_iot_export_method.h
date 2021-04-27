@@ -49,7 +49,20 @@ typedef enum {
 /**
  * @brief JSON data type
  */
-typedef enum { JINT32, JINT16, JINT8, JUINT32, JUINT16, JUINT8, JFLOAT, JDOUBLE, JBOOL, JSTRING, JOBJECT } JsonDataType;
+typedef enum {
+    JINT32,
+    JINT16,
+    JINT8,
+    JUINT32,
+    JUINT16,
+    JUINT8,
+    JFLOAT,
+    JDOUBLE,
+    JBOOL,
+    JSTRING,
+    JOBJECT,
+    JARRAY,
+} JsonDataType;
 
 /**
  * @brief Define a device property, as a JSON document node
@@ -60,6 +73,10 @@ typedef struct _JSONNode {
     union {
         uint16_t data_buff_len;   // data buff len, for string type value update
         uint16_t struct_obj_num;  // member number of struct
+        struct {
+            uint16_t     array_size;
+            JsonDataType array_type;
+        } array_info;
     };
     JsonDataType type;  // Data type of this JSON node
 } DeviceProperty;

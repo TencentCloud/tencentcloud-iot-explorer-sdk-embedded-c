@@ -144,7 +144,8 @@ unsigned long HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint
 
         if (ret == queue->queue_item_size) {
             break;
-        } else if (expired(&timer)) {
+        }
+        if (expired(&timer)) {
             return QCLOUD_ERR_FAILURE;
         }
 
@@ -172,7 +173,8 @@ unsigned long HAL_QueueItemPush(void *queue_handle, void *const item_buffer, uin
 
         if (ret == RINGBUFF_OK) {
             break;
-        } else if (expired(&timer)) {
+        }
+        if (expired(&timer)) {
             return QCLOUD_ERR_FAILURE;
         }
 

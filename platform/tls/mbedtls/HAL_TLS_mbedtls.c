@@ -123,12 +123,11 @@ static int _mbedtls_client_init(TLSDataParams *pDataParams, TLSConnectParams *pC
         return QCLOUD_ERR_SSL_INIT;
     }
 
-    if (pConnectParams->ca_crt != NULL) {
-        if ((ret = mbedtls_x509_crt_parse(&(pDataParams->ca_cert), (const unsigned char *)pConnectParams->ca_crt,
-                                          (pConnectParams->ca_crt_len + 1)))) {
-            Log_e("parse ca crt failed returned 0x%04x", ret < 0 ? -ret : ret);
-            return QCLOUD_ERR_SSL_CERT;
-        }
+    if (pConnectParams->ca_crt != NULL &&
+        (ret = mbedtls_x509_crt_parse(&(pDataParams->ca_cert), (const unsigned char *)pConnectParams->ca_crt,
+                                      (pConnectParams->ca_crt_len + 1)))) {
+        Log_e("parse ca crt failed returned 0x%04x", ret < 0 ? -ret : ret);
+        return QCLOUD_ERR_SSL_CERT;
     }
 
 #ifdef AUTH_MODE_CERT
@@ -349,7 +348,8 @@ int HAL_TLS_Write(uintptr_t handle, unsigned char *msg, size_t totalLen, uint32_
 
     if (errorFlag) {
         return QCLOUD_ERR_SSL_WRITE;
-    } else if (expired(&timer) && written_so_far != totalLen) {
+    }
+    if (expired(&timer) && written_so_far != totalLen) {
         return QCLOUD_ERR_SSL_WRITE_TIMEOUT;
     }
 
@@ -392,9 +392,8 @@ int HAL_TLS_Read(uintptr_t handle, unsigned char *msg, size_t totalLen, uint32_t
 
     if (*read_len == 0) {
         return QCLOUD_ERR_SSL_NOTHING_TO_READ;
-    } else {
-        return QCLOUD_ERR_SSL_READ_TIMEOUT;
     }
+    return QCLOUD_ERR_SSL_READ_TIMEOUT;
 }
 
 #ifdef __cplusplus

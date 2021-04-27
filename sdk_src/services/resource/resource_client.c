@@ -279,7 +279,8 @@ static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_n
     if (ret < 0) {
         Log_e("HAL_Snprintf failed");
         IOT_FUNC_EXIT_RC(IOT_RES_ERR_FAIL);
-    } else if (ret >= bufLen) {
+    }
+    if (ret >= bufLen) {
         Log_e("msg is too long");
         IOT_FUNC_EXIT_RC(IOT_RES_ERR_STR_TOO_LONG);
     }
@@ -511,12 +512,11 @@ static ResPostInfo *_get_resource_info_by_request_id(void *handle, int request_i
 
             if (info->request_id == request_id) {
                 break;
-            } else {
-                if (expired(&info->post_timer)) {
-                    list_remove(pHandle->res_wait_post_list, node);
-                }
-                info = NULL;
             }
+            if (expired(&info->post_timer)) {
+                list_remove(pHandle->res_wait_post_list, node);
+            }
+            info = NULL;
         }
 
         list_iterator_destroy(iter);
