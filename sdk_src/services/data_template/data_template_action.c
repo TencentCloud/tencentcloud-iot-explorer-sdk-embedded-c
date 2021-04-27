@@ -64,6 +64,7 @@ static int _parse_action_input(DeviceAction *pAction, char *pInput)
                     break;
                 case JFLOAT:
                     ret = sscanf(temp, "%f", (float *)pActionInput[i].data);
+                    break;
                 case JUINT32:
                     ret = sscanf(temp, "%" SCNu32, (int32_t *)pActionInput[i].data);
                     break;
