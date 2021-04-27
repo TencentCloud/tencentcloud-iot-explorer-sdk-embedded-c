@@ -342,7 +342,7 @@ static int _iot_construct_action_json(void *handle, char *jsonBuffer, size_t siz
         return QCLOUD_ERR_INVAL;
     }
     for (i = 0; i < pAction->output_num; i++, pJsonNode++) {
-        if (pJsonNode == NULL || pJsonNode->key == NULL) {
+        if (pJsonNode->key == NULL) {
             Log_e("%dth/%d null event property data", i, pAction->output_num);
             return QCLOUD_ERR_INVAL;
         }
