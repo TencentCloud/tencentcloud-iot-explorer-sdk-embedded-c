@@ -715,7 +715,6 @@ int IOT_Template_ControlReply(void *pClient, char *pJsonDoc, size_t sizeOfBuffer
 
     RequestParams request_params = DEFAULT_REQUEST_PARAMS;
     _init_request_params(&request_params, REPLY, NULL, NULL, replyPara->timeout_ms / 1000);
-
     rc = send_template_request(pTemplate, &request_params, pJsonDoc, sizeOfBuffer);
     IOT_FUNC_EXIT_RC(rc);
 }

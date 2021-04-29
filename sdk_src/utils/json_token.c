@@ -287,14 +287,14 @@ int LITE_dt_format_primitive_array(char *out_res, size_t out_sz, void *data, siz
         else
             ret = HAL_Snprintf(p, left_sz, "%f,", float_data[i]);
         if (ret <= 0)
-            break;
+            return QCLOUD_ERR_JSON;
         left_sz -= ret;
         p += ret;
     }
     if (JINT32 == type)
         ret = HAL_Snprintf(p, left_sz, "%d]", int_data[i]);
     else
-        ret = HAL_Snprintf(p, left_sz, "%f]", int_data[i]);
+        ret = HAL_Snprintf(p, left_sz, "%f]", float_data[i]);
 
     return ret > 0 ? QCLOUD_RET_SUCCESS : QCLOUD_ERR_FAILURE;
 }

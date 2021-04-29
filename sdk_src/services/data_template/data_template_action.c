@@ -182,13 +182,9 @@ static void _on_action_handle_callback(void *pClient, MQTTMessage *message, void
                    pInput);
 
 EXIT:
-    if (type_str)
-        HAL_Free(type_str);
-    if (client_token)
-        HAL_Free(client_token);
-    if (pInput)
-        HAL_Free(pInput);
-    return;
+    HAL_Free(type_str);
+    HAL_Free(client_token);
+    HAL_Free(pInput);
 }
 
 int IOT_Action_Init(void *c)

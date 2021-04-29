@@ -164,15 +164,10 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
     }
 
 exit:
-    if (type)
-        HAL_Free(type);
-    if (devices)
-        HAL_Free(devices);
-    if (product_id)
-        HAL_Free(product_id);
-    if (device_name)
-        HAL_Free(device_name);
-    return;
+    HAL_Free(type);
+    HAL_Free(devices);
+    HAL_Free(product_id);
+    HAL_Free(device_name);
 }
 
 int gateway_subscribe_unsubscribe_topic(Gateway *gateway, char *topic_filter, SubscribeParams *params, int is_subscribe)

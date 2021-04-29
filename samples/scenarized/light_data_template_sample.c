@@ -501,6 +501,66 @@ static int _init_log_upload(TemplateInitParams *init_params)
 }
 #endif
 
+static void _refresh_alias_name()
+{
+    DeviceProperty *p_prop = &(sg_DataTemplate[5].data_property);
+    char *          obj_strs[MAX_SAMPLE_ARRAY_SIZE];
+    size_t          array_str_sz = p_prop->array_info.array_size;
+    int             ret;
+
+    for (int ii = 0; ii < sg_alias_name_array_size; ++ii) {
+        obj_strs[ii]      = HAL_Malloc(MAX_ARRAY_ITEM_STR_LEN);
+        ret               = HAL_Snprintf(obj_strs[ii], MAX_ARRAY_ITEM_STR_LEN - 1, "\"%s\"", sg_alias_name_array[ii]);
+        obj_strs[ii][ret] = '\0';
+    }
+    ret = LITE_dt_format_strobj_array(p_prop->data, array_str_sz, obj_strs, sg_alias_name_array_size);
+    for (int ii = 0; ii < sg_alias_name_array_size; ++ii) {
+        HAL_Free(obj_strs[ii]);
+    }
+    if (ret < 0)
+        Log_e("Refresh array alias error");
+}
+
+static void _refresh_power_consumption()
+{
+    DeviceProperty *p_prop       = &(sg_DataTemplate[6].data_property);
+    int             array_type   = p_prop->array_info.array_type;
+    void *          array_data   = sg_power_consumption_array;
+    size_t          data_size    = sg_power_consumption_array_size * sizeof(int);
+    size_t          array_str_sz = p_prop->array_info.array_size;
+    char *          pwr_cons     = (char *)(p_prop->data);
+    pwr_cons[0]                  = 0;
+    int ret = LITE_dt_format_primitive_array(pwr_cons, array_str_sz, array_data, data_size, array_type);
+    if (ret < 0) {
+        sg_DataTemplate[6].state = eNOCHANGE;
+        Log_e("Refresh array power consumption error");
+    }
+}
+
+static void _refresh_recent_status()
+{
+    // for struct, convert it to json object string before construct array
+    char *          obj_strs[MAX_SAMPLE_ARRAY_SIZE];
+    DeviceProperty *p_prop = &(sg_DataTemplate[7].data_property);
+    int             ret;
+    size_t          array_str_sz = p_prop->array_info.array_size;
+
+    for (int ii = 0; ii < sg_recent_status_array_size; ++ii) {
+        obj_strs[ii] = HAL_Malloc(MAX_ARRAY_ITEM_STR_LEN);
+        ret          = HAL_Snprintf(obj_strs[ii], MAX_ARRAY_ITEM_STR_LEN - 1, "{\"brightness\":%d, \"temprature\":%f}",
+                           sg_recent_status_array[ii].brightness, sg_recent_status_array[ii].temperature);
+        obj_strs[ii][ret] = '\0';
+    }
+
+    ret = LITE_dt_format_strobj_array(p_prop->data, array_str_sz, obj_strs, sg_recent_status_array_size);
+
+    for (int ii = 0; ii < sg_recent_status_array_size; ++ii) {
+        HAL_Free(obj_strs[ii]);
+    }
+    if (ret < 0)
+        Log_e("Refresh array recent status error");
+}
+
 static int _parse_rs_obj(const char *json_str, size_t str_len, void *obj, size_t obj_len)
 {
     int ret = 0;
@@ -540,7 +600,7 @@ static int _on_recv_array_msg(DeviceProperty *p_prop)
     const char *key = p_prop->key;
 
     if (!strcmp(key, "alias_name")) {
-        Log_d("data: %p", (char *)(p_prop->data));
+        sg_DataTemplate[5].state = eCHANGED;
         char *alias[MAX_SAMPLE_ARRAY_SIZE];
         for (int i = 0; i < MAX_SAMPLE_ARRAY_SIZE; ++i) {
             alias[i] = sg_alias_name_array[i];
@@ -548,29 +608,28 @@ static int _on_recv_array_msg(DeviceProperty *p_prop)
         res = LITE_dt_parse_str_array(alias, MAX_SAMPLE_ARRAY_SIZE, sizeof(sg_alias_name_array[0]), p_prop->data);
         if (res > 0) {
             sg_alias_name_array_size = res;
-            // The local state has been changed
-            sg_DataTemplate[5].state = eCHANGED;
+            _refresh_alias_name();
         }
     } else if (!strcmp(key, "power_consumption")) {
-        Log_d("data: %s", (char *)(p_prop->data));
+        sg_DataTemplate[6].state = eCHANGED;
         // The local state has been changed
         res = LITE_dt_parse_primitive_array(sg_power_consumption_array, sizeof(sg_power_consumption_array),
                                             p_prop->data, JINT32);
         if (res > 0) {
             sg_power_consumption_array_size = res;
-            sg_DataTemplate[6].state        = eCHANGED;
-            for (int ii = 0; ii < res; ii++) {
-                Log_d("%d: %d", ii, sg_power_consumption_array[ii]);
-            }
+            _refresh_power_consumption();
         }
     } else {
+        sg_DataTemplate[7].state = eCHANGED;
         res = LITE_dt_parse_obj_array(sg_recent_status_array, MAX_SAMPLE_ARRAY_SIZE, sizeof(recent_status_t),
                                       p_prop->data, _parse_rs_obj);
         if (res > 0) {
             sg_recent_status_array_size = res;
-            // The local state has been changed
-            sg_DataTemplate[7].state = eCHANGED;
+            _refresh_recent_status();
         }
+    }
+    if (res < 0) {
+        HAL_Snprintf(p_prop->data, MAX_ARRAY_JSON_STR_LEN, "[]");
     }
 
     return 0;
@@ -581,15 +640,12 @@ static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, ui
                                  DeviceProperty *pProperty)
 {
     Log_d("recv json buffer %s", pJsonValueBuffer);
-    Log_d("key is %s, data is %s type is %d", pProperty->key, (char *)pProperty->data, pProperty->type);
 
     //    for (i = 0; i < TOTAL_PROPERTY_COUNT; i++) {
     /* handle self defined string/json here. Other properties are dealed in
      * _handle_delta()*/
     _on_recv_array_msg(pProperty);
     //   }
-
-    Log_e("Property=%s changed", pProperty->key);
 }
 
 static void OnReportReplyCallback(void *pClient, Method method, ReplyAck replyAck, const char *pJsonDocument,
@@ -727,72 +783,6 @@ static void cycle_report(Timer *reportTimer)
             countdown_ms(reportTimer, 5000);
         }
     }
-}
-
-static void _refresh_alias_name()
-{
-    DeviceProperty *p_prop = &(sg_DataTemplate[5].data_property);
-    if (eNOCHANGE == sg_DataTemplate[6].state)
-        return;
-    char * obj_strs[MAX_SAMPLE_ARRAY_SIZE];
-    size_t array_str_sz = p_prop->array_info.array_size;
-    int    ret;
-
-    for (int ii = 0; ii < sg_alias_name_array_size; ++ii) {
-        obj_strs[ii]      = HAL_Malloc(MAX_ARRAY_ITEM_STR_LEN);
-        ret               = HAL_Snprintf(obj_strs[ii], MAX_ARRAY_ITEM_STR_LEN - 1, "\"%s\"", sg_alias_name_array[ii]);
-        obj_strs[ii][ret] = '\0';
-    }
-    ret = LITE_dt_format_strobj_array(p_prop->data, array_str_sz, obj_strs, sg_alias_name_array_size);
-    for (int ii = 0; ii < sg_alias_name_array_size; ++ii) {
-        HAL_Free(obj_strs[ii]);
-    }
-    if (ret < 0)
-        Log_e("Refresh array power consumption error");
-}
-
-static void _refresh_power_consumption()
-{
-    DeviceProperty *p_prop = &(sg_DataTemplate[6].data_property);
-    if (eNOCHANGE == sg_DataTemplate[6].state)
-        return;
-    int    array_type   = p_prop->array_info.array_type;
-    void * array_data   = sg_power_consumption_array;
-    size_t data_size    = sg_power_consumption_array_size * sizeof(int);
-    size_t array_str_sz = p_prop->array_info.array_size;
-    char * pwr_cons     = (char *)(p_prop->data);
-    pwr_cons[0]         = 0;
-    int ret             = LITE_dt_format_primitive_array(pwr_cons, array_str_sz, array_data, data_size, array_type);
-    if (ret < 0) {
-        sg_DataTemplate[6].state = eNOCHANGE;
-        Log_e("Refresh array power consumption error");
-    }
-}
-
-static void _refresh_recent_status()
-{
-    // for struct, convert it to json object string before construct array
-    char *          obj_strs[MAX_SAMPLE_ARRAY_SIZE];
-    DeviceProperty *p_prop = &(sg_DataTemplate[7].data_property);
-    int             ret;
-    size_t          array_str_sz = p_prop->array_info.array_size;
-    if (eNOCHANGE == sg_DataTemplate[7].state)
-        return;
-
-    for (int ii = 0; ii < sg_recent_status_array_size; ++ii) {
-        obj_strs[ii] = HAL_Malloc(MAX_ARRAY_ITEM_STR_LEN);
-        ret          = HAL_Snprintf(obj_strs[ii], MAX_ARRAY_ITEM_STR_LEN - 1, "{\"brightness\":%d, \"temprature\":%f}",
-                           sg_recent_status_array[ii].brightness, sg_recent_status_array[ii].temperature);
-        obj_strs[ii][ret] = '\0';
-    }
-
-    ret = LITE_dt_format_strobj_array(p_prop->data, array_str_sz, obj_strs, sg_recent_status_array_size);
-
-    for (int ii = 0; ii < sg_recent_status_array_size; ++ii) {
-        HAL_Free(obj_strs[ii]);
-    }
-    if (ret < 0)
-        Log_e("Refresh array recent status error");
 }
 
 /*get local property data, like sensor data*/

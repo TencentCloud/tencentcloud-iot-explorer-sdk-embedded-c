@@ -97,7 +97,6 @@ static int _direct_update_value(char *value, DeviceProperty *pProperty)
             rc = LITE_get_string(pProperty->data, value, pProperty->data_buff_len);
             break;
         case JOBJECT:
-            Log_d("Try to update object");
             for (index = 0; index < pProperty->struct_obj_num; index++) {
                 DeviceProperty *pJsonNode = &((((sDataPoint *)(pProperty->data)) + index)->data_property);
                 if ((pJsonNode != NULL) && (pJsonNode->key != NULL)) {
@@ -106,7 +105,6 @@ static int _direct_update_value(char *value, DeviceProperty *pProperty)
             }
             break;
         case JARRAY:
-            Log_d("Try to update value JARRAY");
             rc = LITE_get_string(pProperty->data, value, pProperty->data_buff_len);
             break;
         default:
@@ -198,7 +196,6 @@ int put_json_node(char *jsonBuffer, size_t sizeOfBuffer, DeviceProperty *pJsonNo
             rc_of_snprintf =
                 HAL_Snprintf(jsonBuffer + current_size, remain_size, "%s,", *(bool *)(pData) ? "true" : "false");
             break;
-            ;
         case JOBJECT:
             rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "{");
             rc             = check_snprintf_return(rc_of_snprintf, remain_size);
@@ -277,9 +274,6 @@ int template_put_json_node(char *jsonBuffer, size_t sizeOfBuffer, const char *pK
     switch (type) {
         case JBOOL:
             rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "%u,", *(bool *)(pData) ? 1 : 0);
-            break;
-        case JSTRING:
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "\"%s\",", (char *)(pData));
             break;
         case JOBJECT:
             rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "%s,", (char *)(pData));
@@ -377,9 +371,7 @@ bool update_value_if_key_match(char *pJsonDoc, DeviceProperty *pProperty)
         ret = true;
     }
 
-    if (property_data) {
-        HAL_Free(property_data);
-    }
+    HAL_Free(property_data);
 
     return ret;
 }
