@@ -41,7 +41,7 @@ extern "C" {
 
 #define REG_URL_MAX_LEN             (128)
 #define DYN_REG_SIGN_LEN            (64)
-#define DYN_BUFF_DATA_MORE          (10)
+#define DYN_BUFF_DATA_MORE          (24)
 #define BASE64_ENCODE_OUT_LEN(x)    (((x + 3) * 4) / 3)
 #define DYN_REG_RES_HTTP_TIMEOUT_MS (2000)
 
@@ -411,22 +411,18 @@ static int _post_reg_request_by_http(char *request_buf, DeviceInfo *pDevInfo)
 
 static int _cal_dynreg_sign(DeviceInfo *pDevInfo, char *signout, int max_signlen, int nonce, uint32_t timestamp)
 {
-    int         sign_len;
-    size_t      olen                   = 0;
-    char *      pSignSource            = NULL;
-    const char *sign_fmt               = "deviceName=%s&nonce=%d&productId=%s&timestamp=%d";
-    char        sign[DYN_REG_SIGN_LEN] = {0};
+    int    sign_len;
+    size_t olen        = 0;
+    char * pSignSource = NULL;
+#define SIGN_FMT ("deviceName=%s&nonce=%d&productId=%s&timestamp=%d")
+    char sign[DYN_REG_SIGN_LEN] = {0};
 
     /*format sign data*/
-    sign_len = strlen(sign_fmt) + strlen(pDevInfo->device_name) + strlen(pDevInfo->product_id) + sizeof(int) +
-               sizeof(uint32_t) + DYN_BUFF_DATA_MORE;
-    pSignSource = HAL_Malloc(sign_len);
-    if (pSignSource == NULL) {
-        Log_e("malloc sign source buff fail");
-        return QCLOUD_ERR_FAILURE;
-    }
-    memset(pSignSource, 0, sign_len);
-    HAL_Snprintf((char *)pSignSource, sign_len, sign_fmt, pDevInfo->device_name, nonce, pDevInfo->product_id,
+    sign_len = sizeof(SIGN_FMT) + strlen(pDevInfo->device_name) + strlen(pDevInfo->product_id) + DYN_BUFF_DATA_MORE;
+    char sign_source[sizeof(SIGN_FMT) + MAX_SIZE_OF_DEVICE_NAME + MAX_SIZE_OF_PRODUCT_ID + DYN_BUFF_DATA_MORE];
+    memset(sign_source, 0, sign_len + 1);
+    pSignSource = sign_source;
+    HAL_Snprintf((char *)pSignSource, sign_len, SIGN_FMT, pDevInfo->device_name, nonce, pDevInfo->product_id,
                  timestamp);
 
     /*cal hmac sha1*/
@@ -434,22 +430,21 @@ static int _cal_dynreg_sign(DeviceInfo *pDevInfo, char *signout, int max_signlen
 
     /*base64 encode*/
     qcloud_iot_utils_base64encode((uint8_t *)signout, max_signlen, &olen, (const uint8_t *)sign, strlen(sign));
-
-    HAL_Free(pSignSource);
+#undef SIGN_FMT
 
     return (olen > max_signlen) ? QCLOUD_ERR_FAILURE : QCLOUD_RET_SUCCESS;
 }
 
 int IOT_DynReg_Device(DeviceInfo *pDevInfo)
 {
-    const char *para_format =
-        "{\"deviceName\":\"%s\",\"nonce\":%d,\"productId\":\"%s\",\"timestamp\":%d,\"signature\":\"%s\"}";
+#define PARA_FMT ("{\"deviceName\":\"%s\",\"nonce\":%d,\"productId\":\"%s\",\"timestamp\":%d,\"signature\":\"%s\"}")
     int      nonce;
     int      Ret;
     uint32_t timestamp;
     int      len;
     char     sign[DYN_REG_SIGN_LEN] = {0};
-    char *   pRequest               = NULL;
+    char     request_buf[sizeof(PARA_FMT) + MAX_SIZE_OF_PRODUCT_ID + MAX_SIZE_OF_DEVICE_NAME + DYN_BUFF_DATA_MORE + 40];
+    char *   pRequest = request_buf;
 
     if (strlen(pDevInfo->product_secret) < UTILS_AES_BLOCK_LEN) {
         Log_e("product key inllegal");
@@ -469,15 +464,10 @@ int IOT_DynReg_Device(DeviceInfo *pDevInfo)
     }
 
     /*format http request*/
-    len = strlen(para_format) + strlen(pDevInfo->product_id) + strlen(pDevInfo->device_name) + sizeof(int) +
-          sizeof(uint32_t) + strlen(sign) + DYN_BUFF_DATA_MORE;
-    pRequest = HAL_Malloc(len);
-    if (!pRequest) {
-        Log_e("malloc request memory fail");
-        return QCLOUD_ERR_FAILURE;
-    }
+    len = sizeof(PARA_FMT) + strlen(pDevInfo->product_id) + strlen(pDevInfo->device_name) + strlen(sign) +
+          DYN_BUFF_DATA_MORE;
     memset(pRequest, 0, len);
-    HAL_Snprintf(pRequest, len, para_format, pDevInfo->device_name, nonce, pDevInfo->product_id, timestamp, sign);
+    HAL_Snprintf(pRequest, len, PARA_FMT, pDevInfo->device_name, nonce, pDevInfo->product_id, timestamp, sign);
     Log_d("request:%s", pRequest);
     /*post request*/
     Ret = _post_reg_request_by_http(pRequest, pDevInfo);
@@ -486,9 +476,7 @@ int IOT_DynReg_Device(DeviceInfo *pDevInfo)
     } else {
         Log_e("request dev info fail");
     }
-
-    HAL_Free(pRequest);
-
+#undef PARA_FMT
     return Ret;
 }
 

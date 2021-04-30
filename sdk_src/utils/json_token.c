@@ -299,75 +299,6 @@ int LITE_dt_format_primitive_array(char *out_res, size_t out_sz, void *data, siz
     return ret > 0 ? QCLOUD_RET_SUCCESS : QCLOUD_ERR_FAILURE;
 }
 
-typedef struct {
-    const char *str_data;
-    size_t      str_len;
-} array_elem_t;
-
-/* split array json string, such as [123,456] -> 123 456 ["aaa","bbb"] -> "aaa" "bbb"
-    [{"aa":12}, {"bb":34}] -> {"aa":12} {"bb":34}
- */
-static int _split_primitive_array_str(array_elem_t *arr, size_t arr_len, const char *json_str)
-{
-    int         res = 0;
-    const char *p = json_str, *q = NULL;
-
-    arr->str_data = NULL;
-    p++;  // skip [
-    while (*p != 0) {
-        if (!arr->str_data) {
-            arr->str_data = p++;
-            continue;
-        }
-
-        if (!(q = strchr(p, ',')) && !(q = strchr(p, ']'))) {
-            // illegal end of array
-            return QCLOUD_ERR_FAILURE;
-        }
-        arr->str_len = q - arr->str_data;
-        p            = q + 1;
-        arr++;
-        if (++res >= arr_len || *q == ']')  // end of parsing
-            break;
-        arr->str_data = NULL;
-    }
-
-    return res;
-}
-
-/*
- ["aaa","bbb"] -> "aaa" "bbb"
-    [{"aa":12}, {"bb":34}] -> {"aa":12} {"bb":34}
-*/
-static int _split_objstr_array_str(array_elem_t *arr, size_t arr_len, const char *json_str, int is_obj)
-{
-    int         res = 0;
-    const char *p = json_str + 1, *q = NULL;  // skip [
-
-    char left = '{', right = '}';  // for object
-    if (!is_obj) {
-        left = right = '"';  // for string
-    }
-
-    while (*p != 0) {
-        if (!(q = strchr(p, left)))
-            break;  // start of elem not found
-        arr->str_data = q;
-
-        p = q + 1;
-        if (!(q = strchr(p, right))) {
-            return QCLOUD_ERR_FAILURE;  // illegal end of array
-        }
-        arr->str_len = q - arr->str_data + 1;
-        arr++;
-        if (++res >= arr_len)
-            break;
-        p = q + 1;
-    }
-
-    return res;
-}
-
 /* json_str [1,2,3] or  [1.23, 3.45] */
 int LITE_dt_parse_primitive_array(void *out_res, size_t out_len, const char *json_str, int type)
 {
@@ -376,63 +307,58 @@ int LITE_dt_parse_primitive_array(void *out_res, size_t out_len, const char *jso
         return QCLOUD_ERR_FAILURE;
     }
 
-    int           res = 0;
-    array_elem_t *arr = (array_elem_t *)HAL_Malloc(out_len * sizeof(array_elem_t));
-    if (!arr) {
-        Log_e("Failed to malloc");
-        return QCLOUD_ERR_MALLOC;
-    }
+    char *pos        = NULL;
+    char *entry      = NULL;
+    int   entry_len  = 0;
+    int   entry_type = 0;
+    char  old_ch     = 0;
+    int   res        = 0;
 
-    if ((res = _split_primitive_array_str(arr, out_len, json_str)) < 0) {
-        HAL_Free(arr);
-        return res;
-    }
-
-    int *  p_int   = (int *)out_res;
-    float *p_float = (float *)out_res;
-    for (int i = 0; i < res; ++i) {
-        if (arr[i].str_len > 31)
+    json_array_for_each_entry((char *)json_str, pos, entry, entry_len, entry_type)
+    {
+        if (!entry || entry_type != JSNUMBER)
             continue;
-        char tmp[32];
-        strncpy(tmp, arr[i].str_data, arr[i].str_len);
-        tmp[arr[i].str_len] = '\0';
-        if (JINT32 == type) {
-            LITE_get_int32(p_int, tmp);
-            p_int++;
-        } else if (JFLOAT == type) {
-            LITE_get_float(p_float, tmp);
-            p_float++;
+        backup_json_str_last_char(entry, entry_len, old_ch);
+        if ((ssize_t)out_len <= 0)
+            break;
+        if (type == JINT32) {
+            int32_t *out_val = (int32_t *)((char *)out_res + (res++) * sizeof(int32_t));
+            LITE_get_int32(out_val, entry);
+            out_len -= sizeof(int32_t);
+        } else {
+            float *out_val = (float *)((char *)out_res + (res++) * sizeof(float));
+            LITE_get_float(out_val, entry);
+            out_len -= sizeof(float);
         }
+        restore_json_str_last_char(entry, entry_len, old_ch);
     }
-    HAL_Free(arr);
 
     return res;
 }
 
 int LITE_dt_parse_str_array(char *out_res[], size_t arr_len, size_t str_len, const char *json_str)
 {
-    array_elem_t *arr = (array_elem_t *)HAL_Malloc(arr_len * sizeof(array_elem_t));
-    if (!arr) {
-        return QCLOUD_ERR_FAILURE;
-    }
-    int res = _split_objstr_array_str(arr, arr_len, json_str, 0);
-    if (res < 0) {
-        Log_e("String %s is not array", json_str);
-        HAL_Free(arr);
-        return res;
+    char *pos        = NULL;
+    char *entry      = NULL;
+    int   entry_len  = 0;
+    int   entry_type = 0;
+    char  old_ch     = 0;
+    int   res        = 0;
+
+    json_array_for_each_entry((char *)json_str, pos, entry, entry_len, entry_type)
+    {
+        if (!entry || entry_type != JSTRING)
+            continue;
+        backup_json_str_last_char(entry, entry_len, old_ch);
+        if (res >= arr_len)
+            break;
+
+        char *val = out_res[res++];
+        strncpy(val, entry, str_len - 1);
+        val[str_len - 1] = '\0';
+        restore_json_str_last_char(entry, entry_len, old_ch);
     }
 
-    for (int i = 0; i < res; ++i) {
-        if (arr[i].str_len >= str_len) {
-            Log_e("string %.*s is out of range", (int)(arr[i].str_len), arr[i].str_data);
-            arr[i].str_len = str_len;  // cut to the allowed len
-        }
-        char *p_out = out_res[i];
-        memcpy(p_out, arr[i].str_data + 1, arr[i].str_len - 2);  // strip ""
-        p_out[arr[i].str_len - 2] = '\0';                        //  add null terminate
-    }
-
-    HAL_Free(arr);
     return res;
 }
 
@@ -443,18 +369,29 @@ int LITE_dt_parse_obj_array(void *out_res, size_t out_len, size_t obj_len, const
         Log_e("Parsing function unavailable");
         return QCLOUD_ERR_FAILURE;
     }
-    array_elem_t *arr = (array_elem_t *)HAL_Malloc(out_len * sizeof(array_elem_t));
-    if (!arr) {
-        return QCLOUD_ERR_FAILURE;
-    }
-    int res = _split_objstr_array_str(arr, out_len, json_str, 1);
-    for (int i = 0; i < res; ++i) {
-        if (parse_fn(arr[i].str_data, arr[i].str_len, out_res, obj_len) < 0) {
-            Log_e("%.*s object parse error", (int)arr[i].str_len, arr[i].str_data);
+    char *pos        = NULL;
+    char *entry      = NULL;
+    int   entry_len  = 0;
+    int   entry_type = 0;
+    char  old_ch     = 0;
+    int   res        = 0;
+
+    json_array_for_each_entry((char *)json_str, pos, entry, entry_len, entry_type)
+    {
+        if (!entry || entry_type != JOBJECT)
+            continue;
+        backup_json_str_last_char(entry, entry_len, old_ch);
+        if ((ssize_t)out_len <= 0)
+            break;
+
+        if (0 != parse_fn(entry, entry_len, out_res, obj_len)) {
+            Log_e("%s parsed error", entry);
         }
         out_res = (char *)out_res + obj_len;
+        out_len -= obj_len;
+        res++;
+        restore_json_str_last_char(entry, entry_len, old_ch);
     }
 
-    HAL_Free(arr);
     return res;
 }

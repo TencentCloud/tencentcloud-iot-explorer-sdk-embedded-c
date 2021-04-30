@@ -24,11 +24,11 @@
 #include "utils_timer.h"
 #include "utils_getopt.h"
 
-#define DEMO_ASR_FILE                   0
-#define DEMO_ASR_REALTIEM               1
-#define DEMO_ASR_SENTENCE               2
-#define DEMO_ASR                        DEMO_ASR_SENTENCE
-#define PER_SLICE_SIZE                  (6400) //200ms/16K/16bit ~ 6.4KB
+#define DEMO_ASR_FILE     0
+#define DEMO_ASR_REALTIEM 1
+#define DEMO_ASR_SENTENCE 2
+#define DEMO_ASR          DEMO_ASR_SENTENCE
+#define PER_SLICE_SIZE    (6400)  // 200ms/16K/16bit ~ 6.4KB
 
 #ifdef AUTH_MODE_CERT
 static char sg_cert_file[PATH_MAX + 1];  // full path of device cert file
@@ -44,21 +44,21 @@ static size_t        sg_data_report_buffersize = sizeof(sg_data_report_buffer) /
 /*-----------------data config start  -------------------*/
 #define TOTAL_PROPERTY_COUNT 1
 
-static sDataPoint    sg_DataTemplate[TOTAL_PROPERTY_COUNT];
+static sDataPoint sg_DataTemplate[TOTAL_PROPERTY_COUNT];
 
 typedef struct _ProductDataDefine {
     int m_test;
 } ProductDataDefine;
 
-static   ProductDataDefine     sg_ProductData;
+static ProductDataDefine sg_ProductData;
 
 static void _init_data_template(void)
 {
-    sg_ProductData.m_test = 0;
+    sg_ProductData.m_test                 = 0;
     sg_DataTemplate[0].data_property.data = &sg_ProductData.m_test;
     sg_DataTemplate[0].data_property.key  = "test";
     sg_DataTemplate[0].data_property.type = TYPE_TEMPLATE_INT;
-    sg_DataTemplate[0].state = eNOCHANGE;
+    sg_DataTemplate[0].state              = eNOCHANGE;
 };
 /*-----------------data config end  -------------------*/
 
@@ -158,8 +158,8 @@ static int _init_log_upload(TemplateInitParams *init_params)
     LogUploadInitParams log_init_params;
     memset(&log_init_params, 0, sizeof(LogUploadInitParams));
 
-    log_init_params.region = init_params->region;
-    log_init_params.product_id = init_params->product_id;
+    log_init_params.region      = init_params->region;
+    log_init_params.product_id  = init_params->product_id;
     log_init_params.device_name = init_params->device_name;
 #ifdef AUTH_MODE_CERT
     log_init_params.sign_key = init_params->cert_file;
@@ -168,9 +168,9 @@ static int _init_log_upload(TemplateInitParams *init_params)
 #endif
 
 #if defined(__linux__) || defined(WIN32)
-    log_init_params.read_func = HAL_Log_Read;
-    log_init_params.save_func = HAL_Log_Save;
-    log_init_params.del_func = HAL_Log_Del;
+    log_init_params.read_func     = HAL_Log_Read;
+    log_init_params.save_func     = HAL_Log_Save;
+    log_init_params.del_func      = HAL_Log_Del;
     log_init_params.get_size_func = HAL_Log_Get_Size;
 #endif
 
@@ -179,7 +179,8 @@ static int _init_log_upload(TemplateInitParams *init_params)
 #endif
 
 /*control msg from server will trigger this callback*/
-static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, uint32_t valueLength, DeviceProperty *pProperty)
+static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, uint32_t valueLength,
+                                 DeviceProperty *pProperty)
 {
     int i = 0;
 
@@ -196,7 +197,8 @@ static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, ui
     Log_e("Property=%s changed no match", pProperty->key);
 }
 
-static void OnReportReplyCallback(void *pClient, Method method, ReplyAck replyAck, const char *pJsonDocument, void *pUserdata)
+static void OnReportReplyCallback(void *pClient, Method method, ReplyAck replyAck, const char *pJsonDocument,
+                                  void *pUserdata)
 {
     Log_i("recv report_reply(ack=%d): %s", replyAck, pJsonDocument);
 }
@@ -237,7 +239,8 @@ static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
 
     /*self define info*/
     DeviceProperty self_info[] = {
-        {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"}, {.key = NULL, .data = NULL}  // end
+        {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"},
+        {.key = NULL, .data = NULL}  // end
     };
 
     return IOT_Template_JSON_ConstructSysInfo(handle, pJsonDoc, sizeOfBuffer, plat_info, self_info);
@@ -277,7 +280,7 @@ static int find_wait_report_property(DeviceProperty *pReportDataList[])
     int i, j;
 
     for (i = 0, j = 0; i < TOTAL_PROPERTY_COUNT; i++) {
-        if(!strcmp(sg_DataTemplate[i].data_property.key, "asr_response")) {
+        if (!strcmp(sg_DataTemplate[i].data_property.key, "asr_response")) {
             continue;
         }
 
@@ -292,22 +295,19 @@ static int find_wait_report_property(DeviceProperty *pReportDataList[])
 
 static int _resource_event_usr_cb(void *pContext, const char *msg, uint32_t msgLen, int event)
 {
-    int  ret = QCLOUD_RET_SUCCESS;
+    int ret = QCLOUD_RET_SUCCESS;
     Log_d("resource event %d", (IOT_RES_UsrEvent)event);
 
     return ret;
 }
 
 /*get local property data, like sensor data*/
-static void _refresh_local_property(void)
-{
-
-}
+static void _refresh_local_property(void) {}
 
 static void deal_down_stream_user_logic(void *client, ProductDataDefine *asr)
-{   
-    if(eCHANGED == get_property_state(&asr->m_test)) {
-		Log_d("someting about your own product logic wait to be done");
+{
+    if (eCHANGED == get_property_state(&asr->m_test)) {
+        Log_d("someting about your own product logic wait to be done");
         set_property_state(&asr->m_test, eNOCHANGE);
     }
 }
@@ -354,8 +354,8 @@ int main(int argc, char **argv)
     sReplyPara      replyPara;
     int             ReportCont;
     int             rc;
-    void            *data_template_client = NULL;
-	void         	*asr_client = NULL;
+    void *          data_template_client = NULL;
+    void *          asr_client           = NULL;
 
     // init log level
     IOT_Log_Set_Level(eLOG_INFO);
@@ -447,7 +447,6 @@ int main(int argc, char **argv)
 
     while (IOT_Template_IsConnected(data_template_client) || rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT ||
            rc == QCLOUD_RET_MQTT_RECONNECTED || QCLOUD_RET_SUCCESS == rc) {
-
         rc = IOT_Template_Yield(data_template_client, 200);
         if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
             HAL_SleepMs(1000);
@@ -467,7 +466,8 @@ int main(int argc, char **argv)
             replyPara.timeout_ms    = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
             replyPara.status_msg[0] = '\0';  // add extra info to replyPara.status_msg when error occured
 
-            rc = IOT_Template_ControlReply(data_template_client, sg_data_report_buffer, sg_data_report_buffersize, &replyPara);
+            rc = IOT_Template_ControlReply(data_template_client, sg_data_report_buffer, sg_data_report_buffersize,
+                                           &replyPara);
             if (rc == QCLOUD_RET_SUCCESS) {
                 Log_d("Contol msg reply success");
                 sg_control_msg_arrived = false;
@@ -478,8 +478,8 @@ int main(int argc, char **argv)
 
         /*report msg to server report the lastest properties's status*/
         if (QCLOUD_RET_SUCCESS == deal_up_stream_user_logic(pReportDataList, &ReportCont)) {
-            rc = IOT_Template_JSON_ConstructReportArray(data_template_client, sg_data_report_buffer, sg_data_report_buffersize,
-                    ReportCont, pReportDataList);
+            rc = IOT_Template_JSON_ConstructReportArray(data_template_client, sg_data_report_buffer,
+                                                        sg_data_report_buffersize, ReportCont, pReportDataList);
             if (rc == QCLOUD_RET_SUCCESS) {
                 rc = IOT_Template_Report(data_template_client, sg_data_report_buffer, sg_data_report_buffersize,
                                          OnReportReplyCallback, NULL, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
@@ -494,66 +494,66 @@ int main(int argc, char **argv)
         }
 
         /*Demo usagae for ASR ---------> begin */
-        if(DEMO_ASR == DEMO_ASR_FILE) {
-            //asr record file requst, sg_ProductData.asr_response from OnControlMsgCallback is asr result
-            RecordAsrConf config = {0};
+        if (DEMO_ASR == DEMO_ASR_FILE) {
+            // asr record file requst, sg_ProductData.asr_response from OnControlMsgCallback is asr result
+            RecordAsrConf config      = {0};
             config.request_timeout_ms = 10000;
-            config.req_type = eASR_FILE;
-            config.ch_num = 1;
-            config.engine_type = eENGINE_16K_ZH;
+            config.req_type           = eASR_FILE;
+            config.ch_num             = 1;
+            config.engine_type        = eENGINE_16K_ZH;
             rc = IOT_Asr_RecordFile_Request(asr_client, "./test_file/test.wav", &config, asr_result_cb);
-            if(rc > 0) {
+            if (rc > 0) {
                 Log_i("record file %s's request_id %d ", "test.wav", rc);
             } else {
                 Log_e("record file %s's asr request fail, err: %d", "test.wav", rc);
             }
-			HAL_SleepMs(1000); //response time depends on file size
+            HAL_SleepMs(1000);  // response time depends on file size
         }
 
-        if(DEMO_ASR == DEMO_ASR_SENTENCE) {
-            //asr record file requst, sg_ProductData.asr_response from OnControlMsgCallback is asr result
-            RecordAsrConf config = {0};
+        if (DEMO_ASR == DEMO_ASR_SENTENCE) {
+            // asr record file requst, sg_ProductData.asr_response from OnControlMsgCallback is asr result
+            RecordAsrConf config      = {0};
             config.request_timeout_ms = 10000;
-            config.req_type = eASR_SENTENCE;
-            config.ch_num = 1;
-            config.engine_type = eENGINE_16K_ZH;
+            config.req_type           = eASR_SENTENCE;
+            config.ch_num             = 1;
+            config.engine_type        = eENGINE_16K_ZH;
             rc = IOT_Asr_RecordFile_Request(asr_client, "./test_file/test.wav", &config, asr_result_cb);
-            if(rc > 0) {
+            if (rc > 0) {
                 Log_i("record file %s's request_id %d ", "test.wav", rc);
             } else {
                 Log_e("record file %s's asr request fail, err: %d", "test.wav", rc);
             }
-			HAL_SleepMs(1000);
+            HAL_SleepMs(1000);
         }
 
-        if(DEMO_ASR == DEMO_ASR_REALTIEM) {
-            RealTimeAsrConf conf = {0};
+        if (DEMO_ASR == DEMO_ASR_REALTIEM) {
+            RealTimeAsrConf conf    = {0};
             conf.request_timeout_ms = 10000;
-            conf.req_type = eASR_REALTIME;
-            conf.engine_type = eENGINE_16K_ZH;
-            conf.res_type = eRESPONSE_PER_SLICE;
-            conf.voice_format = eVOICE_WAVE;
-            conf.seq = 0;
-            conf.end = 0;
-			conf.need_vad = 1;
-			conf.vad_silence_time = 300;
+            conf.req_type           = eASR_REALTIME;
+            conf.engine_type        = eENGINE_16K_ZH;
+            conf.res_type           = eRESPONSE_PER_SLICE;
+            conf.voice_format       = eVOICE_WAVE;
+            conf.seq                = 0;
+            conf.end                = 0;
+            conf.need_vad           = 1;
+            conf.vad_silence_time   = 300;
 
             char *audio_buff = (char *)HAL_Malloc(PER_SLICE_SIZE);
             memset(audio_buff, 0, PER_SLICE_SIZE);
-            if(!audio_buff) {
+            if (!audio_buff) {
                 Log_e("malloc audio_buff fail");
                 goto REAL_TIME_EXIT;
             }
 
-            //fake realtime audio data
+            // fake realtime audio data
             void *fp = HAL_FileOpen("./test_file/test.wav", "r");
-            if(NULL == fp) {
+            if (NULL == fp) {
                 Log_e("can not open file %s!", "./test_file/test.wav");
                 goto REAL_TIME_EXIT;
             }
             long file_size = HAL_FileSize(fp);
-            while(!HAL_FileEof(fp) && file_size > 0) {
-                int data_len = (file_size > PER_SLICE_SIZE)?PER_SLICE_SIZE:file_size;
+            while (!HAL_FileEof(fp) && file_size > 0) {
+                int data_len = (file_size > PER_SLICE_SIZE) ? PER_SLICE_SIZE : file_size;
                 int read_len = HAL_FileRead(audio_buff, 1, data_len, fp);
                 if (data_len != read_len) {
                     Log_e("Read file wrong read_len %d(%d)", read_len, data_len);
@@ -561,13 +561,13 @@ int main(int argc, char **argv)
                     goto REAL_TIME_EXIT;
                 }
                 file_size -= read_len;
-                if(file_size == 0) { // last slice
+                if (file_size == 0) {  // last slice
                     conf.end = 1;
                 }
 
-                //ATTENTION: encode audio_buff data (wav/speex/opus/silk/mp3) by yourself before request
+                // ATTENTION: encode audio_buff data (wav/speex/opus/silk/mp3) by yourself before request
                 rc = IOT_Asr_Realtime_Request(asr_client, audio_buff, read_len, &conf, asr_result_cb);
-                if(rc > 0) {
+                if (rc > 0) {
                     Log_i("realtime request_id %d ", rc);
                     conf.seq++;
                 } else {
@@ -575,7 +575,7 @@ int main(int argc, char **argv)
                     conf.seq = 0;
                 }
 
-                if(QCLOUD_ERR_MAX_APPENDING_REQUEST == rc) {
+                if (QCLOUD_ERR_MAX_APPENDING_REQUEST == rc) {
                     rc = IOT_Template_Yield(data_template_client, conf.request_timeout_ms);
                 } else {
                     rc = IOT_Template_Yield(data_template_client, 200);
@@ -591,18 +591,17 @@ int main(int argc, char **argv)
             }
 
         REAL_TIME_EXIT:
-            if(audio_buff) {
+            if (audio_buff) {
                 HAL_Free(audio_buff);
                 audio_buff = NULL;
             }
 
-            if(fp) {
+            if (fp) {
                 HAL_FileClose(fp);
                 fp = NULL;
             }
         }
         /*Demo usagae for ASR <--------- end */
-
     }
 
 exit:
@@ -612,7 +611,7 @@ exit:
 #endif
     HAL_SleepMs(1000);
     rc = IOT_Template_Destroy(data_template_client);
-    rc |=  IOT_Asr_Destroy(asr_client);
+    rc |= IOT_Asr_Destroy(asr_client);
 
 #ifdef LOG_UPLOAD
     IOT_Log_Upload(true);
