@@ -347,7 +347,7 @@ int LITE_dt_parse_str_array(char *out_res[], size_t arr_len, size_t str_len, con
 
     json_array_for_each_entry((char *)json_str, pos, entry, entry_len, entry_type)
     {
-        if (!entry || entry_type != JSTRING)
+        if (!entry || entry_type != JSSTRING)
             continue;
         backup_json_str_last_char(entry, entry_len, old_ch);
         if (res >= arr_len)
@@ -378,7 +378,7 @@ int LITE_dt_parse_obj_array(void *out_res, size_t out_len, size_t obj_len, const
 
     json_array_for_each_entry((char *)json_str, pos, entry, entry_len, entry_type)
     {
-        if (!entry || entry_type != JOBJECT)
+        if (!entry || entry_type != JSOBJECT)
             continue;
         backup_json_str_last_char(entry, entry_len, old_ch);
         if ((ssize_t)out_len <= 0)

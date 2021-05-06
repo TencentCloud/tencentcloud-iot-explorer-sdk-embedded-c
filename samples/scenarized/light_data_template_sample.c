@@ -778,7 +778,7 @@ static void cycle_report(Timer *reportTimer)
     int i;
 
     if (expired(reportTimer)) {
-        for (i = 0; i < TOTAL_PROPERTY_COUNT - DATA_TEMPLATE_WITHOUT_STRUCT; i++) {
+        for (i = 0; i < TOTAL_PROPERTY_COUNT; i++) {
             set_property_state(sg_DataTemplate[i].data_property.data, eCHANGED);
             countdown_ms(reportTimer, 5000);
         }
@@ -788,11 +788,6 @@ static void cycle_report(Timer *reportTimer)
 /*get local property data, like sensor data*/
 static void _refresh_local_property(void)
 {
-#if TEST_ARRAY
-    _refresh_alias_name();
-    _refresh_power_consumption();
-    _refresh_recent_status();
-#endif
     cycle_report(&sg_reportTimer);
 }
 
@@ -1002,12 +997,12 @@ int main(int argc, char **argv)
                 rc = IOT_Template_Report(client, sg_data_report_buffer, sg_data_report_buffersize,
                                          OnReportReplyCallback, NULL, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
                 if (rc == QCLOUD_RET_SUCCESS) {
-                    Log_i("data template reporte success");
+                    Log_i("data template reported successfully");
                 } else {
-                    Log_e("data template reporte failed, err: %d", rc);
+                    Log_e("data template reported error, err: %d", rc);
                 }
             } else {
-                Log_e("construct reporte data failed, err: %d", rc);
+                Log_e("construct reported data failed, err: %d", rc);
             }
         }
 
