@@ -375,9 +375,9 @@ int main(int argc, char **argv)
         }
 
         int wait_cnt = 10;
-        while (!IOT_MQTT_IsSubReady(client, topic_filter) && (--wait_cnt)) {
+        while (!IOT_MQTT_IsSubReady(mqtt, topic_filter) && (--wait_cnt)) {
             // wait for subscription result
-            rc = IOT_MQTT_Yield(client, 1000);
+            rc = IOT_MQTT_Yield(mqtt, 1000);
             if (rc) {
                 Log_e("MQTT error: %d", rc);
                 goto exit;
