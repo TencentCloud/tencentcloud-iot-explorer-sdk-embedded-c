@@ -25,7 +25,6 @@
 #include "mqtt_client.h"
 #include "utils_param_check.h"
 
-
 #ifdef MULTITHREAD_ENABLED
 int IOT_Gateway_Start_Yield_Thread(void *pClient)
 {
@@ -33,7 +32,7 @@ int IOT_Gateway_Start_Yield_Thread(void *pClient)
     Gateway *pGateway = (Gateway *)pClient;
 
     int rc = IOT_MQTT_StartLoop(pGateway->mqtt);
-    if(QCLOUD_RET_SUCCESS == rc) {
+    if (QCLOUD_RET_SUCCESS == rc) {
         pGateway->yield_thread_running = true;
     } else {
         pGateway->yield_thread_running = false;
@@ -51,7 +50,7 @@ void IOT_Gateway_Stop_Yield_Thread(void *pClient)
     IOT_MQTT_StopLoop(pGateway->mqtt);
     pGateway->yield_thread_running = false;
     HAL_SleepMs(1000);
-	
+
     return;
 }
 
@@ -59,7 +58,7 @@ bool IOT_Gateway_Get_Yield_Status(void *pClient, int *exit_code)
 {
     POINTER_SANITY_CHECK(pClient, false);
 
-    Gateway *pGateway = (Gateway *)pClient;
+    Gateway *pGateway              = (Gateway *)pClient;
     pGateway->yield_thread_running = IOT_MQTT_GetLoopStatus(pGateway->mqtt, exit_code);
 
     return pGateway->yield_thread_running;
@@ -102,9 +101,14 @@ void _gateway_event_handler(void *client, void *context, MQTTEventMsg *msg)
                   STRING_PTR_PRINT_SANITY_CHECK(topic_info->payload));
             break;
 
-       case MQTT_EVENT_GATEWAY_SEARCH:
+        case MQTT_EVENT_GATEWAY_SEARCH:
             Log_d("gateway search subdev status:%d", *(int32_t *)(msg->msg));
             break;
+
+        case MQTT_EVENT_GATEWAY_CHANGE: {
+            gw_change_notify_t *p_notify = (gw_change_notify_t *)(msg->msg);
+            Log_d("Get change notice: sub devices %s to %s", p_notify->devices, p_notify->status ? "bind" : "unbind");
+        } break;
 
         default:
             break;
@@ -299,7 +303,6 @@ int IOT_Gateway_Subdev_Offline(void *client, GatewayParam *param)
     }
 
     session->session_status = SUBDEV_SEESION_STATUS_OFFLINE;
-
     /* free session */
     subdev_remove_session(gateway, param->subdev_product_id, param->subdev_device_name);
 

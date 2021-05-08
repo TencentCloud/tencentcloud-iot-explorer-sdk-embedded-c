@@ -112,6 +112,11 @@ void _event_handler(void *client, void *context, MQTTEventMsg *msg)
             Log_d("gateway search subdev status:%d", *(int32_t *)(msg->msg));
             break;
 
+        case MQTT_EVENT_GATEWAY_CHANGE: {
+            gw_change_notify_t *p_notify = (gw_change_notify_t *)(msg->msg);
+            Log_d("Get change notice: sub devices %s to %s", p_notify->devices, p_notify->status ? "bind" : "unbind");
+        } break;
+
         default:
             Log_i("Should NOT arrive here.");
             break;

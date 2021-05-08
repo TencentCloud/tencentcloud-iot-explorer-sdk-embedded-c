@@ -202,6 +202,11 @@ typedef struct _SubdevBindList {
     int             bind_num;
 } SubdevBindList;
 
+typedef struct _gw_change_notify {
+    char *devices;
+    int   status;
+} gw_change_notify_t;
+
 #ifdef MULTITHREAD_ENABLED
 /**
  * @brief Start the default yield thread to read and handle gateway msg
