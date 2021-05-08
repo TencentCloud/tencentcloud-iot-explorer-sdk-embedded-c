@@ -110,6 +110,8 @@ typedef enum {
     /* MQTT unsubscribe */
     MQTT_EVENT_UNSUBSCRIBE = 14,
 
+    MQTT_EVENT_GATEWAY_SEARCH = 15,
+
 } MQTTEventType;
 
 /**
