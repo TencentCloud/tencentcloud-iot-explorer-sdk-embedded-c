@@ -33,7 +33,7 @@ extern "C" {
 #define NAME_MAX_LEN        (32)
 #define TYPE_MAX_LEN        (32)
 #define EVENT_TOKEN_MAX_LEN (32)
-#define SIGLE_EVENT         (1)
+#define SINGLE_EVENT        (1)
 #define MUTLTI_EVENTS       (2)
 
 #define MAX_EVENT_WAIT_REPLY (10)

@@ -257,67 +257,28 @@ int mqtt_init_packet_header(unsigned char *header, MessageTypes message_type, Qo
             /* Should never happen */
             return QCLOUD_ERR_MQTT_UNKNOWN;
         case CONNECT:
-            type = 0x01;
-            break;
         case CONNACK:
-            type = 0x02;
-            break;
         case PUBLISH:
-            type = 0x03;
-            break;
         case PUBACK:
-            type = 0x04;
-            break;
         case PUBREC:
-            type = 0x05;
-            break;
         case PUBREL:
-            type = 0x06;
-            break;
         case PUBCOMP:
-            type = 0x07;
-            break;
         case SUBSCRIBE:
-            type = 0x08;
-            break;
         case SUBACK:
-            type = 0x09;
-            break;
         case UNSUBSCRIBE:
-            type = 0x0A;
-            break;
         case UNSUBACK:
-            type = 0x0B;
-            break;
         case PINGREQ:
-            type = 0x0C;
-            break;
         case PINGRESP:
-            type = 0x0D;
-            break;
         case DISCONNECT:
-            type = 0x0E;
+            type = (unsigned char)(message_type & 0xff);
             break;
         default:
             /* Should never happen */
             return QCLOUD_ERR_MQTT_UNKNOWN;
     }
-
-    switch (Qos) {
-        case QOS0:
-            qos = 0x00;
-            break;
-        case QOS1:
-            qos = 0x01;
-            break;
-        case QOS2:
-            qos = 0x02;
-            break;
-        default:
-            /* Using QOS0 as default */
-            qos = 0x00;
-            break;
-    }
+    qos = 0x00;
+    if (Qos <= QOS2 && Qos >= QOS0)
+        qos = Qos;
 
     /* Generate the final protocol header by using bitwise operator */
     *header = ((type << MQTT_HEADER_TYPE_SHIFT) & MQTT_HEADER_TYPE_MASK) |
@@ -623,7 +584,8 @@ static int _read_mqtt_packet(Qcloud_IoT_Client *pClient, Timer *timer, uint8_t *
     rc = pClient->network_stack.read(&(pClient->network_stack), pClient->read_buf, 1, timer_left_ms, &read_len);
     if (rc == QCLOUD_ERR_SSL_NOTHING_TO_READ || rc == QCLOUD_ERR_TCP_NOTHING_TO_READ) {
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_MQTT_NOTHING_TO_READ);
-    } else if (rc != QCLOUD_RET_SUCCESS) {
+    }
+    if (rc != QCLOUD_RET_SUCCESS) {
         IOT_FUNC_EXIT_RC(rc);
     }
 
@@ -658,15 +620,16 @@ static int _read_mqtt_packet(Qcloud_IoT_Client *pClient, Timer *timer, uint8_t *
         do {
             ret_val = pClient->network_stack.read(&(pClient->network_stack), pClient->read_buf, bytes_to_be_read,
                                                   timer_left_ms, &read_len);
-            if (ret_val == QCLOUD_RET_SUCCESS) {
-                total_bytes_read += read_len;
-                if ((rem_len - total_bytes_read) >= pClient->read_buf_size) {
-                    bytes_to_be_read = pClient->read_buf_size;
-                } else {
-                    bytes_to_be_read = rem_len - total_bytes_read;
-                }
+            if (ret_val != QCLOUD_RET_SUCCESS) {
+                break;
             }
-        } while (total_bytes_read < rem_len && ret_val == QCLOUD_RET_SUCCESS);
+            total_bytes_read += read_len;
+            if ((rem_len - total_bytes_read) >= pClient->read_buf_size) {
+                bytes_to_be_read = pClient->read_buf_size;
+            } else {
+                bytes_to_be_read = rem_len - total_bytes_read;
+            }
+        } while (total_bytes_read < rem_len);
 
         Log_e("MQTT Recv buffer not enough: %d < %d", pClient->read_buf_size, rem_len);
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_BUF_TOO_SHORT);
@@ -684,18 +647,17 @@ static int _read_mqtt_packet(Qcloud_IoT_Client *pClient, Timer *timer, uint8_t *
 
         pClient->network_stack.read(&(pClient->network_stack), pClient->read_buf, rem_len, timer_left_ms, &read_len);
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_BUF_TOO_SHORT);
-    } else {
-        if (rem_len > 0) {
-            timer_left_ms = left_ms(timer);
-            if (timer_left_ms <= 0) {
-                timer_left_ms = 1;
-            }
-            timer_left_ms += QCLOUD_IOT_MQTT_MAX_REMAIN_WAIT_MS;
-            rc = pClient->network_stack.read(&(pClient->network_stack), pClient->read_buf + len, rem_len, timer_left_ms,
-                                             &read_len);
-            if (rc != QCLOUD_RET_SUCCESS) {
-                IOT_FUNC_EXIT_RC(rc);
-            }
+    }
+    if (rem_len > 0) {
+        timer_left_ms = left_ms(timer);
+        if (timer_left_ms <= 0) {
+            timer_left_ms = 1;
+        }
+        timer_left_ms += QCLOUD_IOT_MQTT_MAX_REMAIN_WAIT_MS;
+        rc = pClient->network_stack.read(&(pClient->network_stack), pClient->read_buf + len, rem_len, timer_left_ms,
+                                         &read_len);
+        if (rc != QCLOUD_RET_SUCCESS) {
+            IOT_FUNC_EXIT_RC(rc);
         }
     }
 
@@ -767,9 +729,8 @@ static uint8_t _is_topic_matched(char *topic_filter, char *topicName, uint16_t t
 
     if (*curf == '\0') {
         return (uint8_t)(curn == curn_end);
-    } else {
-        return (uint8_t)((*curf == '#') || *(curf + 1) == '#' || (*curf == '+' && *(curn - 1) == '/'));
     }
+    return (uint8_t)((*curf == '#') || *(curf + 1) == '#' || (*curf == '+' && *(curn - 1) == '/'));
 }
 
 /**
