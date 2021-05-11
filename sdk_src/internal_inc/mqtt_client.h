@@ -214,6 +214,7 @@ typedef struct Client {
     Timer ping_timer;             // MQTT ping timer
     Timer reconnect_delay_timer;  // MQTT reconnect delay timer
 
+    DeviceInfo     device_info;
     SubTopicHandle sub_handles[MAX_MESSAGE_HANDLERS];  // subscription handle array
 
     char host_addr[HOST_STR_LENGTH];

@@ -30,13 +30,6 @@
 #define MAX_SIZE_OF_TOPIC (128)
 #define MAX_SIZE_OF_DATA  (128)
 
-#define SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-#define LIGHT_SUB_DEV_PRODUCT_ID "BK7EEF4UIB"
-#define LIGHT_SUB_DEV_NAME       "dev001"
-extern void *sub_dev1_thread(void *ptr, char *product_id, char *device_name);
-#endif
-
 static int               sg_sub_packet_id = -1;
 static int               sg_loop_count    = 1;
 static GatewayDeviceInfo sg_GWdevInfo;
@@ -108,6 +101,15 @@ void _event_handler(void *client, void *context, MQTTEventMsg *msg)
         case MQTT_EVENT_PUBLISH_NACK:
             Log_i("publish nack, packet-id=%u", (unsigned int)packet_id);
             break;
+        case MQTT_EVENT_GATEWAY_SEARCH:
+            Log_d("gateway search subdev status:%d", *(int32_t *)(msg->msg));
+            break;
+
+        case MQTT_EVENT_GATEWAY_CHANGE: {
+            gw_change_notify_t *p_notify = (gw_change_notify_t *)(msg->msg);
+            Log_d("Get change notice: sub devices %s to %s", p_notify->devices, p_notify->status ? "bind" : "unbind");
+        } break;
+
         default:
             Log_i("Should NOT arrive here.");
             break;
@@ -163,6 +165,9 @@ static int _setup_connect_init_params(GatewayInitParam *init_params)
     return QCLOUD_RET_SUCCESS;
 }
 
+// for reply code, pls check https://cloud.tencent.com/document/product/634/45960
+#define GATEWAY_RC_REPEAT_BIND 809
+
 static int parse_arguments(int argc, char **argv)
 {
     int c;
@@ -192,27 +197,16 @@ static int parse_arguments(int argc, char **argv)
 }
 
 /**
- * sub dev thread runner
- */
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  // show subdev with data template.
-static void sub_dev_thread(void *user_arg)
-{
-    sub_dev1_thread(user_arg, LIGHT_SUB_DEV_PRODUCT_ID, LIGHT_SUB_DEV_NAME);
-}
-#endif
-
-
-/**
  * show gateway dynamic bind/unbind sub-devices
  */
 #ifdef GATEWAY_DYN_BIND_SUBDEV_ENABLED
 static int add_new_binded_sub_dev(GatewayDeviceInfo *pGateway, DeviceInfo *pNewSubDev)
 {
     int ret;
-    if(pGateway->sub_dev_num < MAX_NUM_SUB_DEV) {
+    if (pGateway->sub_dev_num < MAX_NUM_SUB_DEV) {
         memcpy((char *)&pGateway->sub_dev_info[pGateway->sub_dev_num], (char *)pNewSubDev, sizeof(DeviceInfo));
         pGateway->sub_dev_num++;
-        ret = QCLOUD_RET_SUCCESS; //you can save gateway info to local flash for persistent storage
+        ret = QCLOUD_RET_SUCCESS;  // you can save gateway info to local flash for persistent storage
     } else {
         ret = QCLOUD_ERR_FAILURE;
     }
@@ -224,7 +218,7 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
 {
     int rc;
 
-    //ajust for your bind device info
+    // ajust for your bind device info
     DeviceInfo subDev;
     memset((char *)&subDev, 0, sizeof(DeviceInfo));
     strncpy(subDev.product_id, "BIND_PID", MAX_SIZE_OF_PRODUCT_ID);
@@ -238,12 +232,12 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
 #endif
     Log_d("bind subdev %s/%s", subDev.product_id, subDev.device_name);
 
-    //bind sub dev
+    // bind sub dev
     rc = IOT_Gateway_Subdev_Bind(client, param, &subDev);
-    if(QCLOUD_ERR_BIND_REPEATED_REQ == rc) {
+    if (QCLOUD_ERR_BIND_REPEATED_REQ == rc) {
         Log_d("%s/%s has been binded", subDev.product_id, subDev.device_name);
         rc = IOT_Gateway_Subdev_Unbind(client, param, &subDev);
-        if(QCLOUD_RET_SUCCESS != rc) {
+        if (QCLOUD_RET_SUCCESS != rc) {
             Log_e("unbind %s/%s fail,rc:%d", subDev.product_id, subDev.device_name, rc);
         } else {
             Log_d("unbind %s/%s success", subDev.product_id, subDev.device_name);
@@ -251,7 +245,7 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
         }
     }
 
-    if(QCLOUD_RET_SUCCESS == rc) {
+    if (QCLOUD_RET_SUCCESS == rc) {
         Log_d("bind %s/%s success", subDev.product_id, subDev.device_name);
         add_new_binded_sub_dev(&sg_GWdevInfo, &subDev);
     } else {
@@ -260,9 +254,39 @@ static int show_subdev_bind_unbind(void *client, GatewayParam *param)
 
     return rc;
 }
-
 #endif
 
+static void _property_topic_publish(void *pClient, const char *pid, const char *dname, const char *message,
+                                    int message_len)
+{
+    char topic[256] = {0};
+    int  size;
+
+    size = HAL_Snprintf(topic, 256, "$thing/up/property/%s/%s", pid, dname);
+
+    if (size < 0 || size > 256 - 1) {
+        Log_e("buf size < topic length!");
+        return;
+    }
+
+    PublishParams pubParams = DEFAULT_PUB_PARAMS;
+    pubParams.qos           = QOS0;
+    pubParams.payload_len   = message_len;
+    pubParams.payload       = (void *)message;
+
+    IOT_MQTT_Publish(pClient, topic, &pubParams);
+}
+
+static struct {
+    bool     power_off;
+    uint8_t  brightness;
+    uint16_t color;
+    char     name[MAX_SIZE_OF_DEVICE_NAME + 1];
+} sg_led_info = {
+    .power_off  = true,
+    .brightness = 10,
+    .color      = 0,
+};
 
 /*Gateway should enable multithread*/
 int main(int argc, char **argv)
@@ -271,14 +295,10 @@ int main(int argc, char **argv)
     int                errCount = 0;
     int                i;
     int                size;
-    void *             client = NULL;
-    GatewayDeviceInfo *gw     = &sg_GWdevInfo;
-    GatewayParam       param  = DEFAULT_GATEWAY_PARAMS;
-    DeviceInfo *       subDevInfo;
-
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-    ThreadParams sub_dev1_thread_params = {0};
-#endif
+    void *             client = NULL, *mqtt = NULL;
+    GatewayDeviceInfo *gw    = &sg_GWdevInfo;
+    GatewayParam       param = DEFAULT_GATEWAY_PARAMS;
+    DeviceInfo *       sub;
 
     IOT_Log_Set_Level(eLOG_DEBUG);
     // parse arguments for device info file and loop test;
@@ -300,69 +320,44 @@ int main(int argc, char **argv)
         Log_e("client constructed failed.");
         return QCLOUD_ERR_FAILURE;
     }
-
-#ifdef MULTITHREAD_ENABLED
-    rc = IOT_Gateway_Start_Yield_Thread(client);
-    if (rc != QCLOUD_RET_SUCCESS) {
-        Log_e("init params err,rc=%d", rc);
-        goto exit;
-    }
-#endif
+    mqtt = IOT_Gateway_Get_Mqtt_Client(client);
 
     // set GateWay device info
     param.product_id  = gw->gw_info.product_id;
     param.device_name = gw->gw_info.device_name;
 
-
 #ifdef GATEWAY_DYN_BIND_SUBDEV_ENABLED
-    //show gateway dynamic bind/unbind sub-devices
+    // show gateway dynamic bind/unbind sub-devices
     show_subdev_bind_unbind(client, &param);
 #endif
 
     // make sub-device online
     for (i = 0; i < gw->sub_dev_num; i++) {
-        subDevInfo               = &gw->sub_dev_info[i];
-        param.subdev_product_id  = subDevInfo->product_id;
-        param.subdev_device_name = subDevInfo->device_name;
+        sub                      = &gw->sub_dev_info[i];
+        param.subdev_product_id  = sub->product_id;
+        param.subdev_device_name = sub->device_name;
 
         rc = IOT_Gateway_Subdev_Online(client, &param);
         if (rc != QCLOUD_RET_SUCCESS) {
-            Log_e("subDev Pid:%s devName:%s online fail.", subDevInfo->product_id, subDevInfo->device_name);
+            Log_e("subDev Pid:%s devName:%s online error.", sub->product_id, sub->device_name);
             errCount++;
         } else {
-            Log_d("subDev Pid:%s devName:%s online success.", subDevInfo->product_id, subDevInfo->device_name);
+            Log_d("subDev Pid:%s devName:%s online ok.", sub->product_id, sub->device_name);
         }
     }
-
     if (errCount > 0) {
-        Log_e("%d of %d sub devices online fail", errCount, gw->sub_dev_num);
+        Log_e("%d of %d sub devices online error", errCount, gw->sub_dev_num);
     }
 
     // subscribe sub-device data_template down stream topic for example
     char            topic_filter[MAX_SIZE_OF_TOPIC + 1];
     SubscribeParams sub_param = DEFAULT_SUB_PARAMS;
     for (i = 0; i < gw->sub_dev_num; i++) {
-        subDevInfo = &gw->sub_dev_info[i];
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  // subdev with data template example.
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) &&
-            (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
-            sub_dev1_thread_params.thread_func = sub_dev_thread;
-            sub_dev1_thread_params.thread_name = "sub_dev1_thread";
-            sub_dev1_thread_params.user_arg    = client;
-            sub_dev1_thread_params.stack_size  = 4096;
-            sub_dev1_thread_params.priority    = 1;
+        sub = &gw->sub_dev_info[i];
 
-            int rc = HAL_ThreadCreate(&sub_dev1_thread_params);
-            if (rc) {
-                Log_e("create sub_dev1_thread fail: %d", rc);
-                return QCLOUD_ERR_FAILURE;
-            }
-            continue;
-        }
-#endif
         memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);
-        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/down/property/%s/%s", subDevInfo->product_id,
-                            subDevInfo->device_name);
+        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/down/property/%s/%s", sub->product_id,
+                            sub->device_name);
 
         if (size < 0 || size > MAX_SIZE_OF_TOPIC) {
             Log_e("buf size < topic length!");
@@ -373,78 +368,79 @@ int main(int argc, char **argv)
         sub_param.on_message_handler = _message_handler;
         rc                           = IOT_Gateway_Subscribe(client, topic_filter, &sub_param);
         if (rc < 0) {
-            Log_e("IOT_Gateway_Subscribe fail.");
-            return rc;
+            Log_e("IOT_Gateway_Subscribe failed.");
+            goto exit;
+        }
+
+        int wait_cnt = 10;
+        while (!IOT_MQTT_IsSubReady(mqtt, topic_filter) && (--wait_cnt)) {
+            // wait for subscription result
+            rc = IOT_MQTT_Yield(mqtt, 1000);
+            if (rc) {
+                Log_e("MQTT error: %d", rc);
+                goto exit;
+            }
+        }
+
+        if (wait_cnt <= 0) {
+            Log_e("wait for subscribe result timeout!");
+            goto exit;
         }
     }
 
-    HAL_SleepMs(2000); /*wait subcribe ack*/
+    while (sg_loop_count--) {
+        for (i = 0; i < gw->sub_dev_num; i++) {
+            static int sg_report_index = 0;
+            char       message[256]    = {0};
+            // only change the brightness in the demo
+            sg_led_info.brightness %= 100;
+            sg_led_info.brightness++;
+            sub = &gw->sub_dev_info[i];
+            HAL_Snprintf(sg_led_info.name, sizeof(sg_led_info.name), "%s", sub->device_name);
+            int message_len =
+                HAL_Snprintf(message, sizeof(message),
+                             "{\"method\":\"report\", \"clientToken\":\"%s-%d\", "
+                             "\"params\":{\"power_switch\":%d, \"color\":%d, \"brightness\":%d, \"name\":\"%s\"}}",
+                             sg_GWdevInfo.gw_info.product_id, sg_report_index++, sg_led_info.power_off,
+                             sg_led_info.color, sg_led_info.brightness, sub->device_name);
 
-    //  publish to sub-device data_template up stream topic for example
-    PublishParams pub_param = DEFAULT_PUB_PARAMS;
-    pub_param.qos           = QOS0;
+            _property_topic_publish(mqtt, sub->product_id, sub->device_name, message, message_len);
+            // publish msg to sub-device topic
 
-    //  pub_param.payload =
-    //"{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err
-    // reply wil received\"}}";
-    pub_param.payload     = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{}}";
-    pub_param.payload_len = strlen(pub_param.payload);
-    for (i = 0; i < gw->sub_dev_num; i++) {
-        subDevInfo = &gw->sub_dev_info[i];
+            rc = IOT_Gateway_Yield(client, 200);
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) &&
-            (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
-            continue;
-        }
-#endif
-        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);
-        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/up/property/%s/%s", subDevInfo->product_id,
-                            subDevInfo->device_name);
-        if (size < 0 || size > MAX_SIZE_OF_TOPIC) {
-            Log_e("buf size < topic length!");
-            return QCLOUD_ERR_FAILURE;
-        }
+            if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
+                HAL_SleepMs(1000);
+                continue;
+            }
+            if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
+                Log_e("exit with error: %d", rc);
+                break;
+            }
 
-        rc = IOT_Gateway_Publish(client, topic_filter, &pub_param);
-        if (rc < 0) {
-            Log_e("IOT_Gateway_Publish fail.");
+            HAL_SleepMs(1000);
         }
     }
 
-exit:
-
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-    while(0 != sub_dev1_thread_params.thread_id){
-		HAL_SleepMs(1000);
-	}
-#endif
-
-    // set GateWay device info
-    param.product_id  = gw->gw_info.product_id;
-    param.device_name = gw->gw_info.device_name;
     // make sub-device offline
-    errCount = 0;
     for (i = 0; i < gw->sub_dev_num; i++) {
-        subDevInfo               = &gw->sub_dev_info[i];
-        param.subdev_product_id  = subDevInfo->product_id;
-        param.subdev_device_name = subDevInfo->device_name;
+        sub                      = &gw->sub_dev_info[i];
+        param.subdev_product_id  = sub->product_id;
+        param.subdev_device_name = sub->device_name;
 
         rc = IOT_Gateway_Subdev_Offline(client, &param);
         if (rc != QCLOUD_RET_SUCCESS) {
-            Log_e("subDev Pid:%s devName:%s offline fail.", subDevInfo->product_id, subDevInfo->device_name);
+            Log_e("subDev Pid:%s devName:%s online error.", sub->product_id, sub->device_name);
             errCount++;
         } else {
-            Log_d("subDev Pid:%s devName:%s offline success.", subDevInfo->product_id, subDevInfo->device_name);
+            Log_d("subDev Pid:%s devName:%s online ok.", sub->product_id, sub->device_name);
         }
     }
-
     if (errCount > 0) {
-        Log_e("%d of %d sub devices offline fail", errCount, gw->sub_dev_num);
+        Log_e("%d of %d sub devices online error", errCount, gw->sub_dev_num);
     }
 
-    // stop running thread
-    IOT_Gateway_Stop_Yield_Thread(client);
+exit:
     rc = IOT_Gateway_Destroy(client);
 
     return rc;

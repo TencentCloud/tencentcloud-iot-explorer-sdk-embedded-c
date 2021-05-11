@@ -347,11 +347,10 @@ static int _mqtt_connect(Qcloud_IoT_Client *pClient, MQTTConnectParams *options)
 
     // send CONNECT packet
     rc = send_mqtt_packet(pClient, len, &connect_timer);
+    HAL_MutexUnlock(pClient->lock_write_buf);
     if (QCLOUD_RET_SUCCESS != rc) {
-        HAL_MutexUnlock(pClient->lock_write_buf);
         IOT_FUNC_EXIT_RC(rc);
     }
-    HAL_MutexUnlock(pClient->lock_write_buf);
 
     // wait for CONNACK
     rc = wait_for_read(pClient, CONNACK, &connect_timer, QOS0);
