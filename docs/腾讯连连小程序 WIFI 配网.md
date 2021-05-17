@@ -111,6 +111,8 @@ CSDK 实现了接收小程序发送的 token 并向物联网开发发起绑定�
 ```
 
 ### 5. 蓝牙 combo 适配
+LLSync协议配网请[参考](https://github.com/tencentyun/qcloud-iot-explorer-BLE-sdk-embedded/blob/master/docs/LLSync%20SDK%E8%BE%85%E5%8A%A9%E9%85%8D%E7%BD%91%E5%8A%9F%E8%83%BD%E6%8E%A5%E5%85%A5%E6%8C%87%E5%BC%95.md)  
+Bluefi协议配网指引如下：
 ```
 适配文件：platform/wifi_config/adapter/HAL_BTCombo_config.c
 函数：start_device_btcomboconfig 用于启动 wifi 的蓝牙 combo 配网模式。
