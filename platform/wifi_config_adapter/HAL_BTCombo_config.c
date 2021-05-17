@@ -90,6 +90,7 @@ static void bt_combo_config_task(void *params)
             break;
         } else if (WIFI_CONFIG_FAIL == get_bt_combo_config_state()) {
             wifi_config_event_cb(EVENT_WIFI_CONFIG_FAILED, NULL);
+            PUSH_LOG("WIFI_MQTT_CONNECT_FAILED");
             break;
         }
 
@@ -104,6 +105,7 @@ static void bt_combo_config_task(void *params)
 
     if (0 == time_count) {
         wifi_config_event_cb(EVENT_WIFI_CONFIG_TIMEOUT, NULL);
+        PUSH_LOG("WIFI_MQTT_CONNECT_TIMEOUT");
     }
 
     HAL_BTComboConfig_Stop();

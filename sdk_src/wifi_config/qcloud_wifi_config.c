@@ -113,12 +113,14 @@ int qiot_wifi_config_start(eWiFiConfigType type, void *params, WifiConfigResultC
         return ERR_WIFI_CONFIG_START_FAILED;
     }
 
+#if !WIFI_PROV_BT_COMBO_CONFIG_ENABLE
     if (qiot_comm_service_start()) {
         sg_wifi_config_method_now->config_stop();
         sg_wifi_config_method_now = NULL;
         Log_e("Comm service start failed!");
         return ERR_COMM_SERVICE_START_FAILED;
     }
+#endif
 
     return RET_WIFI_CONFIG_START_SUCCESS;
 }

@@ -65,11 +65,7 @@ uint32_t HAL_QueueReset(void *queue_handle)
 
 unsigned long HAL_QueueItemWaitingCount(void *queue_handle)
 {
-    if (pdPASS == uxQueueMessagesWaiting(queue_handle)) {
-        return QCLOUD_RET_SUCCESS;
-    } else {
-        return QCLOUD_ERR_FAILURE;
-    }
+    return uxQueueMessagesWaiting(queue_handle);
 }
 
 unsigned long HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)

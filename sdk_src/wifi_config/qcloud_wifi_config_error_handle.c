@@ -291,13 +291,25 @@ int get_and_post_error_log(comm_peer_t *peer)
     return err_cnt;
 }
 
+#if WIFI_PROV_BT_COMBO_CONFIG_ENABLE
+int app_send_ble_error_log(void)
+{
+#if WIFI_ERR_LOG_POST
+    return get_and_post_error_log(NULL);
+#endif
+    return 0;
+}
+#endif
+
 int save_error_log(void)
 {
 #if WIFI_ERR_LOG_POST
     int      rc      = QCLOUD_RET_SUCCESS;
     uint32_t log_cnt = (uint32_t)HAL_QueueItemWaitingCount(g_err_log_queue);
-    if (log_cnt == 0)
-        return 0;
+    if ((log_cnt == 0) || (log_cnt > ERR_LOG_QUEUE_SIZE))
+    {
+        return ERR_OS_QUEUE;
+    }
 
     size_t          log_size = 2 * sizeof(uint32_t) + log_cnt * sizeof(err_log_t);
     save_err_log_t *log_src  = (save_err_log_t *)HAL_Malloc(log_size);
