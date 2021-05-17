@@ -76,7 +76,7 @@ int push_dev_log(const char *func, const int line, const char *fmt, ...)
 
     // only keep the latest LOG_QUEUE_SIZE log
     uint32_t log_cnt = (uint32_t)HAL_QueueItemWaitingCount(sg_dev_log_queue);
-    if (log_cnt < 0)
+    if ((log_cnt == 0) || (log_cnt > LOG_QUEUE_SIZE))
     {
         return ERR_OS_QUEUE;
     }
@@ -118,8 +118,10 @@ int app_send_dev_log(comm_peer_t *peer)
     }
 
     uint32_t log_cnt = (uint32_t)HAL_QueueItemWaitingCount(sg_dev_log_queue);
-    if (log_cnt <= 0)
-        return 0;
+    if ((log_cnt == 0) || (log_cnt > LOG_QUEUE_SIZE))
+    {
+        return ERR_OS_QUEUE;
+    }
 
     size_t max_len  = (log_cnt * LOG_ITEM_SIZE) + 32;
     char * json_buf = HAL_Malloc(max_len);
