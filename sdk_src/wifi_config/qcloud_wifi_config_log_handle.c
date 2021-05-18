@@ -76,7 +76,7 @@ int push_dev_log(const char *func, const int line, const char *fmt, ...)
 
     // only keep the latest LOG_QUEUE_SIZE log
     uint32_t log_cnt = (uint32_t)HAL_QueueItemWaitingCount(sg_dev_log_queue);
-    if ((log_cnt == 0) || (log_cnt > LOG_QUEUE_SIZE))
+    if (log_cnt > LOG_QUEUE_SIZE)
     {
         return ERR_OS_QUEUE;
     }
