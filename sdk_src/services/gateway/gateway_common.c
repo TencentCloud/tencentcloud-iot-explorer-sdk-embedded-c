@@ -26,9 +26,9 @@
 #include "utils_base64.h"
 #include "utils_md5.h"
 #include "utils_hmac.h"
+#include "json_parser.h"
 
-static char cloud_rcv_buf[GATEWAY_RECEIVE_BUFFER_LEN];
-
+enum { SUBDEV_OP_DESCRIBE, SUBDEV_OP_BIND, SUBDEV_OP_UNBIND };
 static bool get_json_type(char *json, char **v)
 {
     *v = LITE_json_value_of("type", json);
@@ -55,6 +55,19 @@ static bool get_json_result(char *json, int32_t *res)
     return true;
 }
 
+static bool get_json_payload_status(char *json, int32_t *res)
+{
+    char *v = LITE_json_value_of("payload.status", json);
+    if (!v)
+        return false;
+    bool ret = true;
+    if (LITE_get_int32(res, v) != QCLOUD_RET_SUCCESS) {
+        ret = false;
+    }
+    HAL_Free(v);
+    return ret;
+}
+
 static bool get_json_product_id(char *json, char **v)
 {
     *v = LITE_json_value_of("product_id", json);
@@ -65,6 +78,212 @@ static bool get_json_device_name(char *json, char **v)
 {
     *v = LITE_json_value_of("device_name", json);
     return *v == NULL ? false : true;
+}
+
+#define MIN(a, b) ((a > b) ? b : a)
+static SubdevBindInfo *_subdev_add_bindinfo(Gateway *gateway, char *subdev_product_id, char *subdev_device_name)
+{
+    SubdevBindInfo *bindinfo = NULL;
+
+    POINTER_SANITY_CHECK(gateway, NULL);
+    STRING_PTR_SANITY_CHECK(subdev_product_id, NULL);
+    STRING_PTR_SANITY_CHECK(subdev_device_name, NULL);
+
+    bindinfo = HAL_Malloc(sizeof(SubdevBindInfo));
+    if (bindinfo == NULL) {
+        Log_e("add bindinfo not enough memory");
+        IOT_FUNC_EXIT_RC(NULL);
+    }
+
+    memset(bindinfo, 0, sizeof(SubdevBindInfo));
+    /* add subdev bind info to list */
+    bindinfo->next                   = gateway->bind_list.bindlist_head;
+    gateway->bind_list.bindlist_head = bindinfo;
+
+    strncpy(bindinfo->product_id, subdev_product_id, MAX_SIZE_OF_PRODUCT_ID);
+    bindinfo->product_id[MAX_SIZE_OF_PRODUCT_ID] = '\0';
+    int size                                     = strlen(subdev_device_name);
+    strncpy(bindinfo->device_name, subdev_device_name, MIN(size, MAX_SIZE_OF_DEVICE_NAME));
+    bindinfo->device_name[MIN(size, MAX_SIZE_OF_DEVICE_NAME)] = '\0';
+
+    gateway->bind_list.bind_num += 1;
+
+    IOT_FUNC_EXIT_RC(bindinfo);
+}
+#undef MIN
+
+static int _subdev_unbind_device(Gateway *gateway, const char *product_id, const char *device_name)
+{
+    SubdevBindInfo *pre_bindinfo = NULL, *cur_bindinfo = gateway->bind_list.bindlist_head;
+
+    while (cur_bindinfo) {
+        if (!strncmp(product_id, cur_bindinfo->product_id, MAX_SIZE_OF_PRODUCT_ID) &&
+            !strncmp(device_name, cur_bindinfo->device_name, MAX_SIZE_OF_DEVICE_NAME)) {
+            if (pre_bindinfo) {
+                pre_bindinfo->next = cur_bindinfo->next;
+            } else {
+                gateway->bind_list.bindlist_head = cur_bindinfo->next;
+            }
+            gateway->bind_list.bind_num--;
+            HAL_Free(cur_bindinfo);
+
+            IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
+        }
+        pre_bindinfo = cur_bindinfo;
+        cur_bindinfo = cur_bindinfo->next;
+    }
+    Log_e("subdev %s:%s not found", product_id, device_name);
+    IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+}
+
+static void _subdev_proc_devlist(Gateway *gateway, char *devices, int type)
+{
+    char *subdev_product_id  = NULL;
+    char *subdev_device_name = NULL;
+    char *pos                = NULL;
+    char *entry              = NULL;
+    int   entry_len          = 0;
+    int   entry_type         = 0;
+    char  old_ch             = 0;
+
+    int cont = 1;
+
+    // parser json array
+    json_array_for_each_entry(devices, pos, entry, entry_len, entry_type)
+    {
+        if (!entry)
+            continue;
+        backup_json_str_last_char(entry, entry_len, old_ch);
+        cont = 1;
+        do {
+            if (!get_json_product_id(entry, &subdev_product_id) || !get_json_device_name(entry, &subdev_device_name)) {
+                restore_json_str_last_char(entry, entry_len, old_ch);
+
+                break;
+            }
+            Log_d("entry is %s, %s %s", entry, subdev_product_id, subdev_device_name);
+            if (SUBDEV_OP_DESCRIBE == type || SUBDEV_OP_BIND == type) {
+                if (!_subdev_add_bindinfo(gateway, subdev_product_id, subdev_device_name)) {
+                    Log_e("Failed to add bind info");
+                    cont = 0;
+                }
+            } else if (SUBDEV_OP_UNBIND == type) {
+                if (_subdev_unbind_device(gateway, subdev_product_id, subdev_device_name)) {
+                    Log_e("failed to unbind device %s:%d", subdev_product_id, subdev_device_name);
+                    cont = 0;
+                }
+            }
+        } while (0);
+
+        HAL_Free(subdev_product_id);
+        HAL_Free(subdev_device_name);
+        restore_json_str_last_char(entry, entry_len, old_ch);
+        if (!cont)
+            break;
+    }
+
+    return;
+}
+
+static void _gateway_ack_change(char *devices, Qcloud_IoT_Client *mqtt, int32_t status)
+{
+    char        reply_buf[1024];
+    char        topic_name[128];
+    const char *ack_fmt_prefix = "{\"type\":\"change\", \"payload\":{\"status\":%d, \"devices\":[";
+    int         ret            = 0;
+    char *      p              = reply_buf;
+    int         left_sz        = sizeof(reply_buf) - 1;
+
+    if ((ret = HAL_Snprintf(reply_buf, left_sz, ack_fmt_prefix, status)) < 0)
+        return;
+    p += ret;
+    left_sz -= ret;
+
+    char *pos        = NULL;
+    char *entry      = NULL;
+    int   entry_len  = 0;
+    int   entry_type = 0;
+    char  old_ch     = 0;
+
+    char *subdev_product_id  = NULL;
+    char *subdev_device_name = NULL;
+    int   is_first = 1, is_cont = 1;
+
+#define MAX_SUBDEV_INFO_SZ 128
+
+    json_array_for_each_entry(devices, pos, entry, entry_len, entry_type)
+    {
+        if (!entry)
+            continue;
+        backup_json_str_last_char(entry, entry_len, old_ch);
+        subdev_product_id  = NULL;
+        subdev_device_name = NULL;
+        is_cont            = 1;
+
+        if (left_sz < MAX_SUBDEV_INFO_SZ)
+            break;
+        do {
+            if (!is_first) {
+                if ((ret = HAL_Snprintf(p, left_sz, ",")) < 0) {
+                    is_cont = 0;
+                    break;
+                }
+                p += ret;
+                left_sz -= ret;
+            } else {
+                is_first = 0;
+            }
+            if (!get_json_product_id(entry, &subdev_product_id) || !get_json_device_name(entry, &subdev_device_name)) {
+                break;
+            }
+            ret = HAL_Snprintf(p, left_sz, "{\"product_id\":\"%s\",\"device_name\":\"%s\",\"result\":%d}",
+                               subdev_product_id, subdev_device_name, 0);
+            if (ret <= 0) {
+                is_cont = 0;
+                break;
+            }
+            p += ret;
+            left_sz -= ret;
+        } while (0);
+        restore_json_str_last_char(entry, entry_len, old_ch);
+        HAL_Free(subdev_product_id);
+        HAL_Free(subdev_device_name);
+        if (!is_cont)
+            break;
+    }
+    HAL_Snprintf(p, left_sz, "]}}");
+
+    HAL_Snprintf(topic_name, 128, GATEWAY_TOPIC_OPERATION_FMT, mqtt->device_info.product_id,
+                 mqtt->device_info.device_name);
+    Log_d("reply %s", reply_buf);
+
+    PublishParams params = DEFAULT_PUB_PARAMS;
+    params.qos           = QOS0;
+    params.payload_len   = strlen(reply_buf);
+    params.payload       = (char *)reply_buf;
+
+    IOT_MQTT_Publish(mqtt, topic_name, &params);
+#undef MAX_SUBDEV_INFO_SZ
+}
+
+static void _gateway_ack_search(Qcloud_IoT_Client *mqtt, int32_t status)
+{
+    char        reply_buf[1024];
+    char        topic_name[128];
+    const char *search_ack_fmt = "{\"type\":\"search_devices\", \"payload\":{\"status\":%d, \"result\":%d}}";
+
+    HAL_Snprintf(reply_buf, sizeof(reply_buf), search_ack_fmt, status, 0);
+    HAL_Snprintf(topic_name, 128, GATEWAY_TOPIC_OPERATION_FMT, mqtt->device_info.product_id,
+                 mqtt->device_info.device_name);
+
+    PublishParams params = DEFAULT_PUB_PARAMS;
+    params.qos           = QOS0;
+    params.payload_len   = strlen(reply_buf);
+    params.payload       = (char *)reply_buf;
+
+    Log_d("reply %s", reply_buf);
+
+    IOT_MQTT_Publish(mqtt, topic_name, &params);
 }
 
 static void _gateway_message_handler(void *client, MQTTMessage *message, void *user_data)
@@ -91,30 +310,37 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
 
     topic     = (char *)message->ptopic;
     topic_len = message->topic_len;
-    if (NULL == topic || topic_len <= 0) {
-        Log_e("topic == NULL or topic_len <= 0.");
+    if (NULL == topic || topic_len == 0 || message->payload_len > GATEWAY_RECEIVE_BUFFER_LEN) {
+        Log_e("topic %p topic_len %u message->payload_len %u", topic, topic_len, message->payload_len);
         return;
     }
 
-    if (message->payload_len > GATEWAY_RECEIVE_BUFFER_LEN) {
-        Log_e("message->payload_len > GATEWAY_RECEIVE_BUFFER_LEN.");
+    cloud_rcv_len  = Min(GATEWAY_RECEIVE_BUFFER_LEN - 1, message->payload_len);
+    char *json_buf = gateway->recv_buf;
+    memcpy(gateway->recv_buf, message->payload, cloud_rcv_len);
+    json_buf[cloud_rcv_len] = '\0';  // jsmn_parse relies on a string
+
+    if (!get_json_type(json_buf, &type)) {
+        Log_e("Fail to parse type from msg: %s", json_buf);
         return;
     }
 
-    cloud_rcv_len = Min(GATEWAY_RECEIVE_BUFFER_LEN - 1, message->payload_len);
-    memcpy(cloud_rcv_buf, message->payload, cloud_rcv_len + 1);
-    cloud_rcv_buf[cloud_rcv_len] = '\0';  // jsmn_parse relies on a string
-    //      Log_d("recv:%s", cloud_rcv_buf);
+    if (!strncmp(type, GATEWAY_SEARCH_OP_STR, sizeof(GATEWAY_SEARCH_OP_STR) - 1)) {
+        int32_t search_status;
+        if (get_json_payload_status(json_buf, &search_status)) {
+            _gateway_ack_search(mqtt, search_status);
 
-    if (!get_json_type(cloud_rcv_buf, &type)) {
-        Log_e("Fail to parse type from msg: %s", cloud_rcv_buf);
-        return;
+            MQTTEventMsg msg;
+            msg.event_type = MQTT_EVENT_GATEWAY_SEARCH;
+            msg.msg        = (void *)&search_status;
+            mqtt->event_handle.h_fp(mqtt, mqtt->event_handle.context, &msg);
+        }
+        goto exit;
     }
 
-    if (!get_json_devices(cloud_rcv_buf, &devices)) {
-        Log_e("Fail to parse devices from msg: %s", cloud_rcv_buf);
-        HAL_Free(type);
-        return;
+    if (!get_json_devices(json_buf, &devices)) {
+        Log_e("Fail to parse devices from msg: %s", json_buf);
+        goto exit;
     }
 
     if (devices[0] == '[') {
@@ -123,63 +349,73 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
         devices_strip = devices;
     }
 
-    if (!get_json_result(devices_strip, &result)) {
-        Log_e("Fail to parse result from msg: %s", cloud_rcv_buf);
-        HAL_Free(type);
-        HAL_Free(devices);
-        return;
-    }
-    if (!get_json_product_id(devices_strip, &product_id)) {
-        Log_e("Fail to parse product_id from msg: %s", cloud_rcv_buf);
-        HAL_Free(type);
-        HAL_Free(devices);
-        return;
-    }
-    if (!get_json_device_name(devices_strip, &device_name)) {
-        Log_e("Fail to parse device_name from msg: %s", cloud_rcv_buf);
-        HAL_Free(type);
-        HAL_Free(devices);
-        HAL_Free(product_id);
-        return;
+    if (!strncmp(type, GATEWAY_DESCRIBE_SUBDEVIES_OP_STR, sizeof(GATEWAY_DESCRIBE_SUBDEVIES_OP_STR) - 1)) {
+        _subdev_proc_devlist(gateway, devices, SUBDEV_OP_DESCRIBE);
+        gateway->gateway_data.get_bindlist.result = 0;
+        goto exit;
     }
 
+    if (!strncmp(type, GATEWAY_CHANGE_OP_STR, sizeof(GATEWAY_CHANGE_OP_STR) - 1)) {
+        int32_t change_status = 0, change_type;
+        if (get_json_payload_status(json_buf, &change_status)) {
+            Log_d("Request status is %d", change_status);
+            change_type = change_status ? SUBDEV_OP_BIND : SUBDEV_OP_UNBIND;
+            _subdev_proc_devlist(gateway, devices, change_type);
+        }
+        _gateway_ack_change(devices, mqtt, change_status);
+        MQTTEventMsg msg;
+        msg.event_type             = MQTT_EVENT_GATEWAY_SEARCH;
+        gw_change_notify_t notify_ = {devices, change_status};
+        msg.msg                    = (void *)&notify_;
+        mqtt->event_handle.h_fp(mqtt, mqtt->event_handle.context, &msg);
+
+        goto exit;
+    }
+
+    if (!get_json_result(devices_strip, &result) || !get_json_product_id(devices_strip, &product_id) ||
+        !get_json_device_name(devices_strip, &device_name)) {
+        Log_e("Failed to parse  from msg: %s %p %p %p", json_buf, result, product_id, device_name);
+        goto exit;
+    }
     size = HAL_Snprintf(client_id, MAX_SIZE_OF_CLIENT_ID + 1, GATEWAY_CLIENT_ID_FMT, product_id, device_name);
     if (size < 0 || size > MAX_SIZE_OF_CLIENT_ID) {
         Log_e("generate client_id fail.");
-        HAL_Free(type);
-        HAL_Free(devices);
-        HAL_Free(product_id);
-        HAL_Free(device_name);
-        return;
+        goto exit;
     }
-
-    if (strncmp(type, GATEWAY_ONLINE_OP_STR, sizeof(GATEWAY_ONLINE_OP_STR) - 1) == 0) {
+    if (!strncmp(type, GATEWAY_ONLINE_OP_STR, sizeof(GATEWAY_ONLINE_OP_STR) - 1)) {
         if (strncmp(client_id, gateway->gateway_data.online.client_id, size) == 0) {
             Log_i("client_id(%s), online result %d", client_id, result);
             gateway->gateway_data.online.result = result;
         }
-    } else if (strncmp(type, GATEWAY_OFFLIN_OP_STR, sizeof(GATEWAY_OFFLIN_OP_STR) - 1) == 0) {
+        goto exit;
+    }
+    if (!strncmp(type, GATEWAY_OFFLIN_OP_STR, sizeof(GATEWAY_OFFLIN_OP_STR) - 1)) {
         if (strncmp(client_id, gateway->gateway_data.offline.client_id, size) == 0) {
             Log_i("client_id(%s), offline result %d", client_id, result);
             gateway->gateway_data.offline.result = result;
         }
-    } else if (strncmp(type, GATEWAY_BIND_OP_STR, sizeof(GATEWAY_BIND_OP_STR) - 1) == 0) {
+        goto exit;
+    }
+    if (!strncmp(type, GATEWAY_BIND_OP_STR, sizeof(GATEWAY_BIND_OP_STR) - 1)) {
         if (strncmp(client_id, gateway->gateway_data.bind.client_id, size) == 0) {
-            gateway->gateway_data.bind.result = (result > 0) ? -result : result;
+            gateway->gateway_data.bind.result = result;
             Log_i("client_id(%s), bind result %d", client_id, gateway->gateway_data.bind.result);
         }
-    } else if (strncmp(type, GATEWAY_UNBIND_OP_STR, sizeof(GATEWAY_UNBIND_OP_STR) - 1) == 0) {
+        goto exit;
+    }
+    if (!strncmp(type, GATEWAY_UNBIND_OP_STR, sizeof(GATEWAY_UNBIND_OP_STR) - 1)) {
         if (strncmp(client_id, gateway->gateway_data.unbind.client_id, size) == 0) {
-            gateway->gateway_data.unbind.result = (result > 0) ? -result : result;
+            gateway->gateway_data.unbind.result = result;
             Log_i("client_id(%s), unbind result %d", client_id, gateway->gateway_data.unbind.result);
         }
+    } else {
+        Log_e("shouldnt reach here: unknown type %s", type);
     }
-
+exit:
     HAL_Free(type);
     HAL_Free(devices);
     HAL_Free(product_id);
     HAL_Free(device_name);
-    return;
 }
 
 int gateway_subscribe_unsubscribe_topic(Gateway *gateway, char *topic_filter, SubscribeParams *params, int is_subscribe)
@@ -190,7 +426,6 @@ int gateway_subscribe_unsubscribe_topic(Gateway *gateway, char *topic_filter, Su
 
     POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
     POINTER_SANITY_CHECK(params, QCLOUD_ERR_INVAL);
-
     STRING_PTR_SANITY_CHECK(topic_filter, QCLOUD_ERR_INVAL);
 
     params->qos                       = QOS1;
@@ -223,7 +458,6 @@ int gateway_subscribe_unsubscribe_topic(Gateway *gateway, char *topic_filter, Su
         Log_e("gateway->gateway_data.sync_status(%u) != 0", gateway->gateway_data.sync_status);
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
-
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
 }
 
@@ -235,7 +469,6 @@ int gateway_subscribe_unsubscribe_default(Gateway *gateway, GatewayParam *param)
     SubscribeParams subscribe_params                          = DEFAULT_SUB_PARAMS;
 
     POINTER_SANITY_CHECK(param, QCLOUD_ERR_INVAL);
-
     STRING_PTR_SANITY_CHECK(param->product_id, QCLOUD_ERR_INVAL);
     STRING_PTR_SANITY_CHECK(param->device_name, QCLOUD_ERR_INVAL);
 
@@ -257,13 +490,11 @@ int gateway_subscribe_unsubscribe_default(Gateway *gateway, GatewayParam *param)
 
 SubdevSession *subdev_find_session(Gateway *gateway, char *product_id, char *device_name)
 {
-    SubdevSession *session = NULL;
-
     POINTER_SANITY_CHECK(gateway, NULL);
     STRING_PTR_SANITY_CHECK(product_id, NULL);
     STRING_PTR_SANITY_CHECK(device_name, NULL);
 
-    session = gateway->session_list;
+    SubdevSession *session = gateway->session_list;
 
     /* session is exist */
     while (session) {
@@ -278,18 +509,17 @@ SubdevSession *subdev_find_session(Gateway *gateway, char *product_id, char *dev
 
 SubdevSession *subdev_add_session(Gateway *gateway, char *product_id, char *device_name)
 {
-    SubdevSession *session = NULL;
-
     POINTER_SANITY_CHECK(gateway, NULL);
     STRING_PTR_SANITY_CHECK(product_id, NULL);
     STRING_PTR_SANITY_CHECK(device_name, NULL);
 
-    session = HAL_Malloc(sizeof(SubdevSession));
+    SubdevSession *session = HAL_Malloc(sizeof(SubdevSession));
     if (session == NULL) {
         Log_e("Not enough memory");
         IOT_FUNC_EXIT_RC(NULL);
     }
 
+    memset(session, 0, sizeof(SubdevSession));
     /* add session to list */
     session->next         = gateway->session_list;
     gateway->session_list = session;
@@ -307,23 +537,21 @@ SubdevSession *subdev_add_session(Gateway *gateway, char *product_id, char *devi
 
 int subdev_remove_session(Gateway *gateway, char *product_id, char *device_name)
 {
-    SubdevSession *cur_session = NULL;
-    SubdevSession *pre_session = NULL;
+    SubdevSession *cur_session = NULL, *pre_session = NULL;
 
     POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_FAILURE);
     STRING_PTR_SANITY_CHECK(product_id, QCLOUD_ERR_FAILURE);
     STRING_PTR_SANITY_CHECK(device_name, QCLOUD_ERR_FAILURE);
 
     pre_session = cur_session = gateway->session_list;
-
     if (NULL == cur_session) {
         Log_e("session list is empty");
         IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
     }
 
-    /* session is exist */
     while (cur_session) {
-        if (0 == strcmp(cur_session->product_id, product_id) && 0 == strcmp(cur_session->device_name, device_name)) {
+        if (0 == strncmp(cur_session->product_id, product_id, MAX_SIZE_OF_PRODUCT_ID) &&
+            0 == strncmp(cur_session->device_name, device_name, MAX_SIZE_OF_DEVICE_NAME)) {
             if (cur_session == gateway->session_list) {
                 gateway->session_list = cur_session->next;
             } else {
@@ -387,7 +615,7 @@ static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff
     uint8_t *data = HAL_Malloc(length + 1);
     if (!data) {
         Log_e("malloc mem err");
-        return QCLOUD_ERR_MALLOC;
+        goto exit;
     }
 
     HAL_FileSeek(fp, 0, SEEK_SET);
@@ -401,32 +629,24 @@ static int gen_key_from_cert_file(const char *file_path, char *keybuff, int buff
     Log_d("sign key: %s", STRING_PTR_PRINT_SANITY_CHECK(keybuff));
 
 exit:
-
     HAL_Free(data);
     HAL_FileClose(fp);
-
     return ret;
 }
-
 #endif
 
 int subdev_bind_hmac_sha1_cal(DeviceInfo *pDevInfo, char *signout, int max_signlen, int nonce, long timestamp)
 {
-    int         text_len, ret;
-    size_t      olen      = 0;
-    char *      pSignText = NULL;
+    int    ret;
+    size_t olen = 0;
+#define MAX_SIGN_BUF_SIZE (MAX_SIZE_OF_CLIENT_ID + 48)
+    char        sign_buf[MAX_SIGN_BUF_SIZE];
+    char *      pSignText = sign_buf;
     const char *sign_fmt  = "%s%s;%d;%d";  //${product_id}${device_name};${random};${expiration_time}
 
-    /*format sign data*/
-    text_len = strlen(sign_fmt) + strlen(pDevInfo->device_name) + strlen(pDevInfo->product_id) + sizeof(int) +
-               sizeof(long) + 10;
-    pSignText = HAL_Malloc(text_len);
-    if (pSignText == NULL) {
-        Log_e("malloc sign source buff fail");
-        return QCLOUD_ERR_FAILURE;
-    }
-    memset(pSignText, 0, text_len);
-    HAL_Snprintf((char *)pSignText, text_len, sign_fmt, pDevInfo->product_id, pDevInfo->device_name, nonce, timestamp);
+    memset(pSignText, 0, MAX_SIGN_BUF_SIZE);
+    HAL_Snprintf((char *)pSignText, MAX_SIGN_BUF_SIZE, sign_fmt, pDevInfo->product_id, pDevInfo->device_name, nonce,
+                 timestamp);
 
     // gen digest key
     char key[BIND_SIGN_KEY_SIZE + 1] = {0};
@@ -434,20 +654,17 @@ int subdev_bind_hmac_sha1_cal(DeviceInfo *pDevInfo, char *signout, int max_signl
     ret = gen_key_from_cert_file(pDevInfo->dev_cert_file_name, key, BIND_SIGN_KEY_SIZE);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("gen key from cert file fail, ret:%d", ret);
-        HAL_Free(pSignText);
         return ret;
     }
 #else
     strncpy(key, pDevInfo->device_secret, strlen(pDevInfo->device_secret));
 #endif
-
     /*cal hmac sha1*/
     char sign[SUBDEV_BIND_SIGN_LEN] = {0};
     int  sign_len                   = utils_hmac_sha1_hex(pSignText, strlen(pSignText), sign, key, strlen(key));
 
     /*base64 encode*/
     ret = qcloud_iot_utils_base64encode((uint8_t *)signout, max_signlen, &olen, (const uint8_t *)sign, sign_len);
-    HAL_Free(pSignText);
 
     return (olen > max_signlen) ? QCLOUD_ERR_FAILURE : ret;
 }

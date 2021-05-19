@@ -538,7 +538,7 @@ static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
 
     /*self define info*/
     DeviceProperty self_info[] = {
-        {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"}, 
+        {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"},
         {.key = NULL, .data = NULL}  // end
     };
 
@@ -670,6 +670,8 @@ void *sub_dev1_thread(void *user_arg, char *product_id, char *device_name)
         HAL_SleepMs(1000);
     }
 
+#ifdef MULTITHREAD_ENABLED
     rc = IOT_Template_Destroy_Except_MQTT(client);
+#endif
     return NULL;
 }

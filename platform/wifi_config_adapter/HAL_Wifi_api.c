@@ -44,14 +44,14 @@ bool HAL_Wifi_IsConnected(void)
 
 int HAL_Wifi_read_err_log(uint32_t offset, void *log, size_t log_size)
 {
-    Log_i("HAL_Wifi_check_err_log");
+    Log_i("HAL_Wifi_read_err_log");
 
     return QCLOUD_RET_SUCCESS;
 }
 
 int HAL_Wifi_write_err_log(uint32_t offset, void *log, size_t log_size)
 {
-    Log_i("HAL_Wifi_check_err_log");
+    Log_i("HAL_Wifi_write_err_log");
 
     return QCLOUD_RET_SUCCESS;
 }

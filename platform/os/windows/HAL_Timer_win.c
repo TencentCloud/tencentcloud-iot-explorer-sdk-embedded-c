@@ -79,7 +79,7 @@ char *HAL_Timer_current(char *time_str)
 
 long HAL_Timer_current_sec(void)
 {
-    return (long)(GetTickCount64() / 1000);
+    return (long)time(NULL);
 }
 
 #ifdef __cplusplus

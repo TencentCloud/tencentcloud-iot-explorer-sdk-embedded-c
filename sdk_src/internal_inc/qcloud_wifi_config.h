@@ -268,6 +268,16 @@ int HAL_BTComboConfig_Stop(void);
 void set_bt_combo_config_state(eWiFiConfigState state);
 
 /**
+ * @brief send ble dev log
+ */
+int app_send_ble_dev_log(void);
+
+/**
+ * @brief send ble error log
+ */
+int app_send_ble_error_log(void);
+
+/**
  * @brief get wifi config err log from saved
  *
  * @param offset   log read start position

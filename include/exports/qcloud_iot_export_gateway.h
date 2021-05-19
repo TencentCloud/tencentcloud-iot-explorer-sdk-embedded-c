@@ -189,6 +189,24 @@ int IOT_Gateway_Yield(void *client, uint32_t timeout_ms);
  */
 void *IOT_Gateway_Get_Mqtt_Client(void *client);
 
+/* The structure of subdevice bindinfo */
+typedef struct _SubdevBindInfo {
+    char                    product_id[MAX_SIZE_OF_PRODUCT_ID + 1];
+    char                    device_name[MAX_SIZE_OF_DEVICE_NAME + 1];
+    struct _SubdevBindInfo *next;
+} SubdevBindInfo;
+
+/* The structure of subdevice bindlist */
+typedef struct _SubdevBindList {
+    SubdevBindInfo *bindlist_head;
+    int             bind_num;
+} SubdevBindList;
+
+typedef struct _gw_change_notify {
+    char *devices;
+    int   status;
+} gw_change_notify_t;
+
 #ifdef MULTITHREAD_ENABLED
 /**
  * @brief Start the default yield thread to read and handle gateway msg

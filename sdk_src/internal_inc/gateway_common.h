@@ -24,15 +24,18 @@
 
 #include "qcloud_iot_export.h"
 
-#define GATEWAY_PAYLOAD_BUFFER_LEN 1024
-#define GATEWAY_RECEIVE_BUFFER_LEN 1024
-#define GATEWAY_LOOP_MAX_COUNT     100
-#define SUBDEV_BIND_SIGN_LEN       64
-#define BIND_SIGN_KEY_SIZE         MAX_SIZE_OF_DEVICE_SECRET
-#define GATEWAY_ONLINE_OP_STR      "online"
-#define GATEWAY_OFFLIN_OP_STR      "offline"
-#define GATEWAY_BIND_OP_STR        "bind"
-#define GATEWAY_UNBIND_OP_STR      "unbind"
+#define GATEWAY_PAYLOAD_BUFFER_LEN        1024
+#define GATEWAY_RECEIVE_BUFFER_LEN        1024
+#define GATEWAY_LOOP_MAX_COUNT            100
+#define SUBDEV_BIND_SIGN_LEN              64
+#define BIND_SIGN_KEY_SIZE                MAX_SIZE_OF_DEVICE_SECRET
+#define GATEWAY_ONLINE_OP_STR             "online"
+#define GATEWAY_OFFLIN_OP_STR             "offline"
+#define GATEWAY_BIND_OP_STR               "bind"
+#define GATEWAY_UNBIND_OP_STR             "unbind"
+#define GATEWAY_CHANGE_OP_STR             "change"
+#define GATEWAY_SEARCH_OP_STR             "search_devices"
+#define GATEWAY_DESCRIBE_SUBDEVIES_OP_STR "describe_sub_devices"
 
 /* The format of operation of gateway topic */
 #define GATEWAY_TOPIC_OPERATION_FMT "$gateway/operation/%s/%s"
@@ -90,16 +93,18 @@ typedef struct _GatewayData {
     ReplyData offline;
     ReplyData bind;
     ReplyData unbind;
+    ReplyData get_bindlist;
 } GatewayData;
 
 /* The structure of gateway context */
 typedef struct _Gateway {
     void *           mqtt;
     SubdevSession *  session_list;
+    SubdevBindList   bind_list;
     GatewayData      gateway_data;
     MQTTEventHandler event_handle;
     int              is_construct;
-
+    char             recv_buf[GATEWAY_RECEIVE_BUFFER_LEN];
 #ifdef MULTITHREAD_ENABLED
     bool yield_thread_running;
     int  yield_thread_exit_code;
