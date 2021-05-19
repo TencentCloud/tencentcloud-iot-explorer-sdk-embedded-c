@@ -364,7 +364,11 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
         }
         _gateway_ack_change(devices, mqtt, change_status);
         MQTTEventMsg msg;
+<<<<<<< HEAD
         msg.event_type             = MQTT_EVENT_GATEWAY_CHANGE;
+=======
+        msg.event_type             = MQTT_EVENT_GATEWAY_SEARCH;
+>>>>>>> f75bee985183187427bf22c2d515fcea4ea06a05
         gw_change_notify_t notify_ = {devices, change_status};
         msg.msg                    = (void *)&notify_;
         mqtt->event_handle.h_fp(mqtt, mqtt->event_handle.context, &msg);
