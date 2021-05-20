@@ -110,6 +110,9 @@ void _gateway_event_handler(void *client, void *context, MQTTEventMsg *msg)
             Log_d("Get change notice: sub devices %s to %s", p_notify->devices, p_notify->status ? "bind" : "unbind");
         } break;
 
+        case MQTT_EVENT_GATEWAY_UNBIND_ALL:
+            Log_d("gateway all subdev have been unbind");
+            break;
         default:
             break;
     }
