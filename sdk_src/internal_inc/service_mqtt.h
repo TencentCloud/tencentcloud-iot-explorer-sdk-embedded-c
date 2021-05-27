@@ -22,26 +22,27 @@ extern "C" {
 
 #include <stdint.h>
 
-#define FIELD_METHOD         	  	  "method"
+#define FIELD_METHOD                  "method"
 #define METHOD_RES_REPORT_VERSION_RSP "report_version_rsp"
 #define METHOD_RES_UPDATE_RESOURCE    "update_resource"
 #define METHOD_RES_DELETE_RESOURCE    "del_resource"
 #define METHOD_RES_REQ_URL_RESP       "request_url_resp"
-#define METHOD_FACE_AI_REPLY       	  "call_service_reply"
-
+#define METHOD_FACE_AI_REPLY          "call_service_reply"
+#define METHOD_UNBIND_DEVICE          "unbind_device"
 
 typedef enum {
-    eSERVICE_RESOURCE = 0,
-    eSERVICE_FACE_AI  = 1,
-    eSERVICE_DEFAULT  = 0xff
+    eSERVICE_RESOURCE   = 0,
+    eSERVICE_FACE_AI    = 1,
+    eSERVICE_UNBIND_DEV = 2,
+    eSERVICE_DEFAULT    = 0xff
 } eServiceEvent;
 
 typedef void (*OnServiceMessageCallback)(void *pContext, const char *msg, uint32_t msgLen);
 
-int qcloud_service_mqtt_init(const char *productId, const char *deviceName, void *mqtt_client);
+int  qcloud_service_mqtt_init(const char *productId, const char *deviceName, void *mqtt_client);
 void qcloud_service_mqtt_deinit(void *mqtt_client);
-int qcloud_service_mqtt_post_msg(void *mqtt_client, const char *msg, int qos);
-int qcloud_service_mqtt_event_register(eServiceEvent evt, OnServiceMessageCallback callback, void *context);
+int  qcloud_service_mqtt_post_msg(void *mqtt_client, const char *msg, int qos);
+int  qcloud_service_mqtt_event_register(eServiceEvent evt, OnServiceMessageCallback callback, void *context);
 
 #ifdef __cplusplus
 }
