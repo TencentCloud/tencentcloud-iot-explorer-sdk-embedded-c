@@ -58,6 +58,12 @@ if(${FEATURE_GATEWAY_ENABLED} STREQUAL "ON")
 	file(GLOB src_gateway_sample  				${PROJECT_SOURCE_DIR}/samples/gateway/*.c)
 	add_executable(gateway_sample 				${src_gateway_sample})
 	target_link_libraries(gateway_sample 			 ${lib})
+	file(GLOB src_gateway_sim  				${PROJECT_SOURCE_DIR}/samples/scenarized/gateway_sim_sample.c)
+	add_executable(gateway_sim_sample 				${src_gateway_sim})
+	target_link_libraries(gateway_sim_sample 			 ${lib})
+	file(GLOB src_subdev_sample  				${PROJECT_SOURCE_DIR}/samples/scenarized/subdev_sim_sample.c)
+	add_executable(subdev_sim_sample 				${src_subdev_sample})
+	target_link_libraries(subdev_sim_sample 			 ${lib})
 endif()
 
 # OTA MQTT
