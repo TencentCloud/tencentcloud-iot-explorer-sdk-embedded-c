@@ -161,12 +161,9 @@ int main(int argc, char **argv)
     char msg[256];
     // set online
     {
-        Log_d("connect OK");
+        Log_d("connect gateway OK, subdev is going to be online");
         ret = HAL_Snprintf(msg, 256, STATUS_MSG_FMT, "online", sg_pid, sg_dname);
-        Log_d("test");
         ret = send(fd, msg, ret + 1, 0);
-        Log_d("test");
-        Log_d("write return %d", ret);
         if (ret < 0) {
             Log_e("Failed to write");
             goto exit;
@@ -205,6 +202,7 @@ int main(int argc, char **argv)
         char report_msg[256];
         ret = HAL_Snprintf(report_msg, 256, REPLY_MSG_FMT, sg_pid, sg_dname, "report", rand(), time(NULL),
                            sg_pwr_switch, sg_color, sg_brightness);
+        Log_d("Report property %s", report_msg);
         send(fd, report_msg, ret + 1, 0);
     }
 

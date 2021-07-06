@@ -365,9 +365,10 @@ static int _get_type_index(const char *type)
 static int _subdev_leave(void *gw_client, GatewayParam *param)
 {
     char sub_topic[128];
+    int  ret;
     HAL_Snprintf(sub_topic, 127, TOPIC_PROP_DOWN_FMT, param->subdev_product_id, param->subdev_device_name);
-    if (QCLOUD_RET_SUCCESS != IOT_Gateway_Unsubscribe(gw_client, sub_topic)) {
-        Log_e("Failed to unsubscribe %s", sub_topic);
+    if (QCLOUD_RET_SUCCESS != (ret = IOT_Gateway_Unsubscribe(gw_client, sub_topic))) {
+        Log_d("unsubscribe %s return %d", sub_topic, ret);
     }
     if (QCLOUD_RET_SUCCESS != IOT_Gateway_Subdev_Offline(gw_client, param)) {
         Log_e("Failed to set %s %d to offline", param->subdev_product_id, param->subdev_device_name);
