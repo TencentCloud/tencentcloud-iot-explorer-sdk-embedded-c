@@ -196,7 +196,7 @@ static int _iot_event_json_init(void *handle, char *jsonBuffer, size_t sizeOfBuf
     }
 
     memset(jsonBuffer, 0, sizeOfBuffer);
-    if (event_count > SIGLE_EVENT) {
+    if (event_count > SINGLE_EVENT) {
         rc_of_snprintf = HAL_Snprintf(jsonBuffer, sizeOfBuffer, "{\"method\":\"%s\", \"clientToken\":\"%s\", ",
                                       POST_EVENTS, pReply->client_token);
     } else {
@@ -231,7 +231,7 @@ static int _iot_construct_event_json(void *handle, char *jsonBuffer, size_t size
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
-    if (event_count > SIGLE_EVENT) {  // mutlti event
+    if (event_count > SINGLE_EVENT) {  // mutlti event
         rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"events\":[");
         rc             = check_snprintf_return(rc_of_snprintf, remain_size);
         if (rc != QCLOUD_RET_SUCCESS) {
