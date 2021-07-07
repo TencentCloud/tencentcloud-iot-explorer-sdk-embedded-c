@@ -42,9 +42,9 @@ ifeq ($(FEATURE_AUTH_MODE),CERT)
 CFLAGS += -DAUTH_MODE_CERT
 endif
 
-.PHONY: ota_mqtt_sample resource_mqtt_sample data_template_sample asr_data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample wifi_config_sample
+.PHONY: ota_mqtt_sample resource_mqtt_sample data_template_sample asr_data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample wifi_config_sample gateway_sim_sample subdev_sim_sample
 
-all: ota_mqtt_sample resource_mqtt_sample data_template_sample	asr_data_template_sample gateway_sample	mqtt_sample dynreg_dev_sample wifi_config_sample
+all: ota_mqtt_sample resource_mqtt_sample data_template_sample	asr_data_template_sample gateway_sample	mqtt_sample dynreg_dev_sample wifi_config_sample gateway_sim_sample subdev_sim_sample
 
 
 ifneq (,$(filter -DOTA_COMM_ENABLED,$(CFLAGS)))
@@ -105,6 +105,16 @@ gateway_sample:
 	$(TOP_Q) \
 	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/gateway/*.c $(LDFLAGS) -o $@
 	
+	$(TOP_Q) \
+	mv $@ $(FINAL_DIR)/bin
+gateway_sim_sample:
+	$(TOP_Q) \
+	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/scenarized/gateway_sim_sample.c $(LDFLAGS) -o $@
+	$(TOP_Q) \
+	mv $@ $(FINAL_DIR)/bin
+subdev_sim_sample:
+	$(TOP_Q) \
+	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/scenarized/subdev_sim_sample.c $(LDFLAGS) -o $@
 	$(TOP_Q) \
 	mv $@ $(FINAL_DIR)/bin
 endif
