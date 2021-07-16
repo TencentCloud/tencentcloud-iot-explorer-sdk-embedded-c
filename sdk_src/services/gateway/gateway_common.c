@@ -266,6 +266,47 @@ static void _gateway_ack_change(char *devices, Qcloud_IoT_Client *mqtt, int32_t 
 #undef MAX_SUBDEV_INFO_SZ
 }
 
+static void _gateway_ack_topo_describe(Qcloud_IoT_Client *mqtt)
+{
+    char        reply_buf[2048];
+    char        topic_name[128];
+    const char *ack_fmt_prefix = "{\"type\":\"change\", \"payload\":{\"devices\":[";
+    int         ret            = 0;
+    char *      p              = reply_buf;
+    int         left_sz        = sizeof(reply_buf) - 1;
+    Gateway *   gateway        = (Gateway *)mqtt->event_handle.context;
+
+    if ((ret = HAL_Snprintf(reply_buf, left_sz, ack_fmt_prefix)) < 0)
+        return;
+    p += ret;
+    left_sz -= ret;
+
+    SubdevBindInfo *p_sub = gateway->bind_list.bindlist_head;
+    while (p_sub) {
+        ret = HAL_Snprintf(p, left_sz, "{\"product_id\":\"%s\",\"device_name\":\"%s\"}", p_sub->product_id,
+                           p_sub->device_name);
+        p += ret;
+        left_sz -= ret;
+        p_sub = p_sub->next;
+        if (!p_sub)
+            break;
+        ret = HAL_Snprintf(p, left_sz, ",");
+        p += ret;
+        left_sz -= ret;
+    }
+    HAL_Snprintf(p, left_sz, "]}}");
+    HAL_Snprintf(topic_name, 128, GATEWAY_TOPIC_OPERATION_FMT, mqtt->device_info.product_id,
+                 mqtt->device_info.device_name);
+    Log_d("reply %s", reply_buf);
+
+    PublishParams params = DEFAULT_PUB_PARAMS;
+    params.qos           = QOS0;
+    params.payload_len   = strlen(reply_buf);
+    params.payload       = (char *)reply_buf;
+
+    IOT_MQTT_Publish(mqtt, topic_name, &params);
+}
+
 static void _gateway_ack_search(Qcloud_IoT_Client *mqtt, int32_t status)
 {
     char        reply_buf[1024];
@@ -282,7 +323,6 @@ static void _gateway_ack_search(Qcloud_IoT_Client *mqtt, int32_t status)
     params.payload       = (char *)reply_buf;
 
     Log_d("reply %s", reply_buf);
-
     IOT_MQTT_Publish(mqtt, topic_name, &params);
 }
 
@@ -337,6 +377,10 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
         }
         goto exit;
     }
+    if (!strncmp(type, GATEWAY_DESCRIBE_SUBDEVIES_OP_STR, sizeof(GATEWAY_DESCRIBE_SUBDEVIES_OP_STR) - 1)) {
+        _gateway_ack_topo_describe(mqtt);
+        goto exit;
+    }
 
     if (!get_json_devices(json_buf, &devices)) {
         Log_e("Fail to parse devices from msg: %s", json_buf);
@@ -347,12 +391,6 @@ static void _gateway_message_handler(void *client, MQTTMessage *message, void *u
         devices_strip = devices + 1;
     } else {
         devices_strip = devices;
-    }
-
-    if (!strncmp(type, GATEWAY_DESCRIBE_SUBDEVIES_OP_STR, sizeof(GATEWAY_DESCRIBE_SUBDEVIES_OP_STR) - 1)) {
-        _subdev_proc_devlist(gateway, devices, SUBDEV_OP_DESCRIBE);
-        gateway->gateway_data.get_bindlist.result = 0;
-        goto exit;
     }
 
     if (!strncmp(type, GATEWAY_CHANGE_OP_STR, sizeof(GATEWAY_CHANGE_OP_STR) - 1)) {
