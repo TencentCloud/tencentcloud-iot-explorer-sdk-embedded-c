@@ -124,8 +124,22 @@ class iot_field:
                 member['define'] = member['dataType']
                 self.struct_fields.append(iot_field("", member["id"], member["name"], self.struct_field_id, member))
                 self.struct_field_id += 1
+        elif self.type_name == "stringenum":
+            self.type_define = "TYPE_DEF_TEMPLATE_STRINGENUM"
+            self.type_id = "TYPE_TEMPLATE_STRINGENUM"
+            # self.min_value = field_obj["define"]["min"]
+            # self.max_value = field_obj["define"]["max"]
+            self.default_value = "{'\\0'}"
+            self.max_value = 0
+            self.e_strings = []
+            enum_defs = field_obj["define"]["mapping"]
+            for enum_id in enum_defs:
+                self.e_strings.append("#define    E_{}_{}\t \t\"{}\"".format(self.id.upper(), enum_id.upper(), enum_id))
+                if self.max_value < len(enum_id):
+                    self.max_value = len(enum_id)
+
         else:
-            raise ValueError('{} 字段 数据类型 type={} 取值非法，有效值应为：bool,enum,int,float,string'.format(name, field_obj["type"]))
+            raise ValueError('{} 字段 数据类型 type={} 取值非法，有效值应为：bool,enum,int,float,string,stringenum'.format(name, field_obj["type"]))
 
     def get_id_c_macro_name(self):
         return "TC_IOT_PROP_{}".format(self.id)
@@ -154,12 +168,16 @@ class iot_field:
     def get_struct_field_declare(self):
         if self.type_id == "TYPE_TEMPLATE_STRING":
             return "TYPE_DEF_TEMPLATE_STRING m_{}[{}+1];".format(self.id, str(self.max_value))
+        elif self.type_id == "TYPE_TEMPLATE_STRINGENUM":
+            return "TYPE_DEF_TEMPLATE_STRINGENUM m_{}[{}+1];".format(self.id, str(self.max_value))
         else:
             return "{} m_{};".format(self.type_define, self.id)
 
     def get_global_field_declare(self):
         if self.type_id == "TYPE_TEMPLATE_STRING":
             return "TYPE_DEF_TEMPLATE_STRING sg_{}{}[{}+1]={};".format(self.prefix, self.id, str(self.max_value),"{0}")
+        elif self.type_id == "TYPE_TEMPLATE_STRINGENUM":
+            return "TYPE_DEF_TEMPLATE_STRINGENUM sg_{}{}[{}+1]={};".format(self.prefix, self.id, str(self.max_value),"{0}")
         else:
             return "{} sg_{}{} = {};".format(self.type_define, self.prefix, self.id, self.default_value)
 
@@ -201,7 +219,7 @@ class iot_event:
         for field in self.event_properties:
             event_para_info += "static {}\n".format(field.get_global_field_declare())
             event_property_info += "\n   {"
-            if field.type_id == "TYPE_TEMPLATE_STRING":
+            if field.type_id == "TYPE_TEMPLATE_STRING" or field.type_id == "TYPE_TEMPLATE_STRINGENUM" :
                 event_property_info += ".key = \"{}\", .data = sg_{}, .type = {}".format(field.id, self.prefix + field.id, field.type_id)
             else:
                 event_property_info += ".key = \"{}\", .data = &sg_{}, .type = {}".format(field.id, self.prefix + field.id, field.type_id)
@@ -258,7 +276,7 @@ class iot_action:
         for field in self.action_input:
             action_para_info += "static {}\n".format(field.get_global_field_declare())
             action_input_info += "\n   {"
-            if field.type_id == "TYPE_TEMPLATE_STRING":
+            if field.type_id == "TYPE_TEMPLATE_STRING" or field.type_id == "TYPE_TEMPLATE_STRINEGNUM":
                 action_input_info += ".key = \"{}\", .data = sg_{}, .type = {}".format(field.id, self.action_input_prefix + field.id, field.type_id)
             else:
                 action_input_info += ".key = \"{}\", .data = &sg_{}, .type = {}".format(field.id, self.action_input_prefix + field.id, field.type_id)
@@ -272,7 +290,7 @@ class iot_action:
         for field in self.action_output:
             action_para_info += "static {}\n".format(field.get_global_field_declare())
             action_input_info += "\n   {"
-            if field.type_id == "TYPE_TEMPLATE_STRING":
+            if field.type_id == "TYPE_TEMPLATE_STRING" or field.type_id == "TYPE_TEMPLATE_STRINGENUM":
                 action_input_info += ".key = \"{}\", .data = sg_{}, .type = {}".format(field.id, self.action_output_prefix + field.id, field.type_id)
             else:
                 action_input_info += ".key = \"{}\", .data = &sg_{}, .type = {}".format(field.id, self.action_output_prefix + field.id, field.type_id)
@@ -370,6 +388,13 @@ class iot_struct:
                 init_str += "    {}.{} = (void *)&{};\n".format(var_gProduct, field.get_id_c_member_name(), field.get_id_default_value())
                 init_str += "    {}[{}].data_property.data = {}.{};\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name())
                 init_str += "    {}[{}].data_property.struct_obj_num = {};\n".format(var_gTemplate, count, field.get_id_struct_property_count_macro())
+            elif field.type_define == "TYPE_DEF_TEMPLATE_STRINGENUM":
+                for e_string in (field.e_strings):
+                    init_str += "    {}\n".format(e_string)
+                init_str += "    {}.{}[0] = {};\n".format(var_gProduct, field.get_id_c_member_name(), "'\\0'")
+                init_str += "    {}[{}].data_property.data = {}.{};\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name())
+                init_str += "    {}[{}].data_property.data_buff_len = sizeof({}.{})/sizeof({}.{}[{}]);\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name(),var_gProduct, field.get_id_c_member_name(), 0)
+
             else:
                 init_str += "    {}.{} = {};\n".format(var_gProduct, field.get_id_c_member_name(),field.get_id_default_value())
                 init_str += "    {}[{}].data_property.data = &{}.{};\n".format(var_gTemplate, count, var_gProduct, field.get_id_c_member_name())

@@ -41,6 +41,7 @@ extern "C" {
 #define TYPE_TEMPLATE_STRING  JSTRING
 #define TYPE_TEMPLATE_TIME    JUINT32
 #define TYPE_TEMPLATE_JOBJECT JOBJECT
+#define TYPE_TEMPLATE_STRINGENUM    JSTRING
 
 typedef int32_t  TYPE_DEF_TEMPLATE_INT;
 typedef int32_t  TYPE_DEF_TEMPLATE_ENUM;
@@ -49,6 +50,8 @@ typedef char     TYPE_DEF_TEMPLATE_BOOL;
 typedef char     TYPE_DEF_TEMPLATE_STRING;
 typedef uint32_t TYPE_DEF_TEMPLATE_TIME;
 typedef void *   TYPE_DEF_TEMPLATE_OBJECT;
+typedef char     TYPE_DEF_TEMPLATE_STRINGENUM;
+
 
 #ifdef EVENT_POST_ENABLED  // enable event function of data_template
 
