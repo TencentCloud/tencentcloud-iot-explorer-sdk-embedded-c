@@ -107,7 +107,7 @@ typedef struct _RealTimeAsrConf_ {
 
 typedef void (*OnAsrResultCB)(uint32_t request_id, char *res_text, int total_resutl_num, int resutl_seq);
 
-typedef int (*OnAsrResourceEventUsrCallback)(void *pContext, const char *msg, uint32_t msgLen, int event);
+typedef int (*OnAsrFileManageEventUsrCallback)(void *pContext, const char *msg, uint32_t msgLen, int event);
 
 /**
  * @brief Init asr client
@@ -121,7 +121,7 @@ typedef int (*OnAsrResourceEventUsrCallback)(void *pContext, const char *msg, ui
  * @return a valid asr client handle when success, or NULL otherwise
  */
 void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTemplate_client,
-                   OnAsrResourceEventUsrCallback usr_cb);
+                   OnAsrFileManageEventUsrCallback usr_cb);
 
 /**
  * @brief Destroy asr client

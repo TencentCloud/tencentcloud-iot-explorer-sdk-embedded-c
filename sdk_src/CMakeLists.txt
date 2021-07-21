@@ -32,6 +32,12 @@ if(${FEATURE_RESOURCE_UPDATE_ENABLED} STREQUAL "ON")
 	list(APPEND src_sdk ${src_mqtt_resource})
 endif()
 
+# file manage 
+if(${FEATURE_FILE_MANAGE_ENABLE} STREQUAL "ON")
+	file(GLOB src_mqtt_file_manage ${CMAKE_CURRENT_SOURCE_DIR}/services/file_manage/*.c)
+	list(APPEND src_sdk ${src_mqtt_file_manage})
+endif()
+
 # ASR
 if(${FEATURE_ASR_ENABLED} STREQUAL "ON")
 	file(GLOB src_asr ${CMAKE_CURRENT_SOURCE_DIR}/services/asr/*.c)

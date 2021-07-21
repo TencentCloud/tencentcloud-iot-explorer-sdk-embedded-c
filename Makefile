@@ -79,6 +79,10 @@ $(call CompLib_Map, RESOURCE_UPDATE_ENABLED, \
 	$(SRC_DIR)/services/service_com \
 )
 
+$(call CompLib_Map, FILE_MANAGE_ENABLED, \
+    $(SRC_DIR)/services/file_manage \
+)
+
 $(call CompLib_Map, ASR_ENABLED, \
 	$(SRC_DIR)/services/asr \
 )

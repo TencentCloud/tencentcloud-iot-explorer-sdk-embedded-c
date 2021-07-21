@@ -103,6 +103,7 @@ typedef struct {
 #include "qcloud_iot_export_data_template.h"
 #include "qcloud_iot_export_ota.h"
 #include "qcloud_iot_export_resource.h"
+#include "qcloud_iot_export_file_manage.h"
 #include "qcloud_iot_export_asr.h"
 #include "qcloud_iot_export_gateway.h"
 #include "qcloud_iot_export_dynreg.h"

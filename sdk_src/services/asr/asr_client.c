@@ -48,8 +48,8 @@ extern "C" {
 #define TOTAL_ASR_SYS_PROPERTY_COUNT 	1
 
 typedef struct _AsrHandle_ {
-    void *                        resource_handle;
-    OnAsrResourceEventUsrCallback usrCb;
+    void *                        file_manage_handle;
+    OnAsrFileManageEventUsrCallback usrCb;
     void *                        mutex;
     List *                        asr_req_list;
 } AsrHandle;
@@ -547,7 +547,7 @@ exit:
     return rc;
 }
 
-int _request_asr_resource_result(void *handle, AsrReq *req)
+int _request_asr_file_manage_result(void *handle, AsrReq *req)
 {
     char asr_request_buff[ASR_REQUEST_BUFF_LEN];
     int  ret = 0;
@@ -563,12 +563,12 @@ int _request_asr_resource_result(void *handle, AsrReq *req)
         return ret;
     }
     Log_d("%s", asr_request_buff);
-    ret = IOT_Resource_Report_Msg(handle, asr_request_buff);
+    ret = IOT_FileManage_Report_Msg(handle, asr_request_buff);
 
     return ret;
 }
 
-static int _asr_resource_event_usr_cb(void *pContext, const char *msg, uint32_t msgLen, IOT_RES_UsrEvent event)
+static int _asr_file_manage_event_usr_cb(void *pContext, const char *msg, uint32_t msgLen, IOT_FILE_UsrEvent event)
 {
     int ret = QCLOUD_RET_SUCCESS;
 
@@ -580,7 +580,7 @@ static int _asr_resource_event_usr_cb(void *pContext, const char *msg, uint32_t 
 
     Log_d("event(%d) msg:%*s", event, msgLen, msg);
     switch (event) {
-        case IOT_RES_EVENT_REQUEST_URL_RESP:
+        case IOT_FILE_EVENT_REQUEST_URL_RESP:
             request_id = LITE_json_value_of(REQUEST_ID, json_str);
             if (!request_id) {
                 Log_e("no request_id found");
@@ -603,7 +603,7 @@ static int _asr_resource_event_usr_cb(void *pContext, const char *msg, uint32_t 
                 // Log_d("remove file %s", req->realtime_conf.file_name);
                 HAL_FileRemove(req->realtime_conf.file_name);
             }
-            ret = _request_asr_resource_result(asr_handle->resource_handle, req);
+            ret = _request_asr_file_manage_result(asr_handle->file_manage_handle, req);
             HAL_Free(request_id);
             break;
 
@@ -612,7 +612,7 @@ static int _asr_resource_event_usr_cb(void *pContext, const char *msg, uint32_t 
     }
 
     if (asr_handle->usrCb) {
-        ret = asr_handle->usrCb(asr_handle->resource_handle, msg, msgLen, event);
+        ret = asr_handle->usrCb(asr_handle->file_manage_handle, msg, msgLen, event);
     }
 
 exit:
@@ -621,7 +621,7 @@ exit:
 }
 
 void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTemplate_client,
-                   OnAsrResourceEventUsrCallback usr_cb)
+                   OnAsrFileManageEventUsrCallback usr_cb)
 {
     AsrHandle *asr_handle = NULL;
     int        rc         = QCLOUD_RET_SUCCESS;
@@ -639,12 +639,12 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTempl
         goto exit;
     }
 
-    // init resource client handle
-    asr_handle->resource_handle =
-        IOT_Resource_Init(product_id, device_name, IOT_Template_Get_MQTT_Client(pTemplate_client),
-                          _asr_resource_event_usr_cb, asr_handle);
-    if (!asr_handle->resource_handle) {
-        Log_e("init resource client failed");
+    // init file_manage client handle
+    asr_handle->file_manage_handle =
+        IOT_FileManage_Init(product_id, device_name, IOT_Template_Get_MQTT_Client(pTemplate_client),
+                          _asr_file_manage_event_usr_cb, asr_handle);
+    if (!asr_handle->file_manage_handle) {
+        Log_e("init file_manage client failed");
         rc = QCLOUD_ERR_FAILURE;
         goto exit;
     }
@@ -671,8 +671,8 @@ exit:
     if (rc != QCLOUD_RET_SUCCESS) {
         if (asr_handle) {
             HAL_Free(asr_handle);
-            if (asr_handle->resource_handle) {
-                IOT_Resource_Destroy(asr_handle->resource_handle);
+            if (asr_handle->file_manage_handle) {
+                IOT_FileManage_Destroy(asr_handle->file_manage_handle);
             }
             if (asr_handle->mutex) {
                 HAL_MutexDestroy(asr_handle->mutex);
@@ -693,8 +693,8 @@ int IOT_Asr_Destroy(void *handle)
     AsrHandle *asr_handle = (AsrHandle *)handle;
     int        rc         = QCLOUD_RET_SUCCESS;
 
-    if (asr_handle->resource_handle) {
-        rc = IOT_Resource_Destroy(asr_handle->resource_handle);
+    if (asr_handle->file_manage_handle) {
+        rc = IOT_FileManage_Destroy(asr_handle->file_manage_handle);
     }
     if (asr_handle->mutex) {
         HAL_MutexDestroy(asr_handle->mutex);
@@ -735,11 +735,11 @@ int IOT_Asr_RecordFile_Request(void *handle, const char *file_name, RecordAsrCon
     char time_str[TIME_FORMAT_STR_LEN] = {0};
     HAL_Snprintf(time_str, TIME_FORMAT_STR_LEN, "%d", HAL_Timer_current_sec());
     conf->request_timeout_ms = (conf->request_timeout_ms > 0) ? conf->request_timeout_ms : DEFAULT_REQ_TIMEOUT_MS;
-	char *type = (req->req_type == eASR_FILE)?RESOURCE_TYPE_AUDIO:RESOURCE_TYPE_VOICE;
+	char *type = (req->req_type == eASR_FILE)?FILE_MANAGE_TYPE_AUDIO:FILE_MANAGE_TYPE_VOICE;
     req->request_id =
-        IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms, file_name, time_str, type);
+        IOT_FileManage_Post_Request(asr_handle->file_manage_handle, conf->request_timeout_ms, file_name, time_str, type);
     if (req->request_id < 0) {
-        Log_e("%s resource post request fail", STRING_PTR_PRINT_SANITY_CHECK(file_name));
+        Log_e("%s file_manage post request fail", STRING_PTR_PRINT_SANITY_CHECK(file_name));
         HAL_Free(req);
         rc = QCLOUD_ERR_FAILURE;
         goto exit;
@@ -821,10 +821,10 @@ int IOT_Asr_Realtime_Request(void *handle, char *audio_buff, uint32_t audio_data
     HAL_FileClose(fp);
 
     conf->request_timeout_ms = (conf->request_timeout_ms > 0) ? conf->request_timeout_ms : DEFAULT_REQ_TIMEOUT_MS;
-    req->request_id          = IOT_Resource_Post_Request(asr_handle->resource_handle, conf->request_timeout_ms,
-                                                req->realtime_conf.file_name, version, RESOURCE_TYPE_VOICE);
+    req->request_id          = IOT_FileManage_Post_Request(asr_handle->file_manage_handle, conf->request_timeout_ms,
+                                                req->realtime_conf.file_name, version, FILE_MANAGE_TYPE_VOICE);
     if (req->request_id < 0) {
-        Log_e("%s resource post request fail", req->realtime_conf.file_name);
+        Log_e("%s file_manage post request fail", req->realtime_conf.file_name);
         HAL_FileRemove(req->realtime_conf.file_name);
         rc = QCLOUD_ERR_FAILURE;
         HAL_Free(req);

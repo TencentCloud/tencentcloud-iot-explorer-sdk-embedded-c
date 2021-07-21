@@ -1,19 +1,14 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub
- available.
- * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
+ * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Copyright (C) 2018-2020 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file
- except in
+ * Licensed under the MIT License (the "License"); you may not use this file except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software
- distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- KIND,
- * either express or implied. See the License for the specific language
- governing permissions and
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific language governing permissions and
  * limitations under the License.
  *
  */
@@ -26,1277 +21,1171 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#include "resource_client.h"
-#include "service_mqtt.h"
 #include "qcloud_iot_export.h"
 #include "utils_param_check.h"
-
 #include "utils_timer.h"
 #include "utils_md5.h"
-#include "utils_list.h"
-#include "utils_url_download.h"
-#include "utils_url_upload.h"
-#include "json_parser.h"
+#include "service_mqtt.h"
 
-#include "utils_httpc.h"
-#include "qcloud_iot_ca.h"
+#include "resource_client.h"
+#include "ota_fetch.h"
+#include "resource_upload.h"
+#include "resource_lib.h"
 
-#if ((defined(ASR_ENABLED)) && (!defined OTA_USE_HTTPS))
-#error ASR NEED HTTPS ENABLE
-#endif
-
-#define FIELD_TYPE           "type"
-#define FIELD_MD5            "md5sum"
-#define FIELD_VERSION        "version"
-#define FIELD_URL            "url"
-#define FIELD_FILE_SIZE      "file_size"
-#define FIELD_RESULT         "result_code"
-#define FIELD_RESOURCE_NAME  "resource_name"
-#define FIELD_FILE_TYPE      "resource_type"
-#define FIELD_RESOURCE_URL   "resource_url"
-#define FIELD_RESOURCE_TOKEN "resource_token"
-#define FIELD_REQUEST_ID     "request_id"
-
-#define MSG_REPORT_LEN (256)
+#define QCLOUD_IOT_RESOURCE_NAME_LEN 64
+#define QCLOUD_IOT_RESOURCE_URL_LEN  1024
 
 typedef struct {
     const char *product_id;  /* point to product id */
     const char *device_name; /* point to device name */
+    short       current_signal_type;
+    void *      resoure_mqtt; /* channel handle of signal exchanged with OTA server */
 
-    uint32_t          id;                /* message id */
-    IOT_RES_StateCode state;             /* state */
-    uint32_t          size_last_fetched; /* size of last downloaded */
-    uint32_t          size_fetched;      /* size of already downloaded */
-    uint32_t          size_file;         /* size of file */
+    // download
+    void *                       ch_fetch;                                    /* channel handle of download */
+    QCLOUD_RESOURCE_STATE_CODE_E state;                                       /* OTA state */
+    uint32_t                     size_last_fetched;                           /* size of last downloaded */
+    uint32_t                     size_fetched;                                /* size of already downloaded */
+    uint32_t                     resource_size;                               /* size of file */
+    char                         resource_url[QCLOUD_IOT_RESOURCE_URL_LEN];   /* point to URL */
+    char                         resource_name[QCLOUD_IOT_RESOURCE_NAME_LEN]; /* point to string */
+    char                         md5sum[33];                                  /* MD5 string */
+    iot_md5_context              md5;                                         /* MD5 handle */
+    int                          err;                                         /* last error code */
+    Timer                        report_timer;
+    uint32_t                     result_code;
 
-    char *url;        /* point to URL */
-    char *version;    /* point to string */
-    char *file_name;  /* point to string */
-    char *file_type;  /* point to string */
-    char  md5sum[33]; /* MD5 string */
+    // upload
+    void *                       upload_handle;                                      /* channel handle of upload */
+    QCLOUD_RESOURCE_STATE_CODE_E upload_state;                                       /* OTA state */
+    uint32_t                     size_last_uploaded;                                 /* size of last upload */
+    uint32_t                     size_uploaded;                                      /* size of already upload */
+    uint32_t                     upload_resource_size;                               /* size of file */
+    char                         upload_resource_url[QCLOUD_IOT_RESOURCE_URL_LEN];   /* point to URL */
+    char                         upload_resource_name[QCLOUD_IOT_RESOURCE_NAME_LEN]; /* point to string */
+    char                         upload_md5sum[33];                                  /* MD5 string */
+    Timer                        upload_report_timer;
+    iot_md5_context              upload_md5; /* MD5 handle */
+    int                          upload_err; /* last error code */
+    uint32_t                     upload_result_code;
+} QCLOUD_RESOURCE_CONTEXT_T;
 
-    void *md5;       /* MD5 handle */
-    void *ch_signal; /* channel handle of signal exchanged with server */
-    void *ch_fetch;  /* channel handle of download */
-
-    int   request_id;
-    void *mutex;
-    List *res_wait_post_list;
-    void *usr_context;
-
-    int   err;       /* last error code */
-    int   report_rc; /* result of _resource_report_upgrade_result in IOT_Resource_FetchYield*/
-    Timer report_timer;
-
-    OnResourceEventUsrCallback usr_cb;
-} ResourceHandle;
-
-typedef struct {
-    int   request_id;
-    char *res_name;
-    char *res_version;
-    char *res_type;
-    Timer post_timer;
-} ResPostInfo;
-
-/*====================funtion ===================*/
-char *strdup(const char *src)
+/* check ota progress */
+/* return: true, valid progress state; false, invalid progress state. */
+static int _qcloud_iot_resource_check_progress(IOT_OTA_Progress_Code progress)
 {
-    size_t len = strlen(src) + 1;
-    char * ret = HAL_Malloc(len);
-    if (ret != NULL) {
-        strcpy(ret, src);
-    }
-
-    return ret;
+    return ((progress >= 0) && (progress <= 100));
 }
 
-/* static function*/
-static int _gen_resource_ver_info(char *buf, size_t bufLen, uint16_t res_num, resInfo *res_list[])
+static void _qcloud_iot_resource_cb_proc_download(char *msg, QCLOUD_RESOURCE_CONTEXT_T *resource_handle)
 {
-    POINTER_SANITY_CHECK(buf, QCLOUD_ERR_INVAL);
-
-    resInfo *pInfo = NULL;
-
-    int ret;
-    int pos;
-    int i;
-
-    ret = HAL_Snprintf(buf, bufLen, "{\"method\":\"report_version\",\"report\":{\"resource_list\":[");
-    if (ret < 0) {
-        Log_e("HAL_Snprintf failed");
-        return QCLOUD_ERR_FAILURE;
+    char *json_value = NULL;
+    if (resource_handle->state >= QCLOUD_RESOURCE_STATE_START_E) {
+        Log_i("In downloading or downloaded state");
+        return;
     }
 
-    for (i = 0; i < res_num; i++) {
-        pInfo = res_list[i];
-        if (!pInfo) {
-            Log_e("version list invalid");
-            return QCLOUD_ERR_FAILURE;
-        }
+    if (qcloud_lib_get_json_key_value(msg, "size", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get rresource_size failed!");
+        return;
+    }
+    resource_handle->resource_size = atoi(json_value);
+    HAL_Free(json_value);
+    json_value = NULL;
 
-        ret =
-            HAL_Snprintf(buf + strlen(buf), bufLen - strlen(buf),
-                         "{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"},",
-                         STRING_PTR_PRINT_SANITY_CHECK(pInfo->res_name), STRING_PTR_PRINT_SANITY_CHECK(pInfo->res_ver),
-                         STRING_PTR_PRINT_SANITY_CHECK(pInfo->res_type));
-        if (ret < 0) {
-            Log_e("HAL_Snprintf failed");
-            return QCLOUD_ERR_FAILURE;
-        }
+    if (qcloud_lib_get_json_key_value(msg, "name", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get resource_name failed!");
+        return;
     }
 
-    pos = (i > 0) ? 1 : 0;
+    strncpy(resource_handle->resource_name, json_value, sizeof(resource_handle->resource_name));
+    HAL_Free(json_value);
+    json_value = NULL;
 
-    ret = HAL_Snprintf(buf + strlen(buf) - pos, bufLen - strlen(buf), "]}}");
-    if (ret < 0) {
-        Log_e("HAL_Snprintf failed");
-        return QCLOUD_ERR_FAILURE;
+    if (qcloud_lib_get_json_key_value(msg, "md5sum", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get md5sum failed!");
+        return;
+    }
+    strncpy(resource_handle->md5sum, json_value, sizeof(resource_handle->md5sum));
+    HAL_Free(json_value);
+    json_value = NULL;
+
+    if (qcloud_lib_get_json_key_value(msg, "url", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get url failed!");
+        return;
     }
 
-    return QCLOUD_RET_SUCCESS;
+    strncpy(resource_handle->resource_url, json_value, sizeof(resource_handle->resource_url));
+    HAL_Free(json_value);
+    json_value = NULL;
+
+    resource_handle->state = QCLOUD_RESOURCE_STATE_START_E;
 }
 
-static int _gen_resource_report_msg(char *buf, size_t bufLen, const char *file_name, const char *version,
-                                    const char *type, int progress, IOT_RES_ReportType reportType)
+static void _qcloud_iot_resource_cb_proc_uploadtsk(char *msg, QCLOUD_RESOURCE_CONTEXT_T *resource_handle)
 {
-    IOT_FUNC_ENTRY;
-
-    int ret;
-
-    switch (reportType) {
-        /* report download begin */
-        case IOT_RES_TYPE_DOWNLOAD_BEGIN:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\": \"report_progress\", \"report\": {\"progress\": "
-                               "{\"resource_name\":\"%s\",\"state\":\"downloading\", \"percent\":\"0\", "
-                               "\"result_code\":\"0\", \"result_msg\":\"\"}, \"version\": \"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version));
-            break;
-        /* report download progress */
-        case IOT_RES_TYPE_DOWNLOADING:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\": \"report_progress\", \"report\": {\"progress\": "
-                               "{\"resource_name\":\"%s\",\"state\":\"downloading\", \"percent\":\"%d\", "
-                               "\"result_code\":\"0\", \"result_msg\":\"\"}, \"version\": \"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name), progress,
-                               STRING_PTR_PRINT_SANITY_CHECK(version));
-            break;
-
-        case IOT_RES_TYPE_SPACE_NOT_ENOUGH:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\": \"report_result\", \"report\": {\"progress\": "
-                               "{\"resource_name\":\"%s\",\"state\":\"done\", \"result_code\":\"%d\", "
-                               "\"result_msg\":\"space not enough\"}, \"version\": \"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name), reportType,
-                               STRING_PTR_PRINT_SANITY_CHECK(version));
-            break;
-
-        case IOT_RES_TYPE_MD5_NOT_MATCH:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\": \"report_result\", \"report\": {\"progress\": "
-                               "{\"resource_name\":\"%s\",\"state\":\"done\", \"result_code\":\"%d\", "
-                               "\"result_msg\":\"md5 check fail\"}, \"version\": \"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name), reportType,
-                               STRING_PTR_PRINT_SANITY_CHECK(version));
-            break;
-
-        case IOT_RES_TYPE_DOWNLOAD_TIMEOUT:
-        case IOT_RES_TYPE_FILE_NOT_EXIST:
-        case IOT_RES_TYPE_AUTH_FAIL:
-        case IOT_RES_TYPE_UPGRADE_FAIL:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\": \"report_result\", \"report\": {\"progress\": "
-                               "{\"resource_name\":\"%s\",\"state\":\"done\", \"result_code\":\"%d\", "
-                               "\"result_msg\":\"time_out\"}, \"version\": \"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name), reportType,
-                               STRING_PTR_PRINT_SANITY_CHECK(version));
-            break;
-
-        case IOT_RES_TYPE_UPGRADE_BEGIN:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\": \"report_progress\", "
-                               "\"report\":{\"progress\":{\"resource_name\":\"%s\",\"state\":\"burning\", "
-                               "\"result_code\":\"0\", \"result_msg\":\"\"}, \"version\":\"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version));
-            break;
-
-        /* report OTA upgrade finish */
-        case IOT_RES_TYPE_UPGRADE_SUCCESS:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\":\"report_result\", "
-                               "\"report\":{\"progress\":{\"resource_name\":\"%s\",\"state\":\"done\", "
-                               "\"result_code\":\"0\",\"result_msg\":\"success\"}, \"version\":\"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version));
-            break;
-
-        case IOT_RES_TYPE_FILE_DEL_SUCCESS:
-            ret = HAL_Snprintf(
-                buf, bufLen,
-                "{\"method\": \"del_result\", \"report\":{\"progress\":{\"resource_name\":\"%s\",\"state\":\"done\", "
-                "\"result_code\":\"0\", \"result_msg\":\"success\"}, \"version\":\"%s\"}}",
-                STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version));
-            break;
-
-        case IOT_RES_TYPE_FILE_DEL_FAIL:
-            ret = HAL_Snprintf(
-                buf, bufLen,
-                "{\"method\": \"del_result\", \"report\":{\"progress\":{\"resource_name\":\"%s\",\"state\":\"done\", "
-                "\"result_code\":\"%d\", \"result_msg\":\"file del fail\"}, \"version\":\"%s\"}}",
-                STRING_PTR_PRINT_SANITY_CHECK(file_name), reportType, STRING_PTR_PRINT_SANITY_CHECK(version));
-
-            break;
-
-        case IOT_RES_TYPE_REQUEST_URL:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\":\"request_url\",\"request_id\":\"%d\","
-                               "\"report\":{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"}}",
-                               progress, STRING_PTR_PRINT_SANITY_CHECK(file_name),
-                               STRING_PTR_PRINT_SANITY_CHECK(version), STRING_PTR_PRINT_SANITY_CHECK(type));
-
-            break;
-
-        case IOT_RES_TYPE_POST_SUCCESS:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\":\"report_post_result\",\"report\":{\"progress\":{\"resource_token\":\"%s\","
-                               "\"state\":\"done\",\"result_code\":\"0\", \"result_msg\":\"success\"}}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name));
-
-            break;
-
-        case IOT_RES_TYPE_POST_FAIL:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"method\":\"report_post_result\",\"report\":{\"progress\":{\"resource_token\":\"%s\","
-                               "\"state\":\"done\",\"result_code\":\"-1\", \"result_msg\":\"post_fail\"}}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(file_name));
-            break;
-
-        default:
-            IOT_FUNC_EXIT_RC(IOT_RES_ERR_FAIL);
-            break;
+    char *json_value = NULL;
+    if (resource_handle->upload_state >= QCLOUD_RESOURCE_STATE_START_E) {
+        Log_i("In downloading or downloaded state");
+        return;
     }
 
-    if (ret < 0) {
-        Log_e("HAL_Snprintf failed");
-        IOT_FUNC_EXIT_RC(IOT_RES_ERR_FAIL);
-    } else if (ret >= bufLen) {
-        Log_e("msg is too long");
-        IOT_FUNC_EXIT_RC(IOT_RES_ERR_STR_TOO_LONG);
+    if (qcloud_lib_get_json_key_value(msg, "size", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get rresource_size failed!");
+        return;
+    }
+    resource_handle->upload_resource_size = atoi(json_value);
+    HAL_Free(json_value);
+    json_value = NULL;
+
+    if (qcloud_lib_get_json_key_value(msg, "name", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get resource_name failed!");
+        return;
+    }
+    strncpy(resource_handle->upload_resource_name, json_value, sizeof(resource_handle->upload_resource_name));
+    HAL_Free(json_value);
+    json_value = NULL;
+
+    if (qcloud_lib_get_json_key_value(msg, "md5sum", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get md5sum failed!");
+        return;
+    }
+    strncpy(resource_handle->upload_md5sum, json_value, sizeof(resource_handle->md5sum));
+    HAL_Free(json_value);
+    json_value = NULL;
+
+    if (qcloud_lib_get_json_key_value(msg, "url", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get url failed!");
+        return;
     }
 
-    IOT_FUNC_EXIT_RC(IOT_RES_ERR_NONE);
+    strncpy(resource_handle->upload_resource_url, json_value, sizeof(resource_handle->upload_resource_url));
+    HAL_Free(json_value);
+    json_value = NULL;
+
+    resource_handle->upload_state = QCLOUD_RESOURCE_STATE_START_E;
 }
 
-static void _reset_handle_status(void *handle)
+static void _qcloud_iot_resource_cb_proc_uploadresult(char *msg, QCLOUD_RESOURCE_CONTEXT_T *resource_handle)
 {
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
+    char *json_value    = NULL;
+    char *json_report   = NULL;
+    char *json_progress = NULL;
 
-    Log_i("reset resource handle state!");
-
-    pHandle->state = IOT_RES_STATE_INITTED;
-    pHandle->err   = 0;
-
-    HAL_Free(pHandle->url);
-    pHandle->url = NULL;
-
-    HAL_Free(pHandle->version);
-    pHandle->version = NULL;
-
-    HAL_Free(pHandle->file_name);
-    pHandle->file_name = NULL;
-
-    HAL_Free(pHandle->file_type);
-    pHandle->file_type = NULL;
-
-    utils_md5_reset(pHandle->md5);
-}
-
-static int _resource_report_progress(void *handle, int progress, IOT_RES_ReportType reportType)
-{
-    int             ret          = QCLOUD_ERR_FAILURE;
-    char *          msg_reported = NULL;
-    ResourceHandle *pHandle      = (ResourceHandle *)handle;
-
-    if (IOT_RES_STATE_UNINITTED == pHandle->state) {
-        Log_e("handle is uninitialized");
-        pHandle->err = IOT_OTA_ERR_INVALID_STATE;
-        return QCLOUD_ERR_FAILURE;
+    if (qcloud_lib_get_json_key_value(msg, "report", &json_report) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get report failed!");
+        goto End;
     }
 
-    if (NULL == (msg_reported = HAL_Malloc(MSG_REPORT_LEN))) {
-        Log_e("allocate for msg_reported failed");
-        pHandle->err = IOT_OTA_ERR_NOMEM;
-        return QCLOUD_ERR_FAILURE;
+    if (qcloud_lib_get_json_key_value(json_report, "progress", &json_progress) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get progress failed!");
+        goto End;
     }
 
-    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, pHandle->file_name, pHandle->version, NULL, progress,
-                                   reportType);
-    if (QCLOUD_RET_SUCCESS != ret) {
-        Log_e("generate resource inform message failed");
-        pHandle->err = ret;
-        ret          = QCLOUD_ERR_FAILURE;
-        goto exit;
+    if (qcloud_lib_get_json_key_value(json_progress, "result_code", &json_value) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get progress failed!");
+        goto End;
     }
+    resource_handle->upload_result_code = atoi(json_value);
+    HAL_Free(json_value);
+    json_value = NULL;
 
-    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_reported, QOS0);
-    if (QCLOUD_RET_SUCCESS != ret) {
-        Log_e("Report progress failed");
-        pHandle->err = IOT_RES_ERR_REPORT_PROGRESS;
-        goto exit;
-    }
-
-    ret = QCLOUD_RET_SUCCESS;
-
-exit:
-
-    HAL_Free(msg_reported);
-
-    return ret;
-}
-
-static int _resource_report_upgrade_result(void *handle, const char *version, IOT_RES_ReportType reportType)
-{
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-
-    int   ret, len;
-    char *msg_upgrade = NULL;
-
-    if (IOT_RES_STATE_UNINITTED == pHandle->state) {
-        Log_e("handle is uninitialized");
-        pHandle->err = IOT_RES_ERR_INVALID_STATE;
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    version = (version == NULL) ? pHandle->version : version;
-
-    if (!version) {
-        Log_e("version is null!");
-        pHandle->err = IOT_RES_ERR_INVALID_PARAM;
-        return QCLOUD_ERR_INVAL;
-    }
-
-    len = strlen(version);
-    if ((len < RESOURCE_VERSION_STR_LEN_MIN) || (len > RESOURCE_VERSION_STR_LEN_MAX)) {
-        Log_e("version string is invalid: must be [1, 32] chars");
-        pHandle->err = IOT_RES_ERR_INVALID_PARAM;
-        return QCLOUD_ERR_INVAL;
-    }
-
-    if (NULL == (msg_upgrade = HAL_Malloc(MSG_REPORT_LEN))) {
-        Log_e("allocate for msg_informed failed");
-        pHandle->err = IOT_OTA_ERR_NOMEM;
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    ret = _gen_resource_report_msg(msg_upgrade, MSG_REPORT_LEN, pHandle->file_name, version, NULL, 1, reportType);
-    if (ret != 0) {
-        Log_e("generate resource inform message failed");
-        pHandle->err = ret;
-        ret          = QCLOUD_ERR_FAILURE;
-        goto exit;
-    }
-
-    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_upgrade, QOS1);
-    if (0 > ret) {
-        Log_e("Report result failed");
-        pHandle->err = IOT_RES_ERR_REPORT_UPGRADE_RESULT;
-        ret          = QCLOUD_ERR_FAILURE;
-        goto exit;
-    }
-
-exit:
-    if ((IOT_RES_TYPE_DOWNLOAD_BEGIN != reportType) && (IOT_RES_TYPE_DOWNLOADING != reportType) &&
-        (IOT_RES_TYPE_UPGRADE_BEGIN != reportType) && (IOT_RES_TYPE_NONE != reportType)) {
-        _reset_handle_status(pHandle);
-    }
-    HAL_Free(msg_upgrade);
-    return ret;
-}
-
-static int _resource_report_post_result(void *handle, const char *res_token, IOT_RES_ReportType reportType)
-{
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-    int             ret;
-    char *          msg_post = NULL;
-
-    if (IOT_RES_STATE_UNINITTED == pHandle->state) {
-        Log_e("handle is uninitialized");
-        pHandle->err = IOT_RES_ERR_INVALID_STATE;
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    if (NULL == (msg_post = HAL_Malloc(MSG_REPORT_LEN))) {
-        Log_e("allocate for msg_informed failed");
-        pHandle->err = IOT_OTA_ERR_NOMEM;
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    ret = _gen_resource_report_msg(msg_post, MSG_REPORT_LEN, res_token, NULL, NULL, 0, reportType);
-    if (ret != 0) {
-        Log_e("generate resource inform message failed");
-        pHandle->err = ret;
-        ret          = QCLOUD_ERR_FAILURE;
-        goto exit;
-    }
-
-    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_post, QOS1);
-    if (0 > ret) {
-        Log_e("Report result failed");
-        pHandle->err = IOT_RES_ERR_REPORT_UPGRADE_RESULT;
-        ret          = QCLOUD_ERR_FAILURE;
-        goto exit;
-    }
-
-exit:
-    if ((IOT_RES_TYPE_DOWNLOAD_BEGIN != reportType) && (IOT_RES_TYPE_DOWNLOADING != reportType) &&
-        (IOT_RES_TYPE_UPGRADE_BEGIN != reportType) && (IOT_RES_TYPE_NONE != reportType) &&
-        (IOT_RES_TYPE_POST_SUCCESS != reportType) && (IOT_RES_TYPE_POST_FAIL != reportType)) {
-        _reset_handle_status(pHandle);
-    }
-    HAL_Free(msg_post);
-    return ret;
-}
-
-static int _add_resouce_info_to_post_list(void *handle, ResPostInfo *info)
-{
-    IOT_FUNC_ENTRY;
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-
-    HAL_MutexLock(pHandle->mutex);
-    if (pHandle->res_wait_post_list->len >= MAX_RES_WAIT_POST) {
-        HAL_MutexUnlock(pHandle->mutex);
-        IOT_FUNC_EXIT_RC(QCLOUD_ERR_MAX_APPENDING_REQUEST);
-    }
-
-    ListNode *node = list_node_new(info);
-    if (NULL == node) {
-        HAL_MutexUnlock(pHandle->mutex);
-        Log_e("run list_node_new is error!");
-        IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
-    }
-    list_rpush(pHandle->res_wait_post_list, node);
-    HAL_MutexUnlock(pHandle->mutex);
-
-    IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
-}
-
-static ResPostInfo *_get_resource_info_by_request_id(void *handle, int request_id)
-{
-    POINTER_SANITY_CHECK(handle, NULL);
-
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-    ResPostInfo *   info    = NULL;
-    HAL_MutexLock(pHandle->mutex);
-    if (pHandle->res_wait_post_list->len) {
-        ListIterator *iter;
-        ListNode *    node = NULL;
-
-        if (NULL == (iter = list_iterator_new(pHandle->res_wait_post_list, LIST_TAIL))) {
-            HAL_MutexUnlock(pHandle->mutex);
-            return NULL;
-        }
-
-        for (;;) {
-            node = list_iterator_next(iter);
-            if (NULL == node) {
-                break;
-            }
-
-            if (NULL == node->val) {
-                Log_e("node's value is invalid!");
-                list_remove(pHandle->res_wait_post_list, node);
-                continue;
-            }
-            info = (ResPostInfo *)node->val;
-
-            if (info->request_id == request_id) {
-                break;
-            } else {
-                if (expired(&info->post_timer)) {
-                    list_remove(pHandle->res_wait_post_list, node);
-                }
-                info = NULL;
-            }
-        }
-
-        list_iterator_destroy(iter);
-    }
-    HAL_MutexUnlock(pHandle->mutex);
-
-    return info;
-}
-
-static int _post_resource_to_cos(const char *resource_url, ResPostInfo *info)
-{
-#define PER_CHRUNK_READ_SIZE (6400)  // 200ms/16K/16bit ~ 6.4KB
-#define COS_REPLY_TIMEOUT_MS (500)
-
-    int   rc            = QCLOUD_ERR_FAILURE;
-    char *data_buf      = NULL;
-    void *pUploadHandle = NULL;
-
-    Log_d("post %s(%d) %s to cos", STRING_PTR_PRINT_SANITY_CHECK(info->res_name), info->request_id,
-          STRING_PTR_PRINT_SANITY_CHECK(info->res_version));
-    void *fp = HAL_FileOpen(info->res_name, "rb");
-    if (NULL == fp) {
-        Log_e("can not open file %s!", STRING_PTR_PRINT_SANITY_CHECK(info->res_name));
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    long file_size = HAL_FileSize(fp);
-    pUploadHandle  = qcloud_url_upload_init(resource_url, file_size);
-    if (!pUploadHandle) {
-        Log_e("Initialize upload handle failed");
-        goto exit;
-    }
-
-    rc = qcloud_url_upload_connect(pUploadHandle, HTTP_PUT);
-    if (QCLOUD_RET_SUCCESS != rc) {
-        Log_e("upload handle connect failed");
-        goto exit;
-    }
-
-    data_buf = (char *)HAL_Malloc(PER_CHRUNK_READ_SIZE);
-    memset(data_buf, 0, PER_CHRUNK_READ_SIZE);
-    if (!data_buf) {
-        Log_e("malloc data_buff fail");
-        goto exit;
-    }
-
-    while (!HAL_FileEof(fp) && file_size > 0) {
-        int data_len = (file_size > PER_CHRUNK_READ_SIZE) ? PER_CHRUNK_READ_SIZE : file_size;
-        int read_len = HAL_FileRead(data_buf, 1, data_len, fp);
-        if (data_len != read_len) {
-            Log_e("Read file wrong, read_len %d(%d)", read_len, data_len);
-            rc = QCLOUD_ERR_FAILURE;
-            goto exit;
-        }
-        file_size -= read_len;
-
-        rc = qcloud_url_upload_body(pUploadHandle, data_buf, read_len, 5000);
-        if (QCLOUD_RET_SUCCESS != rc) {
-            Log_e("send data failed");
-            goto exit;
-        }
-    }
-    Log_d("post file to cos over!");
-
-    memset(data_buf, 0, PER_CHRUNK_READ_SIZE);
-    rc = qcloud_url_upload_recv_response(pUploadHandle, data_buf, PER_CHRUNK_READ_SIZE, COS_REPLY_TIMEOUT_MS);
-    if (QCLOUD_RET_SUCCESS != rc) {
-        Log_e("Failed to recv response %d", rc);
-    }
-    // Log_d("response:%s", data_buf);
-
-exit:
-
-    if (fp) {
-        HAL_FileClose(fp);
-    }
-
-    if (data_buf) {
-        HAL_Free(data_buf);
-    }
-
-    if (pUploadHandle) {
-        qcloud_url_upload_deinit(pUploadHandle);
-    }
-
-    return rc;
-
-#undef PER_CHRUNK_READ_SIZE
-#undef COS_REPLY_TIMEOUT_MS
+End:
+    HAL_Free(json_report);
+    HAL_Free(json_progress);
 }
 
 /* callback when resource topic msg is received */
-static void _resource_msg_callback(void *handle, const char *msg, uint32_t msg_len)
+static void _qcloud_iot_resource_callback(void *pcontext, char *msg, uint32_t msg_len)
 {
-    ResourceHandle *pHandle     = (ResourceHandle *)handle;
-    char *          json_method = NULL;
-    char *          json_str    = (char *)msg;
-    int             rc;
+    char *json_type  = NULL;
+    char *json_value = NULL;
 
-    if (pHandle->state >= IOT_RES_STATE_FETCHING) {
-        Log_i("In downloading or downloaded state(%d)", pHandle->state);
-        goto exit;
-    }
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)pcontext;
 
-    if (json_str == NULL || msg_len <= 0) {
+    if (msg == NULL || msg_len == 0) {
         Log_e("OTA response message is NULL");
         return;
     }
 
-    json_method = LITE_json_value_of(FIELD_METHOD, json_str);
-
-    if (!json_method) {
-        Log_e("Get resource method failed!");
-        goto exit;
+    if (qcloud_lib_get_json_key_value(msg, "type", &json_type) != QCLOUD_RET_SUCCESS) {
+        Log_e("Get resource type failed!");
+        goto End;
     }
 
-    Log_d("method: %s", json_method);
-    if (!strcmp(json_method, METHOD_RES_REPORT_VERSION_RSP)) {  // report version resp
-        char *result_code = LITE_json_value_of(FIELD_RESULT, json_str);
-
-        if (strcmp(result_code, "0") != 0 || !result_code) {
-            Log_e("Report resource version failed!");
-            pHandle->err   = IOT_RES_ERR_REPORT_VERSION;
-            pHandle->state = IOT_RES_STATE_FETCHED;
-        } else {
-            Log_i("Report resource version success!");
-            pHandle->usr_cb(pHandle->usr_context, json_str, msg_len, IOT_RES_EVENT_REPORT_VERSION_RESP);
+    // download
+    if ((0 == strcmp(json_type, "download")) || (0 == strcmp(json_type, "get_download_task_rsp"))) {
+        _qcloud_iot_resource_cb_proc_download(msg, resource_handle);
+    } else if (0 == strcmp(json_type, "create_upload_task_rsp")) {
+        _qcloud_iot_resource_cb_proc_uploadtsk(msg, resource_handle);
+    } else if (0 == strcmp(json_type, "upload_result")) {
+        _qcloud_iot_resource_cb_proc_uploadresult(msg, resource_handle);
+    } else if (0 == strcmp(json_type, "report_upload_progress_rsp")) {
+        if (qcloud_lib_get_json_key_value(msg, "result_code", &json_value) != QCLOUD_RET_SUCCESS) {
+            Log_e("Get upload progress failed! %s");
+            goto End;
         }
+        resource_handle->upload_result_code = atoi(json_value);
+        HAL_Free(json_value);
+        json_value = NULL;
 
-        HAL_Free(result_code);
-        goto exit;
-    } else if (strcmp(json_method, METHOD_RES_UPDATE_RESOURCE) == 0) {  // update resource
-        pHandle->version   = LITE_json_value_of(FIELD_VERSION, json_str);
-        pHandle->url       = LITE_json_value_of(FIELD_URL, json_str);
-        pHandle->file_name = LITE_json_value_of(FIELD_RESOURCE_NAME, json_str);
-        pHandle->file_type = LITE_json_value_of(FIELD_FILE_TYPE, json_str);
-
-        char *md5       = LITE_json_value_of(FIELD_MD5, json_str);
-        char *file_size = LITE_json_value_of(FIELD_FILE_SIZE, json_str);
-
-        if (!pHandle->version || !pHandle->url || !pHandle->file_name || !pHandle->file_type || !md5 || !file_size) {
-            Log_e("Get resource parameter failed");
-            HAL_Free(md5);
-            HAL_Free(file_size);
-            _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_FILE_NOT_EXIST);
-            goto exit;
+    } else if (0 == strcmp(json_type, "report_download_progress_rsp")) {
+        if (qcloud_lib_get_json_key_value(msg, "result_code", &json_value) != QCLOUD_RET_SUCCESS) {
+            Log_e("Get download progress failed! %s");
+            goto End;
         }
+        resource_handle->result_code = atoi(json_value);
+        HAL_Free(json_value);
+        json_value = NULL;
 
-        // copy md5sum
-        strncpy(pHandle->md5sum, md5, 33);
-        HAL_Free(md5);
-
-        // copy file_size
-        pHandle->size_file = atoi(file_size);
-        HAL_Free(file_size);
-
-        Log_d("res_para: file_name:%s, file_size:%d, md5:%s, version:%s, url:%s", pHandle->file_name,
-              pHandle->size_file, pHandle->md5sum, pHandle->version, pHandle->url);
-        pHandle->state = IOT_RES_STATE_FETCHING;
-    } else if (strcmp(json_method, METHOD_RES_DELETE_RESOURCE) == 0) {  // delete resource
-
-        pHandle->state = IOT_RES_STATE_DELETING;
-
-        pHandle->version   = LITE_json_value_of(FIELD_VERSION, json_str);
-        pHandle->file_type = LITE_json_value_of(FIELD_FILE_TYPE, json_str);
-        pHandle->file_name = LITE_json_value_of(FIELD_RESOURCE_NAME, json_str);
-
-        if (!pHandle->version || !pHandle->file_type || !pHandle->file_name) {
-            Log_e("Get resource parameter failed");
-            // this will call _reset_handle_status and free the memory
-            _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_FILE_DEL_FAIL);
-            goto exit;
-        }
-        rc = pHandle->usr_cb(pHandle->usr_context, pHandle->file_name, strlen(pHandle->file_name),
-                             IOT_RES_EVENT_DEL_RESOURCE);
-        if (0 != rc) {
-            Log_e("Delete resource file(%s) fail", pHandle->file_name);
-            _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_FILE_DEL_FAIL);
-            goto exit;
-        } else {
-            _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_FILE_DEL_SUCCESS);
-        }
-    } else if (strcmp(json_method, METHOD_RES_REQ_URL_RESP) == 0) {
-        char *request_id = LITE_json_value_of(FIELD_REQUEST_ID, json_str);
-        if (!request_id) {
-            Log_e("no request_id found");
-            goto exit;
-        }
-        uint32_t     id   = atoi(request_id);
-        ResPostInfo *info = _get_resource_info_by_request_id(handle, id);
-        if (info) {
-            char *res_token = LITE_json_value_of(FIELD_RESOURCE_TOKEN, json_str);
-            if (!res_token) {
-                Log_e("parse request_token fail");
-                HAL_Free(request_id);
-                goto exit;
-            }
-            char *res_url = LITE_json_value_of(FIELD_RESOURCE_URL, json_str);
-            if (!res_url) {
-                Log_e("parse request_url fail");
-                HAL_Free(request_id);
-                HAL_Free(res_url);
-                goto exit;
-            }
-
-            int ret = _post_resource_to_cos(res_url, info);
-            if (ret == QCLOUD_RET_SUCCESS) {
-                _resource_report_post_result(pHandle, res_token, IOT_RES_TYPE_POST_SUCCESS);
-            } else {
-                _resource_report_post_result(pHandle, res_token, IOT_RES_TYPE_POST_FAIL);
-            }
-
-            char res_msg[MSG_REPORT_LEN];
-            HAL_Snprintf(res_msg, MSG_REPORT_LEN,
-                         "{\"resource_token\": \"%s\",\"request_id\": \"%s\", \"result\": \"%d\"}", res_token,
-                         request_id, ret);
-            Log_d("res_msg:%s", res_msg);
-            pHandle->usr_cb(pHandle->usr_context, json_str, msg_len, IOT_RES_EVENT_REQUEST_URL_RESP);
-            HAL_Free(res_token);
-            HAL_Free(res_url);
-            HAL_Free(info->res_name);
-            HAL_Free(info->res_version);
-            HAL_MutexLock(pHandle->mutex);
-            list_remove(pHandle->res_wait_post_list, list_find(pHandle->res_wait_post_list, info));
-            HAL_MutexUnlock(pHandle->mutex);
-        } else {
-            Log_e("request_id %s not found", request_id);
-        }
-
-        HAL_Free(request_id);
     } else {
-        Log_e("invalid method:%s", json_method);
+        Log_e("unsupport type %s", STRING_PTR_PRINT_SANITY_CHECK(json_type));
     }
 
-exit:
-    HAL_Free(json_method);
+End:
+    HAL_Free(json_type);
 }
 
-/* init & destroy */
-void *IOT_Resource_Init(const char *product_id, const char *device_name, void *mqtt_client,
-                        OnResourceEventUsrCallback usr_cb, void *usr_context)
+static void _qcloud_iot_resource_download_reset(void *handle)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    Log_i("reset resource download state!");
+
+    resource_handle->state = QCLOUD_RESOURCE_STATE_INITED_E;
+    resource_handle->err   = 0;
+    memset(resource_handle->resource_url, 0, sizeof(resource_handle->resource_url));
+    memset(resource_handle->resource_name, 0, sizeof(resource_handle->resource_name));
+    resource_handle->result_code   = 0;
+    resource_handle->resource_size = -1;
+}
+
+static void _qcloud_iot_resource_upload_reset(void *handle)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    Log_i("reset resource upload state!");
+
+    resource_handle->upload_state = QCLOUD_RESOURCE_STATE_INITED_E;
+    resource_handle->upload_err   = 0;
+    memset(resource_handle->upload_resource_url, 0, sizeof(resource_handle->upload_resource_url));
+    memset(resource_handle->upload_resource_name, 0, sizeof(resource_handle->upload_resource_name));
+    resource_handle->upload_result_code   = 0;
+    resource_handle->upload_resource_size = -1;
+}
+
+static int _qcloud_iot_resource_report_download_progress(void *handle, IOT_OTA_Progress_Code progress,
+                                                         char *resource_name)
+{
+    int                        ret             = QCLOUD_ERR_FAILURE;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    if (NULL == handle) {
+        Log_e("handle is NULL");
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+    }
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->state) {
+        Log_e("handle is uninitialized");
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    if (!_qcloud_iot_resource_check_progress(progress)) {
+        Log_e("progress is a invalid parameter: %d", progress);
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    ret = qcloud_resource_mqtt_report_progress(resource_handle->resoure_mqtt, QCLOUD_RESOURCE_REPORT_DOWNLOADING_E, 0,
+                                               progress, resource_name, true);
+
+    if (QCLOUD_RET_SUCCESS > ret) {
+        Log_e("Report progress failed");
+        resource_handle->err = ret;
+        goto do_exit;
+    }
+
+    ret = QCLOUD_RET_SUCCESS;
+
+do_exit:
+    return ret;
+}
+
+static int _qcloud_iot_resource_report_download_result(void *handle, char *resource_name,
+                                                       QCLOUD_RESOURCE_RESULTCODE_E result_code)
+{
+    POINTER_SANITY_CHECK(handle, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    POINTER_SANITY_CHECK(resource_name, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+
+    int                        ret, len;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    QCLOUD_RESOURCE_REPORT_E   report;
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->state) {
+        Log_e("handle is uninitialized");
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    len = strlen(resource_name);
+    if ((len < 1) || (len > 64)) {
+        Log_e("version string is invalid: must be [1, 64] chars");
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+        ret                  = QCLOUD_ERR_FAILURE;
+        goto do_exit;
+    }
+
+    if (QCLOUD_RESOURCE_RESULTCODE_SUCCESS_E != result_code) {
+        report = QCLOUD_RESOURCE_REPORT_FAILED_E;
+    } else {
+        report = QCLOUD_RESOURCE_REPORT_SUCCESS_E;
+    }
+
+    HAL_SleepMs(1000);
+    resource_handle->result_code = -1;
+    ret = qcloud_resource_mqtt_report_progress(resource_handle->resoure_mqtt, report, result_code, 0, resource_name,
+                                               true);
+    if (0 > ret) {
+        Log_e("report download result failed");
+        resource_handle->err = ret;
+        ret                  = QCLOUD_ERR_FAILURE;
+        goto do_exit;
+    }
+
+do_exit:
+    _qcloud_iot_resource_download_reset(resource_handle);
+
+    return ret;
+}
+
+static int _qcloud_iot_resource_report_upload_progress(void *handle, IOT_OTA_Progress_Code progress,
+                                                       char *resource_name)
+{
+    int                        ret             = QCLOUD_ERR_FAILURE;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    if (NULL == handle) {
+        Log_e("handle is NULL");
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+    }
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->upload_state) {
+        Log_e("handle is uninitialized");
+        resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    if (!_qcloud_iot_resource_check_progress(progress)) {
+        Log_e("progress is a invalid parameter: %d", progress);
+        resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    ret = qcloud_resource_mqtt_report_progress(resource_handle->resoure_mqtt, QCLOUD_RESOURCE_REPORT_UPLOADING_E, 0,
+                                               progress, resource_name, false);
+
+    if (QCLOUD_RET_SUCCESS > ret) {
+        Log_e("Report progress failed");
+        resource_handle->upload_err = ret;
+        goto do_exit;
+    }
+
+    ret = QCLOUD_RET_SUCCESS;
+
+do_exit:
+    return ret;
+}
+
+static int _qcloud_iot_resource_report_upload_result(void *handle, char *resource_name,
+                                                     QCLOUD_RESOURCE_RESULTCODE_E result_code)
+{
+    POINTER_SANITY_CHECK(handle, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    POINTER_SANITY_CHECK(resource_name, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+
+    int                        ret, len;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    QCLOUD_RESOURCE_REPORT_E   report;
+    Timer                      wait_rsp_result_timer;
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->upload_state) {
+        Log_e("handle is uninitialized");
+        resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    len = strlen(resource_name);
+    if ((len < 1) || (len > 64)) {
+        Log_e("resource name string is invalid: must be [1, 64] chars");
+        resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+        ret                         = QCLOUD_ERR_FAILURE;
+        goto do_exit;
+    }
+
+    if (QCLOUD_RESOURCE_RESULTCODE_SUCCESS_E != result_code) {
+        report = QCLOUD_RESOURCE_REPORT_FAILED_E;
+    } else {
+        report = QCLOUD_RESOURCE_REPORT_SUCCESS_E;
+    }
+
+    resource_handle->upload_result_code = -1;
+    ret = qcloud_resource_mqtt_report_progress(resource_handle->resoure_mqtt, report, result_code, 0, resource_name,
+                                               false);
+    if (0 > ret) {
+        Log_e("report download result failed");
+        resource_handle->upload_err = ret;
+        ret                         = QCLOUD_ERR_FAILURE;
+        goto do_exit;
+    }
+
+    InitTimer(&wait_rsp_result_timer);
+    countdown(&wait_rsp_result_timer, 5);
+    ret = QCLOUD_ERR_FAILURE;
+    while (false == expired(&wait_rsp_result_timer)) {
+        if (QCLOUD_RET_SUCCESS != qcloud_resource_mqtt_yield(resource_handle->resoure_mqtt)) {
+            break;
+        }
+        if (resource_handle->upload_result_code != -1) {
+            ret = resource_handle->upload_result_code;
+            break;
+        }
+    }
+
+do_exit:
+    _qcloud_iot_resource_upload_reset(resource_handle);
+    return ret;
+}
+
+/* Init resource handle */
+static void *_qcloud_iot_resource_init(const char *product_id, const char *device_name, void *mqtt_client)
 {
     POINTER_SANITY_CHECK(product_id, NULL);
     POINTER_SANITY_CHECK(device_name, NULL);
     POINTER_SANITY_CHECK(mqtt_client, NULL);
-    int rc;
 
-    ResourceHandle *handle;
-    handle = HAL_Malloc(sizeof(ResourceHandle));
-    if (!handle) {
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = NULL;
+
+    if (NULL == (resource_handle = HAL_Malloc(sizeof(QCLOUD_RESOURCE_CONTEXT_T)))) {
         Log_e("allocate failed");
-        goto exit;
+        return NULL;
+    }
+    memset(resource_handle, 0, sizeof(QCLOUD_RESOURCE_CONTEXT_T));
+    resource_handle->state = QCLOUD_RESOURCE_STATE_UNINITED_E;
+
+    resource_handle->resoure_mqtt =
+        qcloud_resource_mqtt_init(product_id, device_name, mqtt_client, _qcloud_iot_resource_callback, resource_handle);
+
+    if (NULL == resource_handle->resoure_mqtt) {
+        Log_e("initialize signal channel failed");
+        goto do_exit;
     }
 
-    memset(handle, 0, sizeof(ResourceHandle));
-    handle->usr_cb    = usr_cb;
-    handle->ch_signal = mqtt_client;
+    qcloud_lib_md5_init(&(resource_handle->md5));
 
-    // init service
-    rc = qcloud_service_mqtt_init(product_id, device_name, mqtt_client);
-    if (rc < 0) {
-        Log_e("service init failed: %d", rc);
-        goto exit;
+    qcloud_lib_md5_init(&(resource_handle->upload_md5));
+
+    resource_handle->product_id   = product_id;
+    resource_handle->device_name  = device_name;
+    resource_handle->state        = QCLOUD_RESOURCE_STATE_INITED_E;
+    resource_handle->upload_state = QCLOUD_RESOURCE_STATE_INITED_E;
+
+    resource_handle->current_signal_type = MQTT_CHANNEL;
+
+    return resource_handle;
+
+do_exit:
+
+    if (NULL != resource_handle->resoure_mqtt) {
+        qcloud_resource_mqtt_deinit(resource_handle->resoure_mqtt);
     }
 
-    rc = qcloud_service_mqtt_event_register(eSERVICE_RESOURCE, _resource_msg_callback, handle);
-    if (QCLOUD_RET_SUCCESS != rc) {
-        Log_e("register service event %d fail", eSERVICE_RESOURCE);
-        goto exit;
+    if (NULL != resource_handle) {
+        HAL_Free(resource_handle);
     }
 
-    handle->md5 = utils_md5_create();
-    if (!handle->md5) {
-        Log_e("initialize md5 failed");
-        goto exit;
-    }
-
-    handle->product_id         = product_id;
-    handle->device_name        = device_name;
-    handle->state              = IOT_RES_STATE_INITTED;
-    handle->usr_context        = usr_context;
-    handle->request_id         = 0;
-    handle->res_wait_post_list = list_new();
-    if (handle->res_wait_post_list) {
-        handle->res_wait_post_list->free = HAL_Free;
-    } else {
-        Log_e("create res_wait_post_list fail");
-        goto exit;
-    }
-
-    handle->mutex = HAL_MutexCreate();
-    if (handle->mutex == NULL) {
-        Log_e("create res mutex fail");
-        goto exit;
-    }
-
-    return handle;
-
-exit:
-    qcloud_service_mqtt_event_register(eSERVICE_RESOURCE, NULL, NULL);
-    if (handle) {
-        if (handle->md5) {
-            utils_md5_delete(handle->md5);
-        }
-
-        if (handle->res_wait_post_list) {
-            list_destroy(handle->res_wait_post_list);
-        }
-
-        if (handle->mutex) {
-            HAL_MutexDestroy(handle->mutex);
-        }
-
-        HAL_Free(handle);
-    }
     return NULL;
 }
 
-int IOT_Resource_Destroy(void *handle)
+int QCLOUD_IOT_RESOURCE_ReportUploadSuccess(void *handle, char *resource_name)
 {
-    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    int                        ret;
 
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
+    if (NULL == resource_name) {
+        resource_name = resource_handle->upload_resource_name;
+    }
 
-    if (!pHandle) {
+    ret =
+        _qcloud_iot_resource_report_upload_result(resource_handle, resource_name, QCLOUD_RESOURCE_RESULTCODE_SUCCESS_E);
+
+    return ret;
+}
+
+int QCLOUD_IOT_RESOURCE_ReportUploadFail(void *handle, char *resource_name)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    int                        ret;
+
+    if (NULL == resource_name) {
+        resource_name = resource_handle->upload_resource_name;
+    }
+
+    ret =
+        _qcloud_iot_resource_report_upload_result(resource_handle, resource_name, QCLOUD_RESOURCE_RESULTCODE_TIMEOUT_E);
+
+    return ret;
+}
+
+void *QCLOUD_IOT_RESOURCE_Init(const char *product_id, const char *device_name, void *mqtt_client)
+{
+    return _qcloud_iot_resource_init(product_id, device_name, mqtt_client);
+}
+
+int QCLOUD_IOT_RESOURCE_Upload_Request(void *handle, char *resource_name, int resource_size, char *md5sum)
+{
+    QCLOUD_RESOURCE_UPLOAD_REQUEST_S request_data;
+    int                              ret;
+    QCLOUD_RESOURCE_CONTEXT_T *      resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    // _qcloud_iot_resource_upload_reset(handle);
+
+    request_data.resource_name   = resource_name;
+    request_data.resource_size   = resource_size;
+    request_data.resource_md5sum = md5sum;
+
+    ret = qcloud_resource_mqtt_upload_request(resource_handle->resoure_mqtt, &request_data);
+
+    return ret;
+}
+
+void QCLOUD_IOT_RESOURCE_UploadMd5Update(void *handle, char *buf, int buf_len)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    qcloud_lib_md5_update(&(resource_handle->upload_md5), buf, buf_len);
+}
+
+void QCLOUD_IOT_RESOURCE_Upload_Md5_Finish(void *handle, char *md5_str)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    qcloud_lib_md5_finish_tolowercasehex(&(resource_handle->upload_md5), md5_str);
+
+    QCLOUD_IOT_RESOURCE_UploadResetClientMD5(handle);
+}
+
+int QCLOUD_IOT_RESOURCE_IsStartUpload(void *handle)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    if (NULL == handle) {
         Log_e("handle is NULL");
-        return QCLOUD_ERR_INVAL;
+        return 0;
     }
 
-    if (IOT_RES_STATE_UNINITTED == pHandle->state) {
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->upload_state) {
         Log_e("handle is uninitialized");
-        pHandle->err = IOT_RES_ERR_INVALID_STATE;
+        resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return 0;
+    }
+
+    resource_handle->upload_result_code = 0;
+
+    return (QCLOUD_RESOURCE_STATE_START_E == resource_handle->upload_state);
+}
+
+/*support continuous transmission of breakpoints*/
+int QCLOUD_IOT_RESOURCE_StartUpload(void *handle, char *buf)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    int                        ret;
+
+    resource_handle->size_last_uploaded = 0;
+    resource_handle->size_uploaded      = 0;
+
+    Log_d("to upload resource total size: %u", resource_handle->upload_resource_size);
+
+    // reset md5 for new download
+    ret = QCLOUD_IOT_RESOURCE_UploadResetClientMD5(resource_handle);
+    if (ret != QCLOUD_RET_SUCCESS) {
+        Log_e("initialize md5 failed");
         return QCLOUD_ERR_FAILURE;
     }
 
-    qcloud_service_mqtt_event_register(eSERVICE_RESOURCE, NULL, NULL);
-    qcloud_url_download_deinit(pHandle->ch_fetch);
-    utils_md5_delete(pHandle->md5);
-    if (pHandle->res_wait_post_list) {
-        list_destroy(pHandle->res_wait_post_list);
+    // reinit upload http
+    qcloud_resource_upload_http_deinit(resource_handle->upload_handle);
+    resource_handle->upload_handle = qcloud_resource_upload_http_init(
+        resource_handle->upload_resource_url, resource_handle->upload_md5sum, resource_handle->upload_resource_size);
+    if (NULL == resource_handle->upload_handle) {
+        Log_e("Initialize fetch module failed");
+        return QCLOUD_ERR_FAILURE;
     }
 
-    if (pHandle) {
-        HAL_Free(pHandle->url);
-        HAL_Free(pHandle->version);
-        HAL_Free(pHandle->file_name);
-        HAL_Free(pHandle->file_type);
-        HAL_Free(pHandle);
+    ret = qcloud_resource_upload_http_connect(resource_handle->upload_handle);
+    if (QCLOUD_RET_SUCCESS != ret) {
+        Log_e("Connect fetch module failed");
+        resource_handle->upload_state = QCLOUD_RESOURCE_STATE_DISCONNECTED_E;
     }
+
+    return ret;
+}
+
+int QCLOUD_IOT_RESOURCE_UploadRecvResult(void *handle, void *buf, int buf_len)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    int ret = qcloud_resource_upload_http_recv(resource_handle->upload_handle, buf, buf_len, 2);
+    if (ret < 0) {
+        resource_handle->upload_state = QCLOUD_RESOURCE_STATE_END_E;
+        resource_handle->upload_err   = QCLOUD_RESOURCE_ERRCODE_FETCH_FAILED_E;
+
+        if (ret == QCLOUD_RESOURCE_ERRCODE_FETCH_AUTH_FAIL_E) {
+            _qcloud_iot_resource_report_upload_result(resource_handle, resource_handle->upload_resource_name,
+                                                      QCLOUD_RESOURCE_RESULTCODE_SIGN_INVALID_E);
+            resource_handle->upload_err = ret;
+        } else if (ret == QCLOUD_RESOURCE_ERRCODE_FETCH_NOT_EXIST_E) {
+            _qcloud_iot_resource_report_upload_result(resource_handle, resource_handle->upload_resource_name,
+                                                      QCLOUD_RESOURCE_RESULTCODE_FILE_NOTEXIST_E);
+            resource_handle->upload_err = ret;
+        } else if (ret == QCLOUD_RESOURCE_ERRCODE_FETCH_TIMEOUT_E) {
+            _qcloud_iot_resource_report_upload_result(resource_handle, resource_handle->upload_resource_name,
+                                                      QCLOUD_RESOURCE_RESULTCODE_TIMEOUT_E);
+            resource_handle->upload_err = ret;
+        }
+    }
+
+    return ret;
+}
+
+int QCLOUD_IOT_RESOURCE_UploadYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
+{
+    int                        ret;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    POINTER_SANITY_CHECK(handle, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    POINTER_SANITY_CHECK(buf, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    NUMBERIC_SANITY_CHECK(buf_len, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+
+    if ((QCLOUD_RESOURCE_STATE_START_E != resource_handle->upload_state) ||
+        (resource_handle->upload_result_code != 0)) {
+        Log_e("upload result code :%d", resource_handle->upload_result_code);
+        resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+    }
+
+    ret = qcloud_resource_upload_http_send_body(resource_handle->upload_handle, buf, buf_len, timeout_s);
+    if (ret < 0) {
+        resource_handle->upload_state = QCLOUD_RESOURCE_STATE_END_E;
+        resource_handle->upload_err   = QCLOUD_RESOURCE_ERRCODE_FETCH_FAILED_E;
+        if ((ret == QCLOUD_ERR_HTTP_CLOSED) || (ret == QCLOUD_ERR_HTTP_CONN)) {
+            _qcloud_iot_resource_report_upload_result(resource_handle, resource_handle->upload_resource_name,
+                                                      QCLOUD_RESOURCE_RESULTCODE_SIGN_INVALID_E);
+            resource_handle->upload_err = ret;
+            buf_len                     = QCLOUD_IOT_RESOURCE_UploadRecvResult(resource_handle, buf, buf_len);
+        }
+
+        return ret;
+    } else if (0 == resource_handle->size_uploaded) {
+        /* force report status in the first */
+        _qcloud_iot_resource_report_upload_progress(resource_handle, IOT_OTAP_FETCH_PERCENTAGE_MIN,
+                                                    resource_handle->upload_resource_name);
+
+        InitTimer(&resource_handle->upload_report_timer);
+        countdown(&resource_handle->upload_report_timer, 1);
+    }
+
+    resource_handle->size_last_uploaded = buf_len;
+    resource_handle->size_uploaded += buf_len;
+
+    /* report percent every second. */
+    uint32_t percent = (resource_handle->size_uploaded * 100) / resource_handle->upload_resource_size;
+    if (percent == 100) {
+        _qcloud_iot_resource_report_upload_progress(resource_handle, percent, resource_handle->upload_resource_name);
+    } else if (resource_handle->size_last_uploaded > 0 && expired(&resource_handle->upload_report_timer)) {
+        _qcloud_iot_resource_report_upload_progress(resource_handle, percent, resource_handle->upload_resource_name);
+        countdown(&resource_handle->upload_report_timer, 1);
+    }
+
+    qcloud_lib_md5_update(&(resource_handle->upload_md5), buf, buf_len);
+
+    if (resource_handle->size_uploaded >= resource_handle->upload_resource_size) {
+        resource_handle->upload_state = QCLOUD_RESOURCE_STATE_END_E;
+
+        /* send data complete recv server reply */
+        buf_len = QCLOUD_IOT_RESOURCE_UploadRecvResult(resource_handle, buf, buf_len);
+    }
+
+    return buf_len;
+}
+
+/* check whether fetch over */
+int QCLOUD_IOT_RESOURCE_IsUploadFinish(void *handle)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    if (NULL == resource_handle) {
+        Log_e("handle is NULL");
+        return 0;
+    }
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->upload_state) {
+        Log_e("handle is uninitialized");
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return 0;
+    }
+
+    return (QCLOUD_RESOURCE_STATE_END_E == resource_handle->upload_state);
+}
+
+/* Destroy OTA handle and resource */
+static int _qcloud_iot_resource_destroy(void *handle)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    if (NULL == resource_handle) {
+        Log_e("handle is NULL");
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+    }
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->state) {
+        Log_e("handle is uninitialized");
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->upload_state) {
+        Log_e("handle is uninitialized");
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    qcloud_resource_mqtt_deinit(resource_handle->resoure_mqtt);
+    qcloud_ofc_deinit(resource_handle->ch_fetch);
+    qcloud_resource_upload_http_deinit(resource_handle->upload_handle);
+    qcloud_lib_md5_deinit(&(resource_handle->md5));
+    qcloud_lib_md5_deinit(&(resource_handle->upload_md5));
+
+    memset(resource_handle->resource_url, 0, sizeof(resource_handle->resource_url));
+    memset(resource_handle->resource_name, 0, sizeof(resource_handle->resource_name));
+    memset(resource_handle->upload_resource_url, 0, sizeof(resource_handle->upload_resource_url));
+    memset(resource_handle->upload_resource_name, 0, sizeof(resource_handle->upload_resource_name));
+
+    HAL_Free(resource_handle);
 
     return QCLOUD_RET_SUCCESS;
 }
 
-/* md5 function */
-void IOT_Resource_UpdateClientMd5(void *handle, char *buff, uint32_t size)
+int QCLOUD_IOT_RESOURCE_DeInit(void *handle)
 {
-    POINTER_SANITY_CHECK_RTN(handle);
-    POINTER_SANITY_CHECK_RTN(buff);
-
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-    utils_md5_update(pHandle->md5, (const unsigned char *)buff, size);
+    return _qcloud_iot_resource_destroy(handle);
 }
 
-int IOT_Resource_ResetClientMD5(void *handle)
+int QCLOUD_IOT_RESOURCE_GetDownloadTask(void *handle)
 {
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    return qcloud_resource_mqtt_download_get(resource_handle->resoure_mqtt);
+}
 
-    utils_md5_delete(pHandle->md5);
-    pHandle->md5 = utils_md5_create();
-    if (!pHandle->md5) {
-        return QCLOUD_ERR_FAILURE;
-    }
+/*support continuous transmission of breakpoints*/
+void QCLOUD_IOT_RESOURCE_UpdateDownloadClientMd5(void *handle, char *buff, uint32_t size)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    qcloud_lib_md5_update(&(resource_handle->md5), buff, size);
+}
+
+/*support continuous transmission of breakpoints*/
+int QCLOUD_IOT_RESOURCE_DownloadResetClientMD5(void *handle)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    qcloud_lib_md5_deinit(&(resource_handle->md5));
+    qcloud_lib_md5_init(&(resource_handle->md5));
+
     return QCLOUD_RET_SUCCESS;
 }
 
-/* download */
-int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t size)
+/*support continuous transmission of breakpoints*/
+int QCLOUD_IOT_RESOURCE_UploadResetClientMD5(void *handle)
 {
-    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
 
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
+    qcloud_lib_md5_deinit(&(resource_handle->upload_md5));
+    qcloud_lib_md5_init(&(resource_handle->upload_md5));
 
-    int ret;
+    return QCLOUD_RET_SUCCESS;
+}
+
+int QCLOUD_IOT_RESOURCE_ReportDownloadSuccess(void *handle, char *resource_name)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    int                        ret;
+
+    if (NULL == resource_name) {
+        resource_name = resource_handle->resource_name;
+    }
+
+    ret = _qcloud_iot_resource_report_download_result(resource_handle, resource_name,
+                                                      QCLOUD_RESOURCE_RESULTCODE_SUCCESS_E);
+
+    return ret;
+}
+
+int QCLOUD_IOT_RESOURCE_ReportDownloadFail(void *handle, char *resource_name)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    int                        ret;
+
+    if (NULL == resource_name) {
+        resource_name = resource_handle->resource_name;
+    }
+
+    ret = _qcloud_iot_resource_report_download_result(resource_handle, resource_name,
+                                                      QCLOUD_RESOURCE_RESULTCODE_TIMEOUT_E);
+
+    return ret;
+}
+
+/* check whether is downloading */
+int QCLOUD_IOT_RESOURCE_IsStartDownload(void *handle)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    if (NULL == handle) {
+        Log_e("handle is NULL");
+        return 0;
+    }
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->state) {
+        Log_e("handle is uninitialized");
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return 0;
+    }
+
+    resource_handle->result_code = 0;
+
+    return (QCLOUD_RESOURCE_STATE_START_E == resource_handle->state);
+}
+
+/* check whether fetch over */
+int QCLOUD_IOT_RESOURCE_IsDownloadFinish(void *handle)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+
+    if (NULL == resource_handle) {
+        Log_e("handle is NULL");
+        return 0;
+    }
+
+    if (QCLOUD_RESOURCE_STATE_UNINITED_E == resource_handle->state) {
+        Log_e("handle is uninitialized");
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return 0;
+    }
+
+    return (QCLOUD_RESOURCE_STATE_END_E == resource_handle->state);
+}
+
+/*support continuous transmission of breakpoints*/
+int QCLOUD_IOT_RESOURCE_StartDownload(void *handle, uint32_t offset, uint32_t size)
+{
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    int                        Ret;
 
     Log_d("to download FW from offset: %u, size: %u", offset, size);
-    pHandle->size_fetched = offset;
+    resource_handle->size_fetched = offset;
 
+    // reset md5 for new download
     if (offset == 0) {
-        ret = IOT_Resource_ResetClientMD5(pHandle);
-        if (QCLOUD_RET_SUCCESS != ret) {
+        Ret = QCLOUD_IOT_RESOURCE_DownloadResetClientMD5(resource_handle);
+        if (Ret != QCLOUD_RET_SUCCESS) {
             Log_e("initialize md5 failed");
             return QCLOUD_ERR_FAILURE;
         }
     }
 
-    qcloud_url_download_deinit(pHandle->ch_fetch);
-    pHandle->ch_fetch = qcloud_url_download_init(pHandle->url, offset, size);
-    if (!pHandle->ch_fetch) {
+    // reinit ofc
+    qcloud_ofc_deinit(resource_handle->ch_fetch);
+    resource_handle->ch_fetch = ofc_Init(resource_handle->resource_url, offset, size);
+    if (NULL == resource_handle->ch_fetch) {
         Log_e("Initialize fetch module failed");
         return QCLOUD_ERR_FAILURE;
     }
 
-#ifdef OTA_USE_HTTPS
-    ret = qcloud_url_download_connect(pHandle->ch_fetch, 1);
-#else
-    ret = qcloud_url_download_connect(pHandle->ch_fetch, 0);
-#endif
-
-    if (QCLOUD_RET_SUCCESS != ret) {
+    Ret = qcloud_ofc_connect(resource_handle->ch_fetch);
+    if (QCLOUD_RET_SUCCESS != Ret) {
         Log_e("Connect fetch module failed");
-        pHandle->state = IOT_RES_STATE_DISCONNECTED;
+        resource_handle->state = QCLOUD_RESOURCE_STATE_DISCONNECTED_E;
     }
 
-    return ret;
+    return Ret;
 }
 
-int IOT_Resource_IsFetching(void *handle)
+int QCLOUD_IOT_RESOURCE_DownloadYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
 {
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
+    int                        ret;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
 
-    if (!handle) {
-        Log_e("handle is NULL");
-        return 0;
+    POINTER_SANITY_CHECK(handle, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    POINTER_SANITY_CHECK(buf, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    NUMBERIC_SANITY_CHECK(buf_len, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+
+    if ((QCLOUD_RESOURCE_STATE_START_E != resource_handle->state) || (resource_handle->result_code != 0)) {
+        Log_e("result code :%d", resource_handle->result_code);
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
     }
 
-    if (IOT_RES_STATE_UNINITTED == pHandle->state) {
-        Log_e("handle is uninitialized");
-        pHandle->err = IOT_RES_ERR_INVALID_STATE;
-        return 0;
-    }
-
-    return (IOT_RES_STATE_FETCHING == pHandle->state);
-}
-
-int IOT_Resource_IsFetchFinish(void *handle)
-{
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-
-    if (!handle) {
-        Log_e("handle is NULL");
-        return 0;
-    }
-
-    if (IOT_RES_STATE_UNINITTED == pHandle->state) {
-        Log_e("handle is uninitialized");
-        pHandle->err = IOT_RES_ERR_INVALID_STATE;
-        return 0;
-    }
-
-    return (IOT_RES_STATE_FETCHED == pHandle->state);
-}
-
-int IOT_Resource_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
-{
-    int             ret;
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-
-    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
-    POINTER_SANITY_CHECK(buf, QCLOUD_ERR_INVAL);
-    NUMBERIC_SANITY_CHECK(buf_len, QCLOUD_ERR_INVAL);
-
-    if (IOT_RES_STATE_FETCHING != pHandle->state) {
-        pHandle->err = IOT_RES_ERR_INVALID_STATE;
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    ret = qcloud_url_download_fetch(pHandle->ch_fetch, buf, buf_len, timeout_s);
+    ret = qcloud_ofc_fetch(resource_handle->ch_fetch, buf, buf_len, timeout_s);
     if (ret < 0) {
-        pHandle->state = IOT_RES_STATE_FETCHED;
-        pHandle->err   = IOT_RES_ERR_FETCH_FAILED;
-        if (ret == QCLOUD_ERR_HTTP_AUTH) {  // OTA auth failed
-            pHandle->report_rc = _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_AUTH_FAIL);
-            pHandle->err       = IOT_RES_ERR_FETCH_AUTH_FAIL;
-        } else if (ret == QCLOUD_ERR_HTTP_NOT_FOUND) {  // fetch not existed
-            pHandle->report_rc =
-                _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_FILE_NOT_EXIST);
-            pHandle->err = IOT_RES_ERR_FETCH_NOT_EXIST;
-        } else if (ret == QCLOUD_ERR_HTTP_TIMEOUT) {  // fetch timeout
-            pHandle->report_rc =
-                _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_DOWNLOAD_TIMEOUT);
-            pHandle->err = IOT_RES_ERR_FETCH_TIMEOUT;
-        }
-        return ret;
-    } else if (0 == pHandle->size_fetched) {
-        /* force report status in the first */
-        _resource_report_progress(pHandle, 0, IOT_RES_TYPE_DOWNLOAD_BEGIN);
+        resource_handle->state = QCLOUD_RESOURCE_STATE_END_E;
+        resource_handle->err   = QCLOUD_RESOURCE_ERRCODE_FETCH_FAILED_E;
 
-        InitTimer(&pHandle->report_timer);
-        countdown(&pHandle->report_timer, 1);
+        if (ret == IOT_OTA_ERR_FETCH_AUTH_FAIL) {  // OTA auth failed
+            Log_e("recv buf %s", buf);
+            _qcloud_iot_resource_report_download_result(resource_handle, resource_handle->resource_name,
+                                                        QCLOUD_RESOURCE_RESULTCODE_SIGN_INVALID_E);
+            resource_handle->err = ret;
+        } else if (ret == IOT_OTA_ERR_FETCH_NOT_EXIST) {  // fetch not existed
+            Log_e("recv buf %s", buf);
+            _qcloud_iot_resource_report_download_result(resource_handle, resource_handle->resource_name,
+                                                        QCLOUD_RESOURCE_RESULTCODE_FILE_NOTEXIST_E);
+            resource_handle->err = ret;
+        } else if (ret == IOT_OTA_ERR_FETCH_TIMEOUT) {  // fetch timeout
+            Log_e("recv buf %s", buf);
+            _qcloud_iot_resource_report_download_result(resource_handle, resource_handle->resource_name,
+                                                        QCLOUD_RESOURCE_RESULTCODE_TIMEOUT_E);
+            resource_handle->err = ret;
+        }
+
+        return ret;
+    } else if (0 == resource_handle->size_fetched) {
+        /* force report status in the first */
+        _qcloud_iot_resource_report_download_progress(resource_handle, 0, resource_handle->resource_name);
+
+        InitTimer(&resource_handle->report_timer);
+        countdown(&resource_handle->report_timer, 1);
     }
 
-    pHandle->size_last_fetched = ret;
-    pHandle->size_fetched += ret;
+    resource_handle->size_last_fetched = ret;
+    resource_handle->size_fetched += ret;
 
     /* report percent every second. */
-    uint32_t percent = (pHandle->size_fetched * 100) / pHandle->size_file;
+    uint32_t percent = (resource_handle->size_fetched * 100) / resource_handle->resource_size;
     if (percent == 100) {
-        _resource_report_progress(pHandle, percent, IOT_RES_TYPE_DOWNLOADING);
-    } else if (pHandle->size_last_fetched > 0 && expired(&pHandle->report_timer)) {
-        _resource_report_progress(pHandle, percent, IOT_RES_TYPE_DOWNLOADING);
-        countdown(&pHandle->report_timer, 1);
+        _qcloud_iot_resource_report_download_progress(resource_handle, percent, resource_handle->resource_name);
+    } else if (resource_handle->size_last_fetched > 0 && expired(&resource_handle->report_timer)) {
+        _qcloud_iot_resource_report_download_progress(resource_handle, percent, resource_handle->resource_name);
+        countdown(&resource_handle->report_timer, 1);
     }
 
-    if (pHandle->size_fetched >= pHandle->size_file) {
-        pHandle->state = IOT_RES_STATE_FETCHED;
+    if (resource_handle->size_fetched >= resource_handle->resource_size) {
+        resource_handle->state = QCLOUD_RESOURCE_STATE_END_E;
     }
 
-    utils_md5_update(pHandle->md5, (const unsigned char *)buf, ret);
-    return ret;
-}
-
-/* report */
-int IOT_Resource_ReportVersion(void *handle, uint16_t res_num, resInfo *res_list[])
-{
-    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
-
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-
-    int   ret = QCLOUD_RET_SUCCESS;
-    int   buff_len;
-    char *msg_informed = NULL;
-
-    if (res_num && !res_list) {
-        Log_e("Invalid argument res_list");
-        return QCLOUD_ERR_INVAL;
-    }
-
-    if (IOT_RES_STATE_UNINITTED == pHandle->state) {
-        Log_e("handle is uninitialized");
-        pHandle->err = IOT_RES_ERR_INVALID_STATE;
-        ret          = QCLOUD_ERR_FAILURE;
-        goto do_exit;
-    }
-
-    _reset_handle_status(pHandle);
-
-    buff_len = res_num * RESOURCE_INFO_LEN_MAX + 128;
-    if (NULL == (msg_informed = HAL_Malloc(buff_len))) {
-        Log_e("allocate for msg_informed failed");
-        pHandle->err = IOT_RES_ERR_MALLOC;
-        ret          = QCLOUD_ERR_MALLOC;
-        goto do_exit;
-    }
-
-    ret = _gen_resource_ver_info(msg_informed, buff_len, res_num, res_list);
-    if (QCLOUD_RET_SUCCESS != ret) {
-        Log_e("generate inform message failed");
-        pHandle->err = ret;
-        ret          = QCLOUD_ERR_FAILURE;
-        goto do_exit;
-    }
-
-    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_informed, QOS1);
-    if (0 > ret) {
-        Log_e("Report version failed");
-        pHandle->err = IOT_RES_ERR_REPORT_VERSION;
-        ret          = QCLOUD_ERR_FAILURE;
-        goto do_exit;
-    }
-
-do_exit:
-    HAL_Free(msg_informed);
+    qcloud_lib_md5_update(&(resource_handle->md5), buf, ret);
 
     return ret;
 }
 
-int IOT_Resource_ReportUpgradeBegin(void *handle)
+int QCLOUD_IOT_RESOURCE_DownloadIoctl(void *handle, QCLOUD_IOT_RESOURCE_CMDTYPE_E type, void *buf, size_t buf_len)
 {
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-    return _resource_report_upgrade_result(handle, pHandle->version, IOT_RES_TYPE_UPGRADE_BEGIN);
-}
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
 
-int IOT_Resource_ReportUpgradeSuccess(void *handle, const char *version)
-{
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-    int             ret;
+    POINTER_SANITY_CHECK(handle, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    POINTER_SANITY_CHECK(buf, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    NUMBERIC_SANITY_CHECK(buf_len, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
 
-    if (!version) {
-        ret = _resource_report_upgrade_result(handle, pHandle->version, IOT_RES_TYPE_UPGRADE_SUCCESS);
-    } else {
-        ret = _resource_report_upgrade_result(handle, version, IOT_RES_TYPE_UPGRADE_SUCCESS);
-    }
-
-    return ret;
-}
-
-int IOT_Resource_ReportUpgradeFail(void *handle, const char *version)
-{
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-    int             ret;
-
-    if (!version) {
-        ret = _resource_report_upgrade_result(handle, pHandle->version, IOT_RES_TYPE_UPGRADE_FAIL);
-    } else {
-        ret = _resource_report_upgrade_result(handle, version, IOT_RES_TYPE_UPGRADE_FAIL);
-    }
-
-    return ret;
-}
-
-int IOT_Resource_ReportSpaceNotEnough(void *handle, const char *version)
-{
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-    int             ret;
-
-    if (!version) {
-        ret = _resource_report_upgrade_result(handle, pHandle->version, IOT_RES_TYPE_SPACE_NOT_ENOUGH);
-    } else {
-        ret = _resource_report_upgrade_result(handle, version, IOT_RES_TYPE_SPACE_NOT_ENOUGH);
-    }
-
-    return ret;
-}
-
-/* get status*/
-int IOT_Resource_Ioctl(void *handle, IOT_RES_CmdType type, void *buf, size_t buf_len)
-{
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
-
-    POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
-    POINTER_SANITY_CHECK(buf, QCLOUD_ERR_INVAL);
-    NUMBERIC_SANITY_CHECK(buf_len, QCLOUD_ERR_INVAL);
-
-    if (pHandle->state < IOT_RES_STATE_FETCHING) {
-        pHandle->err = IOT_RES_ERR_INVALID_STATE;
-        return QCLOUD_ERR_FAILURE;
+    if (resource_handle->state < QCLOUD_RESOURCE_STATE_START_E) {
+        resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
     }
 
     switch (type) {
-        case IOT_RES_CMD_FETCHED_SIZE:
+        case QCLOUD_IOT_RESOURCE_FETCHED_SIZE_E:
             if ((4 != buf_len) || (0 != ((unsigned long)buf & 0x3))) {
                 Log_e("Invalid parameter");
-                pHandle->err = IOT_RES_ERR_INVALID_PARAM;
+                resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
                 return QCLOUD_ERR_FAILURE;
             } else {
-                *((uint32_t *)buf) = pHandle->size_fetched;
+                *((uint32_t *)buf) = resource_handle->size_fetched;
                 return 0;
             }
 
-        case IOT_RES_CMD_FILE_SIZE:
+        case QCLOUD_IOT_RESOURCE_SIZE_E:
             if ((4 != buf_len) || (0 != ((unsigned long)buf & 0x3))) {
                 Log_e("Invalid parameter");
-                pHandle->err = IOT_RES_ERR_INVALID_PARAM;
+                resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
                 return QCLOUD_ERR_FAILURE;
             } else {
-                *((uint32_t *)buf) = pHandle->size_file;
-                break;
+                *((uint32_t *)buf) = resource_handle->resource_size;
+                return 0;
             }
 
-        case IOT_RES_CMD_FILE_TYPE:
-            strncpy(buf, pHandle->file_type, buf_len);
+        case QCLOUD_IOT_RESOURCE_NAME_E:
+            strncpy(buf, resource_handle->resource_name, buf_len);
             ((char *)buf)[buf_len - 1] = '\0';
             break;
 
-        case IOT_RES_CMD_VERSION:
-            strncpy(buf, pHandle->version, buf_len);
+        case QCLOUD_IOT_RESOURCE_MD5SUM_E:
+            strncpy(buf, resource_handle->md5sum, buf_len);
             ((char *)buf)[buf_len - 1] = '\0';
             break;
 
-        case IOT_RES_CMD_MD5SUM:
-            strncpy(buf, pHandle->md5sum, buf_len);
-            ((char *)buf)[buf_len - 1] = '\0';
-            break;
-
-        case IOT_RES_CMD_FILE_NAME:
-            strncpy(buf, pHandle->file_name, buf_len);
-            ((char *)buf)[buf_len - 1] = '\0';
-            break;
-
-        case IOT_RES_CMD_CHECK_FIRMWARE:
+        case QCLOUD_IOT_RESOURCE_MD5CHECK_E:
             if ((4 != buf_len) || (0 != ((unsigned long)buf & 0x3))) {
                 Log_e("Invalid parameter");
-                pHandle->err = IOT_RES_ERR_INVALID_PARAM;
+                resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
                 return QCLOUD_ERR_FAILURE;
-            } else if (pHandle->state != IOT_RES_STATE_FETCHED) {
-                pHandle->err = IOT_RES_ERR_INVALID_STATE;
-                Log_e("Firmware can be checked in IOT_RES_STATE_FETCHED state only");
+            } else if (resource_handle->state != QCLOUD_RESOURCE_STATE_END_E) {
+                resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+                Log_e("resource can be checked in QCLOUD_RESOURCE_STATE_FETCHED state only");
                 return QCLOUD_ERR_FAILURE;
             } else {
                 char md5_str[33];
-                utils_md5_finish_str(pHandle->md5, md5_str);
-                Log_d("origin=%s, now=%s", pHandle->md5sum, md5_str);
-                if (0 == strcmp(pHandle->md5sum, md5_str)) {
+                qcloud_lib_md5_finish_tolowercasehex(&(resource_handle->md5), md5_str);
+                Log_i("download MD5 check: origin=%s, now=%s", STRING_PTR_PRINT_SANITY_CHECK(resource_handle->md5sum),
+                      md5_str);
+                if (0 == strcmp(resource_handle->md5sum, md5_str)) {
                     *((uint32_t *)buf) = 1;
                 } else {
                     *((uint32_t *)buf) = 0;
-                    // report MD5 inconsistent
-                    _resource_report_upgrade_result(pHandle, pHandle->version, IOT_RES_TYPE_MD5_NOT_MATCH);
+                    // report MD5 inconsistent TODO
+                    _qcloud_iot_resource_report_download_result(resource_handle, resource_handle->resource_name,
+                                                                QCLOUD_RESOURCE_RESULTCODE_MD5_NOTMATCH_E);
                 }
                 return 0;
             }
 
         default:
             Log_e("invalid cmd type");
-            pHandle->err = IOT_RES_ERR_INVALID_PARAM;
+            resource_handle->err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
             return QCLOUD_ERR_FAILURE;
     }
 
     return 0;
 }
 
-int IOT_Resource_GetLastError(void *handle)
+int QCLOUD_IOT_RESOURCE_UploadIoctl(void *handle, QCLOUD_IOT_RESOURCE_CMDTYPE_E type, void *buf, size_t buf_len)
 {
-    POINTER_SANITY_CHECK(handle, IOT_OTA_ERR_INVALID_PARAM);
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
 
-    return pHandle->err;
+    POINTER_SANITY_CHECK(handle, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    POINTER_SANITY_CHECK(buf, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+    NUMBERIC_SANITY_CHECK(buf_len, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
+
+    if (resource_handle->upload_state < QCLOUD_RESOURCE_STATE_START_E) {
+        resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+    }
+
+    switch (type) {
+        case QCLOUD_IOT_RESOURCE_FETCHED_SIZE_E:
+            if ((4 != buf_len) || (0 != ((unsigned long)buf & 0x3))) {
+                Log_e("Invalid parameter");
+                resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+                return QCLOUD_ERR_FAILURE;
+            } else {
+                *((uint32_t *)buf) = resource_handle->size_fetched;
+                return 0;
+            }
+
+        case QCLOUD_IOT_RESOURCE_UPLOADED_SIZE_E:
+            if ((4 != buf_len) || (0 != ((unsigned long)buf & 0x3))) {
+                Log_e("Invalid parameter");
+                resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+                return QCLOUD_ERR_FAILURE;
+            } else {
+                *((uint32_t *)buf) = resource_handle->size_uploaded;
+                return 0;
+            }
+
+        case QCLOUD_IOT_RESOURCE_SIZE_E:
+            if ((4 != buf_len) || (0 != ((unsigned long)buf & 0x3))) {
+                Log_e("Invalid parameter");
+                resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+                return QCLOUD_ERR_FAILURE;
+            } else {
+                *((uint32_t *)buf) = resource_handle->upload_resource_size;
+                return 0;
+            }
+
+        case QCLOUD_IOT_RESOURCE_NAME_E:
+            strncpy(buf, resource_handle->upload_resource_name, buf_len);
+            ((char *)buf)[buf_len - 1] = '\0';
+            break;
+
+        case QCLOUD_IOT_RESOURCE_MD5SUM_E:
+            strncpy(buf, resource_handle->upload_md5sum, buf_len);
+            ((char *)buf)[buf_len - 1] = '\0';
+            break;
+
+        case QCLOUD_IOT_RESOURCE_MD5CHECK_E:
+            if ((4 != buf_len) || (0 != ((unsigned long)buf & 0x3))) {
+                Log_e("Invalid parameter");
+                resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+                return QCLOUD_ERR_FAILURE;
+            } else if (resource_handle->upload_state != QCLOUD_RESOURCE_STATE_END_E) {
+                resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_STATE_E;
+                Log_e("resource can be checked in QCLOUD_RESOURCE_STATE_FETCHED state only");
+                return QCLOUD_ERR_FAILURE;
+            } else {
+                char md5_str[33];
+                qcloud_lib_md5_finish_tolowercasehex(&(resource_handle->upload_md5), md5_str);
+                Log_e("upload MD5 check: origin=%s, now=%s",
+                      STRING_PTR_PRINT_SANITY_CHECK(resource_handle->upload_md5sum), md5_str);
+
+                if (0 == strcmp(resource_handle->upload_md5sum, md5_str)) {
+                    *((uint32_t *)buf) = 1;
+                } else {
+                    *((uint32_t *)buf) = 0;
+                    // report MD5 inconsistent TODO
+                    _qcloud_iot_resource_report_upload_result(resource_handle, resource_handle->upload_resource_name,
+                                                              QCLOUD_RESOURCE_RESULTCODE_MD5_NOTMATCH_E);
+                }
+                return 0;
+            }
+
+        default:
+            Log_e("invalid cmd type");
+            resource_handle->upload_err = QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+            return QCLOUD_ERR_FAILURE;
+    }
+
+    return 0;
 }
 
-int IOT_Resource_GetReportResult(void *handle)
+/* Get last error code */
+int QCLOUD_IOT_RESOURCE_DownloadGetLastError(void *handle)
 {
-    POINTER_SANITY_CHECK(handle, IOT_OTA_ERR_INVALID_PARAM);
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
 
-    return pHandle->report_rc;
+    if (NULL == resource_handle) {
+        Log_e("resource_handle is NULL");
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
+    }
+
+    return resource_handle->err;
 }
 
-int IOT_Resource_Post_Request(void *handle, uint32_t timeout_ms, const char *res_name, char *res_version,
-                              char *res_type)
+int QCLOUD_IOT_RESOURCE_UploadGetLastError(void *handle)
 {
-    POINTER_SANITY_CHECK(handle, IOT_OTA_ERR_INVALID_PARAM);
-    ResourceHandle *pHandle      = (ResourceHandle *)handle;
-    char *          msg_reported = NULL;
-    int             ret          = QCLOUD_RET_SUCCESS;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
 
-    pHandle->request_id++;
-
-    ResPostInfo *info = (ResPostInfo *)HAL_Malloc(sizeof(ResPostInfo));
-    info->request_id  = pHandle->request_id;
-    info->res_name    = strdup(res_name);
-    info->res_version = strdup(res_version);
-    info->res_type    = strdup(res_type);
-    InitTimer(&(info->post_timer));
-    countdown(&(info->post_timer), timeout_ms);
-    ret = _add_resouce_info_to_post_list(handle, info);
-    if (QCLOUD_RET_SUCCESS != ret) {
-        Log_e("add resource to post list fail,rc:%d", ret);
-        goto exit;
+    if (NULL == resource_handle) {
+        Log_e("resource_handle is NULL");
+        return QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E;
     }
 
-    if (NULL == (msg_reported = HAL_Malloc(MSG_REPORT_LEN))) {
-        Log_e("allocate for msg_reported failed");
-        ret = QCLOUD_ERR_MALLOC;
-        goto exit;
-    }
-
-    char *file_name_post = strrchr(res_name, '/');
-    if (!file_name_post) {
-        file_name_post = (char *)res_name;
-    } else {
-        file_name_post += 1;
-    }
-    ret = _gen_resource_report_msg(msg_reported, MSG_REPORT_LEN, file_name_post, res_version, res_type,
-                                   pHandle->request_id, IOT_RES_TYPE_REQUEST_URL);
-    if (QCLOUD_RET_SUCCESS != ret) {
-        Log_e("generate resource inform message failed");
-        goto exit;
-    }
-    Log_d("request:%s", msg_reported);
-    ret = qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg_reported, QOS1);
-    if (ret < 0) {
-        Log_e("Request url msg publish failed");
-        goto exit;
-    }
-
-exit:
-
-    if (msg_reported) {
-        HAL_Free(msg_reported);
-    }
-
-    return (ret < 0) ? ret : pHandle->request_id;
+    return resource_handle->upload_err;
 }
 
-int IOT_Resource_Report_Msg(void *handle, char *msg)
+int QCLOUD_IOT_RESOURCE_ReportMsg(void *handle, char *msg)
 {
-    POINTER_SANITY_CHECK(handle, IOT_OTA_ERR_INVALID_PARAM);
-    ResourceHandle *pHandle = (ResourceHandle *)handle;
+    QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
+    POINTER_SANITY_CHECK(handle, QCLOUD_RESOURCE_ERRCODE_INVALID_PARAM_E);
 
-    return qcloud_service_mqtt_post_msg(pHandle->ch_signal, msg, QOS0);
+    return qcloud_service_mqtt_post_msg(resource_handle->ch_fetch, msg, QOS0);
+
 }
 
 #ifdef __cplusplus

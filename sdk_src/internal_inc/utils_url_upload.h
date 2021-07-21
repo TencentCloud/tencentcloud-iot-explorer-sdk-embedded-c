@@ -27,7 +27,7 @@ extern "C" {
 
 #include <stdint.h>
 
-void *qcloud_url_upload_init(const char *url, uint32_t content_len);
+void *qcloud_url_upload_init(const char *url, uint32_t content_len, char *custom_header);
 
 int32_t qcloud_url_upload_connect(void *handle, int method);
 

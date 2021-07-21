@@ -9,7 +9,7 @@ cmake_minimum_required (VERSION 3.5)
 set(BUILD_TYPE "release")
 
 # 代码抽取，ON表示根据配置抽取源码到ouput/qcloud_iot_c_sdk目录
-set(EXTRACT_SRC ON)
+set(EXTRACT_SRC OFF)
 
 # 编译工具链
 set(COMPILE_TOOLS "gcc") 
@@ -18,6 +18,8 @@ set(PLATFORM 	  "linux")
 #set(COMPILE_TOOLS "MSVC") 
 #set(PLATFORM 	  "windows") 
 
+# 是否使能MQTT功能
+set(FEATURE_MQTT_COMM_ENABLED ON)
 
 # 是否使能设备动态注册
 set(FEATURE_DEV_DYN_REG_ENABLED ON)
@@ -42,6 +44,9 @@ set(FEATURE_OTA_COMM_ENABLED ON)
 
 # 是否使能资源管理
 set(FEATURE_RESOURCE_UPDATE_ENABLED ON)
+
+# 是否使能文件管理
+set(FEATURE_FILE_MANAGE_ENABLE ON)
 
 # 是否使能语音识别功能
 set(FEATURE_ASR_ENABLED ON)
@@ -150,6 +155,7 @@ option(DEBUG_DEV_INFO_USED "Enable DEBUG_DEV_INFO_USED" ${FEATURE_DEBUG_DEV_INFO
 option(SYSTEM_COMM "Enable SYSTEM_COMM" ${FEATURE_SYSTEM_COMM_ENABLED})
 option(LOG_UPLOAD "Enable LOG_UPLOAD" ${FEATURE_LOG_UPLOAD_ENABLED})
 option(RESOURCE_UPDATE_ENABLED "Enable Resource update" ${FEATURE_RESOURCE_UPDATE_ENABLED})
+option(FILE_MANAGE_ENABLED "Enable file manage" ${FEATURE_FILE_MANAGE_ENABLE})
 option(ASR_ENABLED "Enable ASR" ${FEATURE_ASR_ENABLED})
 option(WIFI_CONFIG_ENABLED "Enable WIFI CONFIG" ${FEATURE_WIFI_CONFIG_ENABLED})
 option(MULTITHREAD_ENABLED "Enable Multithread" ${FEATURE_MULTITHREAD_ENABLED})

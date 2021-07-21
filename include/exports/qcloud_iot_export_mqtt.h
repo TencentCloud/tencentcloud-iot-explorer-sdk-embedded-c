@@ -329,6 +329,13 @@ bool IOT_MQTT_IsConnected(void *pClient);
  */
 int IOT_MQTT_GetErrCode(void);
 
+/**
+ * @brief Get the device Info of the dedicated MQTT client
+ *
+ * @param pClient       handle to MQTT client
+ * @return pointer to the device Info
+ */
+DeviceInfo *IOT_MQTT_GetDeviceInfo(void *pClient);
 #ifdef __cplusplus
 }
 #endif

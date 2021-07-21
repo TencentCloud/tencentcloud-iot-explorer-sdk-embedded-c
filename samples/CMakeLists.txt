@@ -74,11 +74,18 @@ if(${FEATURE_RESOURCE_UPDATE_ENABLED} STREQUAL "ON")
 	target_link_libraries(resource_mqtt_sample			 ${lib})
 endif()
 
+# file manage MQTT
+if(${FEATURE_FILE_MANAGE_ENABLE} STREQUAL "ON")
+	file(GLOB src_file_mqtt_sample					${PROJECT_SOURCE_DIR}/samples/file_manage/file_mqtt_sample.c)
+	add_executable(file_mqtt_sample					${src_file_mqtt_sample})
+	target_link_libraries(file_mqtt_sample				${lib})
+endif()
+
 # ASR
 if(${FEATURE_ASR_ENABLED} STREQUAL "ON")
-	file(GLOB src_asr_sample 				${PROJECT_SOURCE_DIR}/samples/asr/asr_data_template_sample.c)
-	add_executable(asr_data_template_sample				${src_asr_sample})
-	target_link_libraries(asr_data_template_sample			 ${lib})
+	file(GLOB src_asr_sample 						${PROJECT_SOURCE_DIR}/samples/asr/asr_data_template_sample.c)
+	add_executable(asr_data_template_sample			${src_asr_sample})
+	target_link_libraries(asr_data_template_sample		${lib})
 endif()
 
 # DYN_REG
