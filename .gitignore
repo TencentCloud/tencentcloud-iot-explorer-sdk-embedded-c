@@ -1,5 +1,5 @@
 /.idea/
-./build/
+/build
 *.o
 *.a
 /*.cproject

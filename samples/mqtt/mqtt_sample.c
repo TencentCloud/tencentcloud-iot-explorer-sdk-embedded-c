@@ -29,6 +29,8 @@
 #include "utils_getopt.h"
 #include "lite-utils.h"
 
+#include "service_mqtt.h"
+
 #ifdef AUTH_MODE_CERT
 static char sg_cert_file[PATH_MAX + 1];  // full path of device cert file
 static char sg_key_file[PATH_MAX + 1];   // full path of device key file
@@ -510,7 +512,7 @@ int main(int argc, char **argv)
 		//method: report 
         property_report(client);
     } while (sg_loop_test);
-
+    rc = qcloud_service_mqtt_unbind_device_request(client, sg_devInfo.product_id, sg_devInfo.device_name, 5000);
     rc = IOT_MQTT_Destroy(&client);
     IOT_Log_Upload(true);
 

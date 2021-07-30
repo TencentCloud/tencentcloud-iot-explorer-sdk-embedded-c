@@ -29,11 +29,13 @@ extern "C" {
 #define METHOD_RES_REQ_URL_RESP       "request_url_resp"
 #define METHOD_FACE_AI_REPLY          "call_service_reply"
 #define METHOD_UNBIND_DEVICE          "unbind_device"
+#define METHOD_UNBIND_DEVICE_REPLY    "unbind_device_reply"
 
 typedef enum {
     eSERVICE_RESOURCE   = 0,
     eSERVICE_FACE_AI    = 1,
     eSERVICE_UNBIND_DEV = 2,
+    eSERVICE_UNBIND_DEV_REPLY = 3,
     eSERVICE_DEFAULT    = 0xff
 } eServiceEvent;
 
@@ -43,7 +45,9 @@ int  qcloud_service_mqtt_init(const char *productId, const char *deviceName, voi
 void qcloud_service_mqtt_deinit(void *mqtt_client);
 int  qcloud_service_mqtt_post_msg(void *mqtt_client, const char *msg, int qos);
 int  qcloud_service_mqtt_event_register(eServiceEvent evt, OnServiceMessageCallback callback, void *context);
-
+int  qcloud_service_mqtt_unbind_device_register(OnServiceMessageCallback callback, void *context);
+int qcloud_service_mqtt_unbind_device_request(void *mqtt_client, const char *productId, const char *deviceName,
+                                              int timeout_ms);
 #ifdef __cplusplus
 }
 #endif
