@@ -49,13 +49,13 @@ set(FEATURE_RESOURCE_UPDATE_ENABLED ON)
 set(FEATURE_FILE_MANAGE_ENABLE ON)
 
 # 是否使能语音识别功能
-set(FEATURE_ASR_ENABLED ON)
+set(FEATURE_ASR_ENABLED OFF)
 
 # 接入认证方式，使用证书认证：CERT；使用密钥认证：KEY
 set(FEATURE_AUTH_MODE "KEY")
 
 # 接入认证是否不使用TLS，证书方式必须选择使用TLS，密钥认证可选择不使用TLS
-set(FEATURE_AUTH_WITH_NOTLS OFF)
+set(FEATURE_AUTH_WITH_NOTLS ON)
 
 # 是否打开代码中获取设备信息功能，OFF时将从device_info.json中读取设备信息
 set(FEATURE_DEBUG_DEV_INFO_USED OFF)

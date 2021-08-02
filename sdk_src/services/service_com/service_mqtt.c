@@ -41,7 +41,7 @@ static Service_Event_Struct_t sg_service_event_map[] = {{eSERVICE_RESOURCE, NULL
                                                         {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL}};
 
 static char sg_service_pub_topic[MAX_SIZE_OF_CLOUD_TOPIC];
-bool sg_unbind_device_reply = false;
+
 
 /* gen service topic: "$thing/down/service/$(product_id)/$(device_name)" */
 static int _gen_service_mqtt_topic_info(const char *productId, const char *deviceName, char *sub_topic)
@@ -184,31 +184,7 @@ static void _service_mqtt_sub_event_handler(void *pClient, MQTTEventType event_t
     }
 }
 
-void _unbind_device_reply_cb(void *user_data, const char *payload, unsigned int payload_len)
-{
-    if (payload == NULL) {
-        Log_e("params is null");
-        return;
-    }
 
-    Log_d("recv: %s", payload);
-
-    char *method = LITE_json_value_of("method", (char *)payload);
-    char *code   = LITE_json_value_of("code", (char *)payload);
-
-    if(code == NULL || atoi(code) != 0 ){
-        Log_e("query reply code error. code : %s", code == NULL ? "":code);
-        goto end;
-    }
-    if(method == NULL || 0 == strncmp(method, METHOD_UNBIND_DEVICE_REPLY, sizeof(METHOD_UNBIND_DEVICE_REPLY) - 1)){
-        // proc 
-        sg_unbind_device_reply = true;
-
-    }
-end:
-    HAL_Free(code);
-    HAL_Free(method);
-}
 
 int qcloud_service_mqtt_init(const char *productId, const char *deviceName, void *mqtt_client)
 {
@@ -273,54 +249,7 @@ int qcloud_service_mqtt_event_register(eServiceEvent evt, OnServiceMessageCallba
     return _set_service_event_handle(evt, callback, context);
 }
 
-int qcloud_service_mqtt_unbind_device_register(OnServiceMessageCallback callback, void *context)
-{
-    return _set_service_event_handle(eSERVICE_UNBIND_DEV, callback, context);
-}
 
-int qcloud_service_mqtt_unbind_device_request(void *mqtt_client, const char *productId, const char *deviceName,
-                                              int timeout_ms)
-{
-    int        rc;
-    char       message[256]           = {0};
-    static int sg_unbind_device_index = 0;
-    rc                                = qcloud_service_mqtt_init(productId, deviceName, mqtt_client);
-    if (rc < 0) {
-        Log_e("service init failed: %d", rc);
-        return rc;
-    }
-    rc = _set_service_event_handle(eSERVICE_UNBIND_DEV_REPLY, _unbind_device_reply_cb, NULL);
-    if (QCLOUD_RET_SUCCESS != rc) {
-        Log_e("register service event %d fail", eSERVICE_UNBIND_DEV_REPLY);
-        return rc;
-    }
-    sg_unbind_device_index++;
-    HAL_Snprintf(message, sizeof(message),
-                 "{\"method\":\"unbind_device_request\", \"clientToken\":\"%s-%d\", \"deviceName\":\"%s\", "
-                 "\"productId\":\"%s\"}",
-                 productId, sg_unbind_device_index, deviceName, productId);
-    rc = qcloud_service_mqtt_post_msg(mqtt_client, message, QOS0);
-    if (QCLOUD_RET_SUCCESS > rc) {
-        Log_e("service mqtt post msg failed");
-        return rc;
-    }
-
-    Timer wait_timer;
-    InitTimer(&wait_timer);
-    countdown_ms(&wait_timer, timeout_ms);
-    sg_unbind_device_reply = false;
-    while (false == expired(&wait_timer) && sg_unbind_device_reply == false) {
-        if (QCLOUD_RET_SUCCESS != IOT_MQTT_Yield(mqtt_client, 200)) {
-            break;
-        }
-        HAL_SleepMs(200);
-    }
-    if(sg_unbind_device_reply == false){
-        Log_e("unbind device request happen error.");
-        return QCLOUD_ERR_FAILURE;
-    }
-    return QCLOUD_RET_SUCCESS;
-}
 
 #ifdef __cplusplus
 }

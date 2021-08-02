@@ -59,10 +59,9 @@ extern "C" {
 
 #define MSG_REPORT_LEN (256)
 
-#define QCLOUD_IOT_FILE_MANAGE_NAME_LEN     64
-#define QCLOUD_IOT_FILE_MANAGE_URL_LEN      1024
-
-
+#define QCLOUD_IOT_FILE_MANAGE_NAME_LEN 64
+#define QCLOUD_IOT_FILE_MANAGE_URL_LEN  1024
+#define QCLOUD_IOT_FILE_MANAGE_MD5_LEN  33
 
 typedef struct {
     const char *product_id;  /* point to product id */
@@ -74,11 +73,11 @@ typedef struct {
     uint32_t           size_fetched;      /* size of already downloaded */
     uint32_t           size_file;         /* size of file */
 
-    char *url;        /* point to URL */
-    char *version;    /* point to string */
-    char *file_name;  /* point to string */
-    char *file_type;  /* point to string */
-    char  md5sum[33]; /* MD5 string */
+    char *url;                                    /* point to URL */
+    char *version;                                /* point to string */
+    char *file_name;                              /* point to string */
+    char *file_type;                              /* point to string */
+    char  md5sum[QCLOUD_IOT_FILE_MANAGE_MD5_LEN]; /* MD5 string */
 
     void *md5;       /* MD5 handle */
     void *ch_signal; /* channel handle of signal exchanged with server */
@@ -140,24 +139,20 @@ static int _gen_file_manage_ver_info(char *buf, size_t bufLen, uint16_t res_num,
             return QCLOUD_ERR_FAILURE;
         }
 
-        ret =
-            HAL_Snprintf(buf + strlen(buf), bufLen - strlen(buf),
-                         "{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"},",
-                         STRING_PTR_PRINT_SANITY_CHECK(pInfo->file_name), STRING_PTR_PRINT_SANITY_CHECK(pInfo->file_ver),
-                         STRING_PTR_PRINT_SANITY_CHECK(pInfo->file_type));
+        ret = HAL_Snprintf(buf + strlen(buf), bufLen - strlen(buf),
+                           "{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"},",
+                           STRING_PTR_PRINT_SANITY_CHECK(pInfo->file_name),
+                           STRING_PTR_PRINT_SANITY_CHECK(pInfo->file_ver),
+                           STRING_PTR_PRINT_SANITY_CHECK(pInfo->file_type));
         if (ret < 0) {
             Log_e("HAL_Snprintf failed");
             return QCLOUD_ERR_FAILURE;
         }
     }
 
-    pos = (i > 0) ? 1 : 0;
+    pos = (i > 0) ? sizeof(",") : 0;
 
     ret = HAL_Snprintf(buf + strlen(buf) - pos, bufLen - strlen(buf), "]}}");
-    if (ret < 0) {
-        Log_e("HAL_Snprintf failed");
-        return QCLOUD_ERR_FAILURE;
-    }
 
     return QCLOUD_RET_SUCCESS;
 }
@@ -254,30 +249,27 @@ static int _gen_file_manage_report_msg(char *buf, size_t bufLen, const char *fil
             break;
 
         case IOT_FILE_TYPE_REQUEST_URL:
-            ret =
-                HAL_Snprintf(buf, bufLen,
-                             "{\"method\":\"request_url\",\"request_id\":\"%d\","
-                             "\"report\":{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"}}",
-                             progress, STRING_PTR_PRINT_SANITY_CHECK(file_name), STRING_PTR_PRINT_SANITY_CHECK(version),
-                             STRING_PTR_PRINT_SANITY_CHECK(type));
+            ret = HAL_Snprintf(buf, bufLen,
+                               "{\"method\":\"request_url\",\"request_id\":\"%d\","
+                               "\"report\":{\"resource_name\":\"%s\",\"version\":\"%s\",\"resource_type\":\"%s\"}}",
+                               progress, STRING_PTR_PRINT_SANITY_CHECK(file_name),
+                               STRING_PTR_PRINT_SANITY_CHECK(version), STRING_PTR_PRINT_SANITY_CHECK(type));
 
             break;
 
         case IOT_FILE_TYPE_POST_SUCCESS:
-            ret = HAL_Snprintf(
-                buf, bufLen,
-                "{\"method\":\"report_post_result\",\"report\":{\"progress\":{\"resource_token\":\"%s\","
-                "\"state\":\"done\",\"result_code\":\"0\", \"result_msg\":\"success\"}}}",
-                STRING_PTR_PRINT_SANITY_CHECK(file_name));
+            ret = HAL_Snprintf(buf, bufLen,
+                               "{\"method\":\"report_post_result\",\"report\":{\"progress\":{\"resource_token\":\"%s\","
+                               "\"state\":\"done\",\"result_code\":\"0\", \"result_msg\":\"success\"}}}",
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name));
 
             break;
 
         case IOT_FILE_TYPE_POST_FAIL:
-            ret = HAL_Snprintf(
-                buf, bufLen,
-                "{\"method\":\"report_post_result\",\"report\":{\"progress\":{\"resource_token\":\"%s\","
-                "\"state\":\"done\",\"result_code\":\"-1\", \"result_msg\":\"post_fail\"}}}",
-                STRING_PTR_PRINT_SANITY_CHECK(file_name));
+            ret = HAL_Snprintf(buf, bufLen,
+                               "{\"method\":\"report_post_result\",\"report\":{\"progress\":{\"resource_token\":\"%s\","
+                               "\"state\":\"done\",\"result_code\":\"-1\", \"result_msg\":\"post_fail\"}}}",
+                               STRING_PTR_PRINT_SANITY_CHECK(file_name));
             break;
 
         default:
@@ -494,7 +486,7 @@ static FilePostInfo *_get_file_manage_info_by_request_id(void *handle, int reque
     POINTER_SANITY_CHECK(handle, NULL);
 
     FileManageHandle *pHandle = (FileManageHandle *)handle;
-    FilePostInfo *     info    = NULL;
+    FilePostInfo *    info    = NULL;
     HAL_MutexLock(pHandle->mutex);
     if (pHandle->file_wait_post_list->len) {
         ListIterator *iter;
@@ -646,7 +638,7 @@ static void _file_manage_msg_callback(void *handle, const char *msg, uint32_t ms
     if (!strcmp(json_method, METHOD_RES_REPORT_VERSION_RSP)) {  // report version resp
         char *result_code = LITE_json_value_of(FIELD_RESULT, json_str);
 
-        if (strcmp(result_code, "0") != 0 || !result_code) {
+        if (!result_code || strcmp(result_code, "0") != 0) {
             Log_e("Report file_manage version failed!");
             pHandle->err   = IOT_FILE_ERR_REPORT_VERSION;
             pHandle->state = IOT_FILE_STATE_FETCHED;
@@ -675,7 +667,7 @@ static void _file_manage_msg_callback(void *handle, const char *msg, uint32_t ms
         }
 
         // copy md5sum
-        strncpy(pHandle->md5sum, md5, 33);
+        strncpy(pHandle->md5sum, md5, QCLOUD_IOT_FILE_MANAGE_MD5_LEN);
         HAL_Free(md5);
 
         // copy file_size
@@ -714,7 +706,7 @@ static void _file_manage_msg_callback(void *handle, const char *msg, uint32_t ms
             Log_e("no request_id found");
             goto exit;
         }
-        uint32_t     id   = atoi(request_id);
+        uint32_t      id   = atoi(request_id);
         FilePostInfo *info = _get_file_manage_info_by_request_id(handle, id);
         if (info) {
             char *res_token = LITE_json_value_of(FIELD_RESOURCE_TOKEN, json_str);
@@ -803,11 +795,11 @@ void *IOT_FileManage_Init(const char *product_id, const char *device_name, void 
         goto exit;
     }
 
-    handle->product_id         = product_id;
-    handle->device_name        = device_name;
-    handle->state              = IOT_FILE_STATE_INITTED;
-    handle->usr_context        = usr_context;
-    handle->request_id         = 0;
+    handle->product_id          = product_id;
+    handle->device_name         = device_name;
+    handle->state               = IOT_FILE_STATE_INITTED;
+    handle->usr_context         = usr_context;
+    handle->request_id          = 0;
     handle->file_wait_post_list = list_new();
     if (handle->file_wait_post_list) {
         handle->file_wait_post_list->free = HAL_Free;
@@ -875,7 +867,7 @@ int IOT_FileManage_Destroy(void *handle)
         HAL_Free(pHandle->file_type);
         HAL_Free(pHandle);
     }
-
+    HAL_MutexDestroy(pHandle->mutex);
     return QCLOUD_RET_SUCCESS;
 }
 
@@ -1205,7 +1197,7 @@ int IOT_FileManage_Ioctl(void *handle, IOT_FILE_CmdType type, void *buf, size_t 
                 Log_e("Firmware can be checked in IOT_FILE_STATE_FETCHED state only");
                 return QCLOUD_ERR_FAILURE;
             } else {
-                char md5_str[33];
+                char md5_str[QCLOUD_IOT_FILE_MANAGE_MD5_LEN] = {0};
                 utils_md5_finish_str(pHandle->md5, md5_str);
                 Log_d("origin=%s, now=%s", pHandle->md5sum, md5_str);
                 if (0 == strcmp(pHandle->md5sum, md5_str)) {
@@ -1254,7 +1246,7 @@ int IOT_FileManage_Post_Request(void *handle, uint32_t timeout_ms, const char *f
     pHandle->request_id++;
 
     FilePostInfo *info = (FilePostInfo *)HAL_Malloc(sizeof(FilePostInfo));
-    info->request_id  = pHandle->request_id;
+    info->request_id   = pHandle->request_id;
     info->file_name    = strdup(file_name);
     info->file_version = strdup(file_version);
     info->file_type    = strdup(file_type);

@@ -14,6 +14,10 @@ list(APPEND src_sdk ${src_data_template})
 file(GLOB src_service_mqtt ${CMAKE_CURRENT_SOURCE_DIR}/services/service_com/*.c)
 list(APPEND src_sdk ${src_service_mqtt})
 
+# device unbind
+file(GLOB src_device_bind ${CMAKE_CURRENT_SOURCE_DIR}/services/device_bind/*.c)
+list(APPEND src_sdk ${src_device_bind})
+
 # gateway
 if(${FEATURE_GATEWAY_ENABLED} STREQUAL "ON")
 	file(GLOB src_gateway ${CMAKE_CURRENT_SOURCE_DIR}/services/gateway/*.c)

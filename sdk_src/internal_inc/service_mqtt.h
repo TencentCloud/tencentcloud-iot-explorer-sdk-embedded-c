@@ -45,9 +45,7 @@ int  qcloud_service_mqtt_init(const char *productId, const char *deviceName, voi
 void qcloud_service_mqtt_deinit(void *mqtt_client);
 int  qcloud_service_mqtt_post_msg(void *mqtt_client, const char *msg, int qos);
 int  qcloud_service_mqtt_event_register(eServiceEvent evt, OnServiceMessageCallback callback, void *context);
-int  qcloud_service_mqtt_unbind_device_register(OnServiceMessageCallback callback, void *context);
-int qcloud_service_mqtt_unbind_device_request(void *mqtt_client, const char *productId, const char *deviceName,
-                                              int timeout_ms);
+
 #ifdef __cplusplus
 }
 #endif
