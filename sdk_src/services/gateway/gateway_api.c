@@ -565,10 +565,6 @@ static void _gateway_automation_set_reply(void *client, char *client_token, char
         HAL_Snprintf(payload, sizeof(payload),
                      "{\"method\":\"set_automation_reply\",\"clientToken\":\"%s\",\"automationId\":\"%s\",\"code\":%d}",
                      client_token, automation_id, code);
-    if (payload_len < 0 || payload_len > sizeof(payload)) {
-        Log_e("buf size < payload length!");
-        return;
-    }
 
     Gateway *          gateway = (Gateway *)client;
     Qcloud_IoT_Client *mqtt    = (Qcloud_IoT_Client *)gateway->mqtt;
@@ -584,11 +580,6 @@ static void _gateway_automation_del_reply(void *client, char *client_token, char
         payload, sizeof(payload),
         "{\"method\":\"delete_automation_reply\",\"clientToken\":\"%s\",\"automationId\":\"%s\",\"code\":%d}",
         client_token, automation_id, code);
-
-    if (payload_len < 0 || payload_len > sizeof(payload)) {
-        Log_e("buf size < payload length!");
-        return;
-    }
 
     Gateway *          gateway = (Gateway *)client;
     Qcloud_IoT_Client *mqtt    = (Qcloud_IoT_Client *)gateway->mqtt;
@@ -610,6 +601,7 @@ static int _gateway_automation_set(bool reply, char *payload, void *user_data)
     if (key_status == NULL || params == NULL) {
         HAL_Free(key_status);
         HAL_Free(params);
+        HAL_Free(automation_id);
         Log_e("mation error status and params is null");
         return QCLOUD_ERR_FAILURE;
     }
@@ -637,7 +629,7 @@ static void _gateway_automation_del(char *payload, void *user_data)
     POINTER_SANITY_CHECK_RTN(user_data);
 
     char *automation_id = LITE_json_value_of("automationId", payload);
-    if(NULL == automation_id){
+    if (NULL == automation_id) {
         Log_e("Fail to parse params");
         return;
     }
@@ -646,7 +638,7 @@ static void _gateway_automation_del(char *payload, void *user_data)
     int ret = automation->del_automation_callback(automation_id, automation->user_data);
 
     char *client_token = LITE_json_value_of("clientToken", payload);
-    if(NULL == client_token){
+    if (NULL == client_token) {
         Log_e("Fail to parse params");
         goto exit;
     }
