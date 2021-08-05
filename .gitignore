@@ -1,11 +1,11 @@
 /.idea/
-/build
 *.o
 *.a
 /*.cproject
 /*.autotools
 /.project
 /output
+/build
 /sdk-tests/unit_test/unit_test.BASE
 /sdk-tests/unit_test/unit_test.LOCAL
 /sdk-tests/unit_test/unit_test.REMOTE

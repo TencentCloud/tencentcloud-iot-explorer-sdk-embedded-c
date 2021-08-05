@@ -232,6 +232,53 @@ void IOT_Gateway_Stop_Yield_Thread(void *pClient);
  * @return true= thread running, false = thread quit
  */
 bool IOT_Gateway_Get_Yield_Status(void *pClient, int *exit_code);
+
+/* gateway automation struct */
+typedef struct {
+    void *client;
+    void *user_data;
+    int (*set_automation_callback)(char *automation_id, int mation_status, char *params, void *user_data);
+    int (*del_automation_callback)(char *automation_id, void *user_data);
+} QCLOUD_IO_GATEWAY_AUTOMATION_T;
+
+/**
+ * @brief automation local execution log report
+ *
+ * @param client       handle to gateway client
+ * @param json_buf     stored excution report json
+ * @return QCLOUD_RET_SUCCESS is report success, QCLOUD_ERR_FAILURE is report failed
+ */
+int IOT_Gateway_LocalAutoMationReportLog(void *client, char *json_buf, int json_len);
+
+/**
+ * @brief create automation local execution json format
+ *
+ * @param json_buf      used store json
+ * @param buf_len       json buf lens
+ * @param automation_id automation_id
+ * @param log_json      is log json
+ * @return final json length
+ */
+int IOT_Gateway_LocalAutoMationLogCreate(char *json_buf, int buf_len, void *client, char *automation_id,
+                                         char *log_json);
+
+/**
+ * @brief get gateway automation list
+ *
+ * @param client      handle to gateway client
+ * @return >= QCLOUD_RET_SUCCESS is success other is failed
+ */
+int IOT_Gateway_GetAutoMationList(void *client);
+
+/**
+ * @brief enable gateway local auto mation
+ *
+ * @param client      handle to gateway client
+ * @param automation       json buf lens
+ * @return >= QCLOUD_RET_SUCCESS is success other is failed
+ */
+int IOT_Gateway_EnableLocalAutoMation(void *client, QCLOUD_IO_GATEWAY_AUTOMATION_T *automation);
+
 #endif
 
 #ifdef __cplusplus

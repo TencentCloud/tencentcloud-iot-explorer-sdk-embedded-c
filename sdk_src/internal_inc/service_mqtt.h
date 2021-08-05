@@ -22,21 +22,25 @@ extern "C" {
 
 #include <stdint.h>
 
-#define FIELD_METHOD                  "method"
-#define METHOD_RES_REPORT_VERSION_RSP "report_version_rsp"
-#define METHOD_RES_UPDATE_RESOURCE    "update_resource"
-#define METHOD_RES_DELETE_RESOURCE    "del_resource"
-#define METHOD_RES_REQ_URL_RESP       "request_url_resp"
-#define METHOD_FACE_AI_REPLY          "call_service_reply"
-#define METHOD_UNBIND_DEVICE          "unbind_device"
-#define METHOD_UNBIND_DEVICE_REPLY    "unbind_device_reply"
+#define FIELD_METHOD                   "method"
+#define METHOD_RES_REPORT_VERSION_RSP  "report_version_rsp"
+#define METHOD_RES_UPDATE_RESOURCE     "update_resource"
+#define METHOD_RES_DELETE_RESOURCE     "del_resource"
+#define METHOD_RES_REQ_URL_RESP        "request_url_resp"
+#define METHOD_FACE_AI_REPLY           "call_service_reply"
+#define METHOD_GATEWAY_AUTOMATION_SET  "set_automation"
+#define METHOD_GATEWAY_AUTOMATION_DEL  "del_automation"
+#define METHOD_GATEWAY_AUTOMATION_LIST "get_automation_list_reply"
+#define METHOD_UNBIND_DEVICE           "unbind_device"
+#define METHOD_UNBIND_DEVICE_REPLY     "unbind_device_reply"
 
 typedef enum {
-    eSERVICE_RESOURCE   = 0,
-    eSERVICE_FACE_AI    = 1,
-    eSERVICE_UNBIND_DEV = 2,
-    eSERVICE_UNBIND_DEV_REPLY = 3,
-    eSERVICE_DEFAULT    = 0xff
+    eSERVICE_RESOURCE           = 0,
+    eSERVICE_FACE_AI            = 1,
+    eSERVICE_UNBIND_DEV         = 2,
+    eSERVICE_UNBIND_DEV_REPLY   = 3,
+    eSERVICE_GATEWAY_AUTOMATION = 4,
+    eSERVICE_DEFAULT            = 0xff
 } eServiceEvent;
 
 typedef void (*OnServiceMessageCallback)(void *pContext, const char *msg, uint32_t msgLen);

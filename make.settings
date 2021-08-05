@@ -25,6 +25,9 @@ FEATURE_GATEWAY_ENABLED                 = n
 # 是否使能网关子设备动态绑定解绑功能
 FEATURE_GATEWAY_DYN_BIND_SUBDEV_ENABLED = n
 
+# 是否使能网关本地联动功能
+FEATURE_GATEWAY_AUTOMATION_ENABLED = n
+
 # 是否使能多线程
 FEATURE_MULTITHREAD_ENABLED        		= n
 
