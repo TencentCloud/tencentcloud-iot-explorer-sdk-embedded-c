@@ -36,9 +36,12 @@ typedef struct {
 } Service_Event_Struct_t;
 
 static Service_Event_Struct_t sg_service_event_map[] = {{eSERVICE_RESOURCE, NULL, NULL},
-                                                        {eSERVICE_FACE_AI, NULL, NULL}};
+                                                        {eSERVICE_FACE_AI, NULL, NULL},
+                                                        {eSERVICE_UNBIND_DEV, NULL, NULL},
+                                                        {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL}};
 
 static char sg_service_pub_topic[MAX_SIZE_OF_CLOUD_TOPIC];
+
 
 /* gen service topic: "$thing/down/service/$(product_id)/$(device_name)" */
 static int _gen_service_mqtt_topic_info(const char *productId, const char *deviceName, char *sub_topic)
@@ -89,6 +92,9 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
 {
     if (!strcmp(method, METHOD_UNBIND_DEVICE)) {
         return eSERVICE_UNBIND_DEV;
+    }
+    if (!strcmp(method, METHOD_UNBIND_DEVICE_REPLY)) {
+        return eSERVICE_UNBIND_DEV_REPLY;
     }
     if (!strcmp(method, METHOD_FACE_AI_REPLY)) {
         return eSERVICE_FACE_AI;
@@ -178,6 +184,8 @@ static void _service_mqtt_sub_event_handler(void *pClient, MQTTEventType event_t
     }
 }
 
+
+
 int qcloud_service_mqtt_init(const char *productId, const char *deviceName, void *mqtt_client)
 {
     int ret;
@@ -240,6 +248,8 @@ int qcloud_service_mqtt_event_register(eServiceEvent evt, OnServiceMessageCallba
 {
     return _set_service_event_handle(evt, callback, context);
 }
+
+
 
 #ifdef __cplusplus
 }

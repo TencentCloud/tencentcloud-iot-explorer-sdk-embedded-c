@@ -1,19 +1,14 @@
 /*
- * Tencent is pleased to support the open source community by making IoT Hub
- available.
- * Copyright (C) 2016 THL A29 Limited, a Tencent company. All rights reserved.
+ * Tencent is pleased to support the open source community by making IoT Hub available.
+ * Copyright (C) 2018-2020 THL A29 Limited, a Tencent company. All rights reserved.
 
- * Licensed under the MIT License (the "License"); you may not use this file
- except in
+ * Licensed under the MIT License (the "License"); you may not use this file except in
  * compliance with the License. You may obtain a copy of the License at
  * http://opensource.org/licenses/MIT
 
- * Unless required by applicable law or agreed to in writing, software
- distributed under the License is
- * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- KIND,
- * either express or implied. See the License for the specific language
- governing permissions and
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is
+ * distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific language governing permissions and
  * limitations under the License.
  *
  */
@@ -25,58 +20,40 @@
 #include "lite-utils.h"
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
-#include "utils_getopt.h"
 
-// resource list to record all the download resource
-#define RESOURCE_FILE_LIST_PATH "./resource_list.json"
+#define KEY_SIZE "downloaded_size"
 
-#define KEY_NAME     "name"
-#define KEY_VER      "version"
-#define KEY_SIZE     "downloaded_size"
-#define KEY_RES_LIST "resource_list"
-
-#define TYPE_FILE_STR "FILE"
-
-#define MAX_RESOURCE_LIST_ONE_LINE_LEN (256)
-
-// NOTE: this is according to memory of system left for resource and QCLOUD_IOT_MQTT_TX_BUF_LEN.
-// when publish message should no longer than QCLOUD_IOT_MQTT_TX_BUF_LEN.
-// always keep RESOURCE_MAX_NUM * RESOURCE_INFO_LEN_MAX  < min(QCLOUD_IOT_MQTT_TX_BUF_LEN, system memory)
-#define RESOURCE_MAX_NUM 20
-
+#define RESOURCE_NAME_MAX_LEN       32
+#define RESOURCE_PATH_MAX_LEN       128
 #define RESOURCE_BUF_LEN            5000
 #define RESOURCE_INFO_FILE_DATA_LEN 128
-#define RESOURCE_FILE_PATH_MAX_LEN  128
 
-typedef struct {
-    // handle & mqtt
-    void *resource_handle;
-    void *mqtt_client;
+typedef struct ResourceContextData {
+    void *   resource_handle;
+    void *   mqtt_client;
+    char     resource_name[RESOURCE_NAME_MAX_LEN];
+    uint32_t resource_size;
+    uint32_t resource_downloaded_size;
+    char     resource_file_path[RESOURCE_PATH_MAX_LEN];
+    char     resource_info_file_path[RESOURCE_PATH_MAX_LEN];
 
     // to make sure report is acked
-    bool report_pub_ack;
-    int  report_packet_id;
+    bool download_report_pub_ack;
+    int  download_report_packet_id;
 
-    // resource list to record all the resource infos, which include file name, version, file type of resource
-    char resource_list_file_path[RESOURCE_FILE_PATH_MAX_LEN];
+    bool upload_report_pub_ack;
+    int  upload_report_packet_id;
 
-    // local file path and info path of resource downloading now, update when receive a new resource update message
-    char local_info_file_path[RESOURCE_FILE_PATH_MAX_LEN];
-    char local_file_path[RESOURCE_FILE_PATH_MAX_LEN];
-
-    // resource info of resource downloading now, update when receive a new resource update message
-    char     local_version[RESOURCE_VERSION_STR_LEN_MAX + 1];
-    char     remote_version[RESOURCE_VERSION_STR_LEN_MAX + 1];
-    char     resource_name[RESOURCE_NAME_STR_LEN_MAX + 1];
-    char     resource_type[RESOURCE_TYPE_STR_LEN_MAX + 1];
-    uint32_t file_size;
-    uint32_t downloaded_size;
+#ifdef MULTITHREAD_ENABLED
+    bool download_thread;
+    bool upload_thread;
+#endif
 } ResourceContextData;
 
-static void _event_handler(void *pClient, void *handle_context, MQTTEventMsg *msg)
+static void _event_handler(void *pclient, void *handle_context, MQTTEventMsg *msg)
 {
-    uintptr_t            packet_id = (uintptr_t)msg->msg;
-    ResourceContextData *res_ctx   = (ResourceContextData *)handle_context;
+    uintptr_t            packet_id    = (uintptr_t)msg->msg;
+    ResourceContextData *resource_ctx = (ResourceContextData *)handle_context;
 
     switch (msg->event_type) {
         case MQTT_EVENT_UNDEF:
@@ -105,8 +82,10 @@ static void _event_handler(void *pClient, void *handle_context, MQTTEventMsg *ms
 
         case MQTT_EVENT_PUBLISH_SUCCESS:
             Log_i("publish success, packet-id=%u", (unsigned int)packet_id);
-            if (res_ctx->report_packet_id == packet_id) {
-                res_ctx->report_pub_ack = true;
+            if (resource_ctx->upload_report_packet_id == packet_id) {
+                resource_ctx->upload_report_pub_ack = true;
+            } else if (resource_ctx->download_report_packet_id == packet_id) {
+                resource_ctx->download_report_pub_ack = true;
             }
             break;
 
@@ -117,16 +96,14 @@ static void _event_handler(void *pClient, void *handle_context, MQTTEventMsg *ms
         case MQTT_EVENT_PUBLISH_NACK:
             Log_i("publish nack, packet-id=%u", (unsigned int)packet_id);
             break;
-
         default:
             Log_i("Should NOT arrive here.");
             break;
     }
 }
 
-static int _setup_connect_init_params(MQTTInitParams *initParams, void *ota_ctx, DeviceInfo *device_info)
+static int _setup_connect_init_params(MQTTInitParams *initParams, void *resource_ctx, DeviceInfo *device_info)
 {
-    initParams->region      = device_info->region;
     initParams->product_id  = device_info->product_id;
     initParams->device_name = device_info->device_name;
 
@@ -141,15 +118,15 @@ static int _setup_connect_init_params(MQTTInitParams *initParams, void *ota_ctx,
     }
 
 #ifdef WIN32
-    HAL_Snprintf(initParams->cert_file, RESOURCE_FILE_PATH_MAX_LEN, "%s\\%s\\%s", current_path, certs_dir,
-                 device_info->dev_cert_file_name);
-    HAL_Snprintf(initParams->key_file, RESOURCE_FILE_PATH_MAX_LEN, "%s\\%s\\%s", current_path, certs_dir,
-                 device_info->dev_key_file_name);
+    HAL_Snprintf(initParams->cert_file, FILE_PATH_MAX_LEN, "%s\\%s\\%s", current_path, certs_dir,
+                 STRING_PTR_PRINT_SANITY_CHECK(device_info->dev_cert_file_name));
+    HAL_Snprintf(initParams->key_file, FILE_PATH_MAX_LEN, "%s\\%s\\%s", current_path, certs_dir,
+                 STRING_PTR_PRINT_SANITY_CHECK(device_info->dev_key_file_name));
 #else
-    HAL_Snprintf(initParams->cert_file, RESOURCE_FILE_PATH_MAX_LEN, "%s/%s/%s", current_path, certs_dir,
-                 device_info->dev_cert_file_name);
-    HAL_Snprintf(initParams->key_file, RESOURCE_FILE_PATH_MAX_LEN, "%s/%s/%s", current_path, certs_dir,
-                 device_info->dev_key_file_name);
+    HAL_Snprintf(initParams->cert_file, FILE_PATH_MAX_LEN, "%s/%s/%s", current_path, certs_dir,
+                 STRING_PTR_PRINT_SANITY_CHECK(device_info->dev_cert_file_name));
+    HAL_Snprintf(initParams->key_file, FILE_PATH_MAX_LEN, "%s/%s/%s", current_path, certs_dir,
+                 STRING_PTR_PRINT_SANITY_CHECK(device_info->dev_key_file_name));
 #endif
 
 #else
@@ -161,26 +138,44 @@ static int _setup_connect_init_params(MQTTInitParams *initParams, void *ota_ctx,
 
     initParams->auto_connect_enable  = 1;
     initParams->event_handle.h_fp    = _event_handler;
-    initParams->event_handle.context = ota_ctx;
+    initParams->event_handle.context = resource_ctx;
 
     return QCLOUD_RET_SUCCESS;
 }
 
-static void _wait_for_pub_ack(ResourceContextData *res_ctx, int packet_id)
+static void _wait_for_download_pub_ack(ResourceContextData *resource_ctx, int packet_id)
 {
-    int wait_cnt              = 10;
-    res_ctx->report_pub_ack   = false;
-    res_ctx->report_packet_id = packet_id;
+    int wait_cnt                            = 10;
+    resource_ctx->download_report_pub_ack   = false;
+    resource_ctx->download_report_packet_id = packet_id;
 
-    while (!res_ctx->report_pub_ack) {
+    while (!resource_ctx->download_report_pub_ack) {
         HAL_SleepMs(500);
-        IOT_MQTT_Yield(res_ctx->mqtt_client, 500);
+        IOT_MQTT_Yield(resource_ctx->mqtt_client, 500);
         if (wait_cnt-- == 0) {
             Log_e("wait report pub ack timeout!");
             break;
         }
     }
-    res_ctx->report_pub_ack = false;
+    resource_ctx->download_report_pub_ack = false;
+    return;
+}
+
+static void _wait_for_upload_pub_ack(ResourceContextData *resource_ctx, int packet_id)
+{
+    int wait_cnt                          = 10;
+    resource_ctx->upload_report_pub_ack   = false;
+    resource_ctx->upload_report_packet_id = packet_id;
+
+    while (!resource_ctx->upload_report_pub_ack) {
+        HAL_SleepMs(500);
+        IOT_MQTT_Yield(resource_ctx->mqtt_client, 500);
+        if (wait_cnt-- == 0) {
+            Log_e("wait report pub ack timeout!");
+            break;
+        }
+    }
+    resource_ctx->upload_report_pub_ack = false;
     return;
 }
 
@@ -189,116 +184,109 @@ static void _wait_for_pub_ack(ResourceContextData *res_ctx, int packet_id)
  * these are platform-dependant functions
  * POSIX FILE is used in this sample code
  **********************************************************************************/
-/* calculate left MD5 for resuming download from break point */
-static int _cal_exist_resource_md5(ResourceContextData *res_ctx)
+// calculate left MD5 for resuming download from break point
+static int _cal_exist_resource_md5(ResourceContextData *resource_ctx)
 {
     char   buff[RESOURCE_BUF_LEN];
     size_t rlen, total_read = 0;
     int    ret = QCLOUD_RET_SUCCESS;
 
-    ret = IOT_Resource_ResetClientMD5(res_ctx->resource_handle);
+    ret = IOT_Resource_DownloadResetClientMD5(resource_ctx->resource_handle);
     if (ret) {
         Log_e("reset MD5 failed: %d", ret);
         return QCLOUD_ERR_FAILURE;
     }
 
-    // read local file
-    void *fp = HAL_FileOpen(res_ctx->local_file_path, "ab+");
-    if (!fp) {
-        Log_e("open file %s failed", res_ctx->local_file_path);
+    FILE *fp = fopen(resource_ctx->resource_file_path, "ab+");
+    if (NULL == fp) {
+        Log_e("open file %s failed", STRING_PTR_PRINT_SANITY_CHECK(resource_ctx->resource_file_path));
         return QCLOUD_ERR_FAILURE;
     }
 
-    size_t size = res_ctx->downloaded_size;
+    // rewind(fp);
+    size_t size = resource_ctx->resource_downloaded_size;
 
-    while ((size > 0) && (!HAL_FileEof(fp))) {
+    while ((size > 0) && (!feof(fp))) {
         rlen = (size > RESOURCE_BUF_LEN) ? RESOURCE_BUF_LEN : size;
-        if (rlen != HAL_FileRead(buff, 1, rlen, fp)) {
+        if (rlen != fread(buff, 1, rlen, fp)) {
             Log_e("read data len not expected");
             ret = QCLOUD_ERR_FAILURE;
             break;
         }
-        IOT_Resource_UpdateClientMd5(res_ctx->resource_handle, buff, rlen);
+        IOT_Resource_UpdateDownloadClientMd5(resource_ctx->resource_handle, buff, rlen);
         size -= rlen;
         total_read += rlen;
     }
 
-    HAL_FileClose(fp);
+    fclose(fp);
     Log_d("total read: %d", total_read);
     return ret;
 }
 
-/* update local resource info for resuming download from break point */
-static int _update_local_resource_info(ResourceContextData *res_ctx)
+/* update local firmware info for resuming download from break point */
+static int _update_local_resource_info(ResourceContextData *resource_ctx)
 {
-    void *fp;
+    FILE *fp;
     int   wlen;
     int   ret = QCLOUD_RET_SUCCESS;
     char  data_buf[RESOURCE_INFO_FILE_DATA_LEN];
 
     memset(data_buf, 0, sizeof(data_buf));
+    HAL_Snprintf(data_buf, sizeof(data_buf), "{\"%s\":%d}", KEY_SIZE, resource_ctx->resource_downloaded_size);
 
-    // record local resource info
-    HAL_Snprintf(data_buf, sizeof(data_buf), "{\"%s\":\"%s\", \"%s\":\"%s\", \"%s\":%d}", KEY_NAME,
-                 res_ctx->resource_name, KEY_VER, res_ctx->remote_version, KEY_SIZE, res_ctx->downloaded_size);
-
-    fp = HAL_FileOpen(res_ctx->local_info_file_path, "w");
-    if (!fp) {
-        Log_e("open file %s failed", res_ctx->local_info_file_path);
+    fp = fopen(resource_ctx->resource_info_file_path, "w");
+    if (NULL == fp) {
+        Log_e("open file %s failed", STRING_PTR_PRINT_SANITY_CHECK(resource_ctx->resource_info_file_path));
         ret = QCLOUD_ERR_FAILURE;
         goto exit;
     }
 
-    wlen = HAL_FileWrite(data_buf, 1, strlen(data_buf), fp);
+    wlen = fwrite(data_buf, 1, strlen(data_buf), fp);
     if (wlen != strlen(data_buf)) {
         Log_e("save version to file err");
         ret = QCLOUD_ERR_FAILURE;
     }
 
 exit:
-    if (fp) {
-        HAL_FileClose(fp);
+
+    if (NULL != fp) {
+        fclose(fp);
     }
 
     return ret;
 }
 
-/* get local resource info */
-static int _get_local_resource_info(const char *file_path, char *local_version)
+static int _get_local_resource_info(char *file_name)
 {
     int  len;
     int  rlen;
     char json_doc[RESOURCE_INFO_FILE_DATA_LEN] = {0};
 
-    void *fp = HAL_FileOpen(file_path, "r");
-    if (!fp) {
-        Log_e("open file %s failed", file_path);
+    FILE *fp = fopen(file_name, "r");
+    if (NULL == fp) {
+        Log_e("open file %s failed", STRING_PTR_PRINT_SANITY_CHECK(file_name));
         return 0;
     }
 
-    HAL_FileSeek(fp, 0L, SEEK_END);
+    fseek(fp, 0L, SEEK_END);
     len = ftell(fp);
     if (len > RESOURCE_INFO_FILE_DATA_LEN) {
-        Log_e("%s is too big, pls check", file_path);
-        HAL_FileClose(fp);
+        Log_e("%s is too big, pls check", file_name);
+        fclose(fp);
         return 0;
     }
 
-    HAL_FileRewind(fp);
-    rlen = HAL_FileRead(json_doc, 1, len, fp);
+    rewind(fp);
+    rlen = fread(json_doc, 1, len, fp);
     if (len != rlen) {
         Log_e("read data len (%d) less than needed (%d), %s", rlen, len, json_doc);
-        HAL_FileClose(fp);
+        fclose(fp);
         return 0;
     }
 
-    char *version = LITE_json_value_of(KEY_VER, json_doc);
-    char *size    = LITE_json_value_of(KEY_SIZE, json_doc);
-
-    if ((!version) || (!size)) {
-        HAL_Free(version);
-        HAL_Free(size);
-        HAL_FileClose(fp);
+    char *size = LITE_json_value_of(KEY_SIZE, json_doc);
+    if ((NULL == size)) {
+        fclose(fp);
         return 0;
     }
 
@@ -307,428 +295,211 @@ static int _get_local_resource_info(const char *file_path, char *local_version)
 
     if (local_size <= 0) {
         Log_w("local info offset invalid: %d", local_size);
-        HAL_Free(version);
-        HAL_FileClose(fp);
-        return 0;
+        local_size = 0;
     }
 
-    strncpy(local_version, version, RESOURCE_VERSION_STR_LEN_MAX);
-    HAL_Free(version);
-    HAL_FileClose(fp);
+    fclose(fp);
     return local_size;
 }
 
-/* get local firmware offset for resuming download from break point */
-static int _update_resource_downloaded_size(ResourceContextData *res_ctx)
+static int _read_local_resource_data(char *file_name, uint32_t offset, char *buf, int len)
 {
-    int local_size = _get_local_resource_info(res_ctx->local_info_file_path, res_ctx->local_version);
+    FILE *fp  = fopen(file_name, "r");
+    int   ret = 0;
+    if (NULL == fp) {
+        Log_e("open file %s failed", STRING_PTR_PRINT_SANITY_CHECK(file_name));
+        return 0;
+    }
+
+    fseek(fp, offset, SEEK_SET);
+
+    ret = fread(buf, len, 1, fp);
+    if (1 != ret) {
+        Log_e("read data frome file failed, %s, %d, %d", file_name, offset, len);
+        fclose(fp);
+        return QCLOUD_ERR_FAILURE;
+    }
+    fclose(fp);
+
+    return 0;
+}
+
+static int _get_local_resource_size(char *file_name)
+{
+    FILE *fp = fopen(file_name, "r");
+    if (NULL == fp) {
+        Log_e("open file %s failed", STRING_PTR_PRINT_SANITY_CHECK(file_name));
+        return 0;
+    }
+
+    fseek(fp, 0L, SEEK_END);
+    int len = ftell(fp);
+
+    fclose(fp);
+    return len;
+}
+
+/* get local firmware offset for resuming download from break point */
+static int _update_resource_downloaded_size(ResourceContextData *resource_ctx)
+{
+    int local_size = _get_local_resource_info(resource_ctx->resource_info_file_path);
     if (local_size == 0) {
-        res_ctx->downloaded_size = 0;
+        resource_ctx->resource_downloaded_size = 0;
         return 0;
     }
 
-    if ((0 != strcmp(res_ctx->local_version, res_ctx->remote_version)) ||
-        (res_ctx->downloaded_size > res_ctx->file_size)) {
-        res_ctx->downloaded_size = 0;
+    if ((resource_ctx->resource_downloaded_size > resource_ctx->resource_size)) {
+        resource_ctx->resource_downloaded_size = 0;
         return 0;
     }
 
-    res_ctx->downloaded_size = local_size;
-    Log_i("calc MD5 for resuming download from offset: %d", res_ctx->downloaded_size);
-    int ret = _cal_exist_resource_md5(res_ctx);
+    resource_ctx->resource_downloaded_size = local_size;
+    Log_i("calc MD5 for resuming download from offset: %d", resource_ctx->resource_downloaded_size);
+    int ret = _cal_exist_resource_md5(resource_ctx);
     if (ret) {
-        Log_e("calculate MD5 error: %d", ret);
-        HAL_FileRemove(res_ctx->local_info_file_path);
-        res_ctx->downloaded_size = 0;
+        Log_e("regen resource MD5 error: %d", ret);
+        remove(resource_ctx->resource_info_file_path);
+        resource_ctx->resource_downloaded_size = 0;
         return 0;
     }
     Log_d("local MD5 update done!");
     return local_size;
 }
 
-/* delete file */
-static int _delete_file(const char *file_path)
+static int _delete_resource_info_file(char *file_name)
 {
-    return HAL_FileRemove(file_path);
+    return remove(file_name);
 }
 
-/* save data to file */
-static int _save_resource_data_to_file(const char *file_path, uint32_t offset, char *buf, int len)
+static int _save_resource_data_to_file(char *file_name, uint32_t offset, char *buf, int len)
 {
-    void *fp;
+    FILE *fp;
     if (offset > 0) {
-        if (NULL == (fp = HAL_FileOpen(file_path, "ab+"))) {
+        if (NULL == (fp = fopen(file_name, "ab+"))) {
             Log_e("open file failed");
             return QCLOUD_ERR_FAILURE;
         }
     } else {
-        if (NULL == (fp = HAL_FileOpen(file_path, "wb+"))) {
+        if (NULL == (fp = fopen(file_name, "wb+"))) {
             Log_e("open file failed");
             return QCLOUD_ERR_FAILURE;
         }
     }
 
-    HAL_FileSeek(fp, offset, SEEK_SET);
+    fseek(fp, offset, SEEK_SET);
 
-    if (1 != HAL_FileWrite(buf, len, 1, fp)) {
+    if (1 != fwrite(buf, len, 1, fp)) {
         Log_e("write data to file failed");
-        HAL_FileClose(fp);
+        fclose(fp);
         return QCLOUD_ERR_FAILURE;
     }
-    HAL_FileFlush(fp);
-    HAL_FileClose(fp);
+    fflush(fp);
+    fclose(fp);
 
     return 0;
-}
-
-/* get resource list from resource list file */
-static int _get_resource_list(const char *file_path, resInfo *res_info_list[], int *res_num)
-{
-    void *   fp = NULL;
-    char     line_buf[MAX_RESOURCE_LIST_ONE_LINE_LEN + 1];
-    char *   file_name;
-    char *   version;
-    char *   file_type;
-    resInfo *pInfo;
-    int      ret  = QCLOUD_ERR_FAILURE;
-    int      rlen = 0;
-
-    *res_num = 0;
-
-    fp = HAL_FileOpen(file_path, "r");
-    if (!fp) {
-        Log_e("open file %s fail", file_path);
-        return ret;
-    }
-
-    while (!HAL_FileEof(fp)) {
-        memset(line_buf, '\0', MAX_RESOURCE_LIST_ONE_LINE_LEN + 1);
-        rlen = HAL_FileRead(line_buf, 1, MAX_RESOURCE_LIST_ONE_LINE_LEN, fp);
-        if (0 == rlen) {
-            break;
-        }
-
-        file_name = LITE_json_value_of("resource_name", line_buf);
-        version   = LITE_json_value_of("version", line_buf);
-        file_type = LITE_json_value_of("resource_type", line_buf);
-
-        if (!file_name || !version || !file_type) {
-            HAL_Free(file_name);
-            HAL_Free(version);
-            HAL_Free(file_type);
-            continue;
-        } else if (0 == strcmp(version, "NULL")) {  // deleted resource
-            HAL_Free(file_name);
-            HAL_Free(version);
-            HAL_Free(file_type);
-            continue;
-        } else {
-            pInfo = (resInfo *)HAL_Malloc(sizeof(resInfo));
-            if (!pInfo) {
-                Log_e("malloc err");
-                HAL_Free(file_name);
-                HAL_Free(version);
-                HAL_Free(file_type);
-                goto exit;
-            }
-            pInfo->res_name         = file_name;
-            pInfo->res_ver          = version;
-            pInfo->res_type         = file_type;
-            res_info_list[*res_num] = pInfo;
-            (*res_num)++;
-        }
-    }
-
-    ret = QCLOUD_RET_SUCCESS;
-exit:
-    if (fp) {
-        HAL_FileClose(fp);
-    }
-    return ret;
-}
-
-/* update resource list when the resource has deleted or updated */
-static int _update_resource_list(const char *file_path, const char *resource_name, const char *version,
-                                 const char *type)
-{
-    FILE *   fp                = NULL;
-    bool     record_exist_flag = false;
-    char     line_buf[MAX_RESOURCE_LIST_ONE_LINE_LEN + 1];
-    char     new_line_buf[MAX_RESOURCE_LIST_ONE_LINE_LEN + 1];
-    uint32_t offset = 0;
-    int      ret    = QCLOUD_ERR_FAILURE;
-    int      rlen;
-
-    memset(new_line_buf, ' ', MAX_RESOURCE_LIST_ONE_LINE_LEN + 1);
-    HAL_Snprintf(new_line_buf, MAX_RESOURCE_LIST_ONE_LINE_LEN,
-                 "{\"resource_name\":\"%s\", \"version\":\"%s\", \"resource_type\":\"%s\"}", resource_name,
-                 (NULL == version) ? "NULL" : version, type);
-    new_line_buf[strlen(new_line_buf)]               = ' ';
-    new_line_buf[MAX_RESOURCE_LIST_ONE_LINE_LEN - 1] = '\n';
-
-    fp = access(file_path, 0) ? HAL_FileOpen(file_path, "w+") : HAL_FileOpen(file_path, "r+");
-    if (!fp) {
-        Log_e("open file %s fail", file_path);
-        return ret;
-    }
-
-    while (!HAL_FileEof(fp)) {
-        memset(line_buf, '\0', MAX_RESOURCE_LIST_ONE_LINE_LEN + 1);
-        rlen = HAL_FileRead(line_buf, 1, MAX_RESOURCE_LIST_ONE_LINE_LEN, fp);
-        if (strstr(line_buf, resource_name)) {
-            HAL_FileRewind(fp);
-            HAL_FileSeek(fp, offset, SEEK_SET);
-            HAL_FileWrite(new_line_buf, MAX_RESOURCE_LIST_ONE_LINE_LEN, 1, fp);
-            record_exist_flag = true;
-            break;
-        }
-        offset += rlen;
-    }
-
-    if (!record_exist_flag) {
-        HAL_FileRewind(fp);
-        HAL_FileSeek(fp, 0, SEEK_END);
-        HAL_FileWrite(new_line_buf, MAX_RESOURCE_LIST_ONE_LINE_LEN, 1, fp);
-    }
-    ret = QCLOUD_RET_SUCCESS;
-
-    if (fp) {
-        HAL_FileClose(fp);
-    }
-    return ret;
-}
-
-/* update resource list when the resource has deleted or updated */
-static int _recover_resource_list(const char *file_path, const char *resp, uint32_t len)
-{
-    int   ret      = QCLOUD_RET_SUCCESS;
-    char *res_list = LITE_json_value_of(KEY_RES_LIST, (char *)resp);
-
-    if (!res_list) {
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    Log_d("parse resource list:%s", res_list);
-
-    char *pNext;
-    char  TempBuff[MAX_RESOURCE_LIST_ONE_LINE_LEN + 1];
-    char  WriteBuff[MAX_RESOURCE_LIST_ONE_LINE_LEN + 1];
-
-    void *fp = HAL_FileOpen(file_path, "w+");
-    if (!fp) {
-        Log_e("open file %s fail", file_path);
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    pNext = (char *)strtok(res_list, "}");
-    while (pNext) {
-        memset(TempBuff, '\0', MAX_RESOURCE_LIST_ONE_LINE_LEN);
-        HAL_Snprintf(TempBuff, MAX_RESOURCE_LIST_ONE_LINE_LEN, "%s}", pNext);
-        char *pos = strchr(TempBuff, '{');
-        if (NULL == pos) {
-            if (NULL == strstr(TempBuff, "]}")) {
-                ret = QCLOUD_ERR_FAILURE;
-            }
-            break;
-        }
-        memset(WriteBuff, ' ', MAX_RESOURCE_LIST_ONE_LINE_LEN + 1);
-        HAL_Snprintf(WriteBuff, MAX_RESOURCE_LIST_ONE_LINE_LEN, "%s", pos);
-        WriteBuff[strlen(WriteBuff)]                  = ' ';
-        WriteBuff[MAX_RESOURCE_LIST_ONE_LINE_LEN - 1] = '\n';
-        HAL_FileWrite(WriteBuff, MAX_RESOURCE_LIST_ONE_LINE_LEN, 1, fp);
-        pNext = (char *)strtok(NULL, "}");
-    }
-
-    HAL_FileClose(fp);
-    if (QCLOUD_RET_SUCCESS != ret) {
-        HAL_FileRemove(file_path);
-    }
-    HAL_Free(res_list);
-    return ret;
 }
 
 /**********************************************************************************
  * resource file operations END
  **********************************************************************************/
 
-static int sg_resource_list_need_recover;
-
-static int _resource_event_usr_cb(void *pContext, const char *msg, uint32_t msgLen, IOT_RES_UsrEvent event)
+// main resource download cycle
+bool process_resource_download(void *ctx)
 {
-    int  ret = QCLOUD_RET_SUCCESS;
-    char local_info_file_path[RESOURCE_FILE_PATH_MAX_LEN];
+    bool                 download_finished      = false;
+    bool                 download_fetch_success = true;
+    char                 buf_download[RESOURCE_BUF_LEN];
+    int                  rc;
+    ResourceContextData *resource_ctx    = (ResourceContextData *)ctx;
+    void *               resource_handle = resource_ctx->resource_handle;
+    int                  packetid;
 
-    switch (event) {
-        case IOT_RES_EVENT_REPORT_VERSION_RESP:
-            // recover resource info list from this msg if needed
-            if (sg_resource_list_need_recover) {
-                Log_d("recover res info list: %.*s", msgLen, msg);
-                if (QCLOUD_RET_SUCCESS == _recover_resource_list(RESOURCE_FILE_LIST_PATH, msg, msgLen)) {
-                    sg_resource_list_need_recover = false;
-                    Log_d("recover local resource list success");
-                } else {
-                    Log_e("recover local resource list fail");
-                }
-            }
-            break;
-
-        case IOT_RES_EVENT_DEL_RESOURCE:
-            // when event is IOT_RES_EVENT_DEL_RESOURCE, msg is file name. More can see
-            // qcloud_resource_mqtt_del_resource
-            Log_d("to delete file %s", msg);
-			_delete_file(msg);
-            // also delete info file in case of download no finish
-            HAL_Snprintf(local_info_file_path, RESOURCE_FILE_PATH_MAX_LEN, "./%s_info.json", msg);
-            _delete_file(local_info_file_path);
-            _update_resource_list(RESOURCE_FILE_LIST_PATH, msg, NULL, TYPE_FILE_STR);
-            break;
-
-        default:
-            Log_d("event not supported");
-            break;
-    }
-
-    return ret;
-}
-
-static int _report_version(ResourceContextData *res_ctx)
-{
-    int      rc;
-    resInfo *res_info_list[RESOURCE_MAX_NUM] = {NULL};
-
-    int resNum = 0;
-    int i      = 0;
-
-    rc = _get_resource_list(res_ctx->resource_list_file_path, res_info_list, &resNum);
-    if (resNum == 0 || QCLOUD_RET_SUCCESS != rc) {
-        sg_resource_list_need_recover = true;
-        // report NULL and recover resourcelist form cloud
-        rc = IOT_Resource_ReportVersion(res_ctx->resource_handle, 0, NULL);
-    } else {
-        rc = IOT_Resource_ReportVersion(res_ctx->resource_handle, resNum, res_info_list);
-    }
-
-    // release memory of res_info_list
-    for (i = 0; i < resNum; i++) {
-        resInfo *pInfo = res_info_list[i];
-        if (!pInfo) {
-            continue;
-        }
-        HAL_Free(pInfo->res_name);
-        HAL_Free(pInfo->res_ver);
-        HAL_Free(pInfo->res_type);
-        HAL_Free(pInfo);
-    }
-
-    if (rc < 0) {
-        Log_e("report OTA version failed");
-        return QCLOUD_ERR_FAILURE;
-    }
-
-    return QCLOUD_RET_SUCCESS;
-}
-
-// main resource cycle
-bool process_resource(ResourceContextData *res_ctx)
-{
-    bool  download_finished     = false;
-    bool  upgrade_fetch_success = true;
-    char  buf_res[RESOURCE_BUF_LEN];
-    int   rc;
-    void *res_handle = res_ctx->resource_handle;
-
-    /* Must report version first */
-    if (QCLOUD_RET_SUCCESS != _report_version(res_ctx)) {
-        Log_e("report resource version failed");
-        return false;
-    }
+    packetid = IOT_Resource_GetDownloadTask(resource_handle);
+    _wait_for_download_pub_ack(resource_ctx, packetid);
 
     do {
-        IOT_MQTT_Yield(res_ctx->mqtt_client, 200);
+        IOT_MQTT_Yield(resource_ctx->mqtt_client, 200);
 
-        Log_i("wait for resource command...");
+        Log_i("wait for resource download command...");
 
         // recv the upgrade cmd
-        if (IOT_Resource_IsFetching(res_handle)) {
-            IOT_Resource_Ioctl(res_handle, IOT_RES_CMD_FILE_NAME, res_ctx->resource_name,
-                               sizeof(res_ctx->resource_name));
-            IOT_Resource_Ioctl(res_handle, IOT_RES_CMD_VERSION, res_ctx->remote_version,
-                               sizeof(res_ctx->remote_version));
-            IOT_Resource_Ioctl(res_handle, IOT_RES_CMD_FILE_TYPE, res_ctx->resource_type,
-                               sizeof(res_ctx->resource_type));
-            IOT_Resource_Ioctl(res_handle, IOT_RES_CMD_FILE_SIZE, &res_ctx->file_size, 4);
+        if (IOT_Resource_IsStartDownload(resource_handle)) {
+            IOT_Resource_DownloadIoctl(resource_handle, QCLOUD_IOT_RESOURCE_SIZE_E, &resource_ctx->resource_size,
+                                              4);
+            IOT_Resource_DownloadIoctl(resource_handle, QCLOUD_IOT_RESOURCE_NAME_E, resource_ctx->resource_name,
+                                              RESOURCE_NAME_MAX_LEN);
 
-            HAL_Snprintf(res_ctx->local_file_path, RESOURCE_FILE_PATH_MAX_LEN, "./%s", res_ctx->resource_name);
-            HAL_Snprintf(res_ctx->local_info_file_path, RESOURCE_FILE_PATH_MAX_LEN, "./%s_info.json",
-                         res_ctx->resource_name);
+            DeviceInfo *device_info = IOT_MQTT_GetDeviceInfo(resource_ctx->mqtt_client);
+
+            HAL_Snprintf(resource_ctx->resource_file_path, RESOURCE_PATH_MAX_LEN, "./download_%s_%s",
+                         STRING_PTR_PRINT_SANITY_CHECK(device_info->client_id),
+                         STRING_PTR_PRINT_SANITY_CHECK(resource_ctx->resource_name));
+            HAL_Snprintf(resource_ctx->resource_info_file_path, RESOURCE_PATH_MAX_LEN, "./download_%s.json",
+                         STRING_PTR_PRINT_SANITY_CHECK(device_info->client_id));
 
             /* check if pre-downloading finished or not */
-            /* if local resource downloaded size (res_ctx->downloaded_size) is not zero, it
-             * will do resuming download */
-            int local_offset = _update_resource_downloaded_size(res_ctx);
-            if (res_ctx->file_size == local_offset) {  // have already downloaded
-                upgrade_fetch_success = true;
-                goto end_of_download;
-            }
+            /* if local resource downloaded size (resource_ctx->downloaded_size) is not zero, it will do resuming
+             * download */
+            _update_resource_downloaded_size(resource_ctx);
 
             /*set offset and start http connect*/
-            rc = IOT_Resource_StartDownload(res_handle, res_ctx->downloaded_size, res_ctx->file_size);
+            rc = IOT_Resource_StartDownload(resource_handle, resource_ctx->resource_downloaded_size,
+                                                   resource_ctx->resource_size);
             if (QCLOUD_RET_SUCCESS != rc) {
-                Log_e("OTA download start err,rc:%d", rc);
-                upgrade_fetch_success = false;
+                Log_e("resource download start err,rc:%d", rc);
+                download_fetch_success = false;
                 break;
             }
 
-            // download and save the resource
+            // download and save the fw
             do {
-                int len = IOT_Resource_FetchYield(res_handle, buf_res, RESOURCE_BUF_LEN, 1);
+                int len = IOT_Resource_DownloadYield(resource_handle, buf_download, RESOURCE_BUF_LEN, 1);
                 if (len > 0) {
-                    rc = _save_resource_data_to_file(res_ctx->local_file_path, res_ctx->downloaded_size, buf_res, len);
+                    rc = _save_resource_data_to_file(resource_ctx->resource_file_path,
+                                                     resource_ctx->resource_downloaded_size, buf_download, len);
                     if (rc) {
                         Log_e("write data to file failed");
-                        upgrade_fetch_success = false;
+                        download_fetch_success = false;
                         break;
                     }
                 } else if (len < 0) {
                     Log_e("download fail rc=%d", len);
-                    upgrade_fetch_success = false;
+                    download_fetch_success = false;
                     break;
                 }
 
                 /* get resource information and update local info */
-                IOT_Resource_Ioctl(res_handle, IOT_RES_CMD_FETCHED_SIZE, &res_ctx->downloaded_size, 4);
-                rc = _update_local_resource_info(res_ctx);
+                IOT_Resource_DownloadIoctl(resource_handle, QCLOUD_IOT_RESOURCE_FETCHED_SIZE_E,
+                                                  &resource_ctx->resource_downloaded_size, 4);
+                rc = _update_local_resource_info(resource_ctx);
                 if (QCLOUD_RET_SUCCESS != rc) {
-                    Log_e("update local fw info err,rc:%d", rc);
+                    Log_e("update local resource info err,rc:%d", rc);
                 }
 
-                // quit resource process as something wrong with mqtt
-                rc = IOT_MQTT_Yield(res_ctx->mqtt_client, 100);
+                // quit resource download process as something wrong with mqtt
+                rc = IOT_MQTT_Yield(resource_ctx->mqtt_client, 100);
                 if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
                     Log_e("MQTT error: %d", rc);
                     return false;
                 }
-            } while (!IOT_OTA_IsFetchFinish(res_handle));
 
-        end_of_download:
+            } while (!IOT_Resource_IsDownloadFinish(resource_handle));
+
             /* Must check MD5 match or not */
-            if (upgrade_fetch_success) {
-                // download is finished, delete the resource info file
-                _delete_file(res_ctx->local_info_file_path);
+            if (download_fetch_success) {
+                // download is finished, delete the fw info file
+                _delete_resource_info_file(resource_ctx->resource_info_file_path);
 
-                uint32_t firmware_valid;
-                IOT_Resource_Ioctl(res_handle, IOT_RES_CMD_CHECK_FIRMWARE, &firmware_valid, 4);
-                if (0 == firmware_valid) {
-                    Log_e("The firmware is invalid");
-                    upgrade_fetch_success = false;
+                uint32_t resource_valid;
+                IOT_Resource_DownloadIoctl(resource_handle, QCLOUD_IOT_RESOURCE_MD5CHECK_E, &resource_valid, 4);
+                if (0 == resource_valid) {
+                    Log_e("The resource is invalid");
+                    download_fetch_success = false;
                 } else {
-                    Log_i("The firmware is valid");
-                    _update_resource_list(res_ctx->resource_list_file_path, res_ctx->resource_name,
-                                          res_ctx->remote_version, res_ctx->resource_type);
-                    upgrade_fetch_success = true;
+                    Log_i("The resource is valid");
+                    download_fetch_success = true;
                 }
             }
-
             download_finished = true;
         }
 
@@ -738,63 +509,196 @@ bool process_resource(ResourceContextData *res_ctx)
     } while (!download_finished);
 
     // do some post-download stuff for your need
-    IOT_Resource_ReportUpgradeBegin(res_handle);
 
     // report result
-    int packet_id;
-    if (upgrade_fetch_success) {
-        packet_id = IOT_Resource_ReportUpgradeSuccess(res_handle, NULL);
+    if (download_fetch_success) {
+        packetid = IOT_Resource_ReportDownloadSuccess(resource_handle, resource_ctx->resource_name);
     } else {
-        packet_id = IOT_Resource_ReportUpgradeFail(res_handle, NULL);
+        packetid = IOT_Resource_ReportDownloadFail(resource_handle, resource_ctx->resource_name);
+    }
+    _wait_for_download_pub_ack(resource_ctx, packetid);
+
+    return download_fetch_success;
+}
+
+bool process_resource_upload(void *ctx)
+{
+    bool                 upload_finished         = false;
+    bool                 upload_resource_success = true;
+    char                 buf_upload[RESOURCE_BUF_LEN];
+    int                  rc;
+    ResourceContextData *resource_ctx    = (ResourceContextData *)ctx;
+    void *               resource_handle = resource_ctx->resource_handle;
+    int                  resource_size;
+    int                  offset               = 0;
+    int                  readlen              = 0;
+    char *               upload_resource_name = "uploadtest";
+    char                 resource_md5[33]     = {0};
+    int                  packet_id;
+
+    resource_size = _get_local_resource_size(upload_resource_name);
+    if (resource_size <= 0) {
+        Log_e("file size is zero exit upload %s", upload_resource_name);
+        return false;
+    }
+    /* md5 calc */
+    offset  = 0;
+    readlen = 0;
+    IOT_Resource_UploadResetClientMD5(resource_handle);
+    while (offset < resource_size) {
+        readlen = RESOURCE_BUF_LEN > (resource_size - offset) ? (resource_size - offset) : RESOURCE_BUF_LEN;
+        rc      = _read_local_resource_data(upload_resource_name, offset, buf_upload, readlen);
+        if (rc) {
+            Log_e("read data from file failed");
+            upload_resource_success = false;
+            break;
+        }
+        IOT_Resource_UploadMd5Update(resource_handle, buf_upload, readlen);
+        offset += readlen;
     }
 
-    _wait_for_pub_ack(res_ctx, packet_id);
-    return upgrade_fetch_success;
-}
+    IOT_Resource_Upload_Md5_Finish(resource_handle, resource_md5);
+    offset  = 0;
+    readlen = 0;
 
-static int parse_arguments(int argc, char **argv)
-{
-    int c;
-    while ((c = utils_getopt(argc, argv, "c:l:")) != EOF) switch (c) {
-            case 'c':
-                if (HAL_SetDevInfoFile(utils_optarg))
-                    return -1;
+    /* request upload resource qos1 */
+    packet_id = IOT_Resource_Upload_Request(resource_handle, upload_resource_name, resource_size, resource_md5);
+    _wait_for_upload_pub_ack(resource_ctx, packet_id);
+
+    do {
+        IOT_MQTT_Yield(resource_ctx->mqtt_client, 200);
+
+        Log_i("wait for resource upload command...");
+
+        // recv the upload cmd
+        if (IOT_Resource_IsStartUpload(resource_handle)) {
+            /* start http connect ,send http header */
+            rc = IOT_Resource_StartUpload(resource_handle, buf_upload);
+            if (QCLOUD_RET_SUCCESS != rc) {
+                Log_e("resource upload start err,rc:%d", rc);
+                upload_resource_success = false;
                 break;
+            }
 
-            default:
-                HAL_Printf(
-                    "usage: %s [options]\n"
-                    "  [-c <config file for DeviceInfo>] \n",
-                    argv[0]);
-                return -1;
+            // upload and read the resource
+            readlen = RESOURCE_BUF_LEN > (resource_size - offset) ? (resource_size - offset) : RESOURCE_BUF_LEN;
+            rc      = _read_local_resource_data(upload_resource_name, offset, buf_upload, readlen);
+            if (rc) {
+                Log_e("read data from file failed");
+                upload_resource_success = false;
+                break;
+            }
+            do {
+                /* send resource data */
+                int len = IOT_Resource_UploadYield(resource_handle, buf_upload, readlen, 5);
+                if (len > 0) {
+                    offset += len;
+                    readlen = RESOURCE_BUF_LEN > (resource_size - offset) ? (resource_size - offset) : RESOURCE_BUF_LEN;
+                    if (readlen != 0) {
+                        rc = _read_local_resource_data(upload_resource_name, offset, buf_upload, readlen);
+                        if (rc) {
+                            Log_e("read data from file failed");
+                            upload_resource_success = false;
+                            break;
+                        }
+                    }
+                } else if (len < 0) {
+                    Log_e("upload fail rc=%d", len);
+                    upload_resource_success = false;
+                    break;
+                }
+
+                // quit resource upload process as something wrong with mqtt
+                rc = IOT_MQTT_Yield(resource_ctx->mqtt_client, 100);
+                if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
+                    Log_e("MQTT error: %d", rc);
+                    upload_resource_success = false;
+                    break;
+                }
+
+            } while (!IOT_Resource_IsUploadFinish(resource_handle));
+
+            /* Must check MD5 match or not */
+            if (upload_resource_success) {
+                uint32_t resource_valid;
+                IOT_Resource_UploadIoctl(resource_handle, QCLOUD_IOT_RESOURCE_MD5CHECK_E, &resource_valid, 4);
+                if (0 == resource_valid) {
+                    Log_e("The upload resource is invalid");
+                    upload_resource_success = false;
+                } else {
+                    Log_i("The upload resource is valid");
+                    upload_resource_success = true;
+                }
+            }
+            upload_finished = true;
         }
-    return 0;
+
+        if (!upload_finished)
+            HAL_SleepMs(1000);
+
+    } while (!upload_finished);
+
+    // report upload result
+    if (upload_resource_success) {
+        rc = IOT_Resource_ReportUploadSuccess(resource_handle, upload_resource_name);
+        if (rc != QCLOUD_RET_SUCCESS) {
+            Log_e("upload failed %d", rc);
+            upload_resource_success = false;
+        }
+    } else {
+        rc = IOT_Resource_ReportUploadFail(resource_handle, upload_resource_name);
+        if (rc != QCLOUD_RET_SUCCESS) {
+            Log_e("upload failed %d", rc);
+        }
+    }
+
+    return upload_resource_success;
 }
+
+#ifdef MULTITHREAD_ENABLED
+void resource_download_thread(void *ctx)
+{
+    ResourceContextData *resource_ctx = (ResourceContextData *)ctx;
+    resource_ctx->download_thread     = true;
+    while (false == process_resource_download(ctx)) {
+        HAL_SleepMs(10000);
+        Log_e("retry resource download");
+    }
+    Log_i("resource download success");
+    resource_ctx->download_thread = false;
+}
+
+void resource_upload_thread(void *ctx)
+{
+    ResourceContextData *resource_ctx = (ResourceContextData *)ctx;
+    resource_ctx->upload_thread       = true;
+    while (false == process_resource_upload(ctx)) {
+        HAL_SleepMs(10000);
+        Log_e("retry resource upload");
+    }
+    Log_i("resource upload success");
+    resource_ctx->upload_thread = false;
+}
+#endif
 
 int main(int argc, char **argv)
 {
     int                  rc;
-    ResourceContextData *res_ctx     = NULL;
-    void *               mqtt_client = NULL;
-    void *               res_handle  = NULL;
+    ResourceContextData *resource_ctx    = NULL;
+    void *               mqtt_client     = NULL;
+    void *               resource_handle = NULL;
 
+    Log_e("enter :%s-%s", __DATE__, __TIME__);
     IOT_Log_Set_Level(eLOG_DEBUG);
-	// parse arguments for device info file
-    rc = parse_arguments(argc, argv);
-    if (rc != QCLOUD_RET_SUCCESS) {
-        Log_e("parse arguments error, rc = %d", rc);
-        return rc;
-    }
-	
-    res_ctx = (ResourceContextData *)HAL_Malloc(sizeof(ResourceContextData));
-    if (res_ctx == NULL) {
+    resource_ctx = (ResourceContextData *)HAL_Malloc(sizeof(ResourceContextData));
+    if (resource_ctx == NULL) {
         Log_e("malloc failed");
         goto exit;
     }
-    memset(res_ctx, 0, sizeof(ResourceContextData));
-	
-	DeviceInfo sg_devInfo;
-    rc = HAL_GetDevInfo(&sg_devInfo);
+    memset(resource_ctx, 0, sizeof(ResourceContextData));
+
+    DeviceInfo device_info = {0};
+    rc                     = HAL_GetDevInfo((void *)&device_info);
     if (QCLOUD_RET_SUCCESS != rc) {
         Log_e("get device info failed: %d", rc);
         goto exit;
@@ -802,7 +706,7 @@ int main(int argc, char **argv)
 
     // setup MQTT init params
     MQTTInitParams init_params = DEFAULT_MQTTINIT_PARAMS;
-    rc                         = _setup_connect_init_params(&init_params, res_ctx, &sg_devInfo);
+    rc                         = _setup_connect_init_params(&init_params, resource_ctx, &device_info);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("init params err,rc=%d", rc);
         return rc;
@@ -810,25 +714,57 @@ int main(int argc, char **argv)
 
     // create MQTT mqtt_client and connect to server
     mqtt_client = IOT_MQTT_Construct(&init_params);
-    if (mqtt_client) {
+    if (mqtt_client != NULL) {
         Log_i("Cloud Device Construct Success");
     } else {
         Log_e("Cloud Device Construct Failed");
         return QCLOUD_ERR_FAILURE;
     }
 
-    // init OTA handle
-    res_handle = IOT_Resource_Init(sg_devInfo.product_id, sg_devInfo.device_name, mqtt_client, _resource_event_usr_cb, NULL);
-    if (!res_handle) {
-        Log_e("init resource client failed");
+    // init resource handle
+    resource_handle = IOT_Resource_Init(device_info.product_id, device_info.device_name, mqtt_client);
+    if (NULL == resource_handle) {
+        Log_e("initialize resource handle failed");
         goto exit;
     }
 
-    res_ctx->resource_handle = res_handle;
-    res_ctx->mqtt_client     = mqtt_client;
-    strcpy(res_ctx->resource_list_file_path, RESOURCE_FILE_LIST_PATH);
+    resource_ctx->resource_handle = resource_handle;
+    resource_ctx->mqtt_client     = mqtt_client;
 
-    bool resource_update_success;
+#ifdef MULTITHREAD_ENABLED
+    ThreadParams thread_params = {0};
+    thread_params.thread_func  = resource_download_thread;
+    thread_params.user_arg     = resource_ctx;
+    thread_params.thread_name  = "download_resource";
+
+    rc = HAL_ThreadCreate(&thread_params);
+    if (rc) {
+        Log_e("create resource download thread fail: %d", rc);
+        goto exit;
+    }
+
+    HAL_SleepMs(1000);
+
+    memset(&thread_params, 0, sizeof(thread_params));
+    thread_params.thread_func = resource_upload_thread;
+    thread_params.user_arg    = resource_ctx;
+    thread_params.thread_name = "upload_resource";
+
+    rc = HAL_ThreadCreate(&thread_params);
+    if (rc) {
+        Log_e("create resource upload thread fail: %d", rc);
+    }
+
+    HAL_SleepMs(1000);
+
+    IOT_MQTT_StartLoop(resource_ctx->mqtt_client);
+    while ((resource_ctx->download_thread == true) || (resource_ctx->upload_thread == true)) {
+        HAL_SleepMs(10000);
+    }
+    IOT_MQTT_StopLoop(resource_ctx->mqtt_client);
+#else
+    int download_success      = false;
+    int upload_success        = false;
     do {
         // mqtt should be ready first
         rc = IOT_MQTT_Yield(mqtt_client, 500);
@@ -840,17 +776,31 @@ int main(int argc, char **argv)
             break;
         }
 
-        // resource process
-        resource_update_success = process_resource(res_ctx);
-        if (!resource_update_success) {
-            Log_e("resource process failed! Do it again");
-            HAL_SleepMs(2000);
+        Log_e("resource upload enter");
+        if (download_success == false) {
+            upload_success = process_resource_upload(resource_ctx);
         }
-    } while (!resource_update_success);
+
+        HAL_SleepMs(5000);
+
+        Log_e("resource download enter");
+
+        if (download_success == false) {
+            download_success = process_resource_download(resource_ctx);
+        }
+
+        HAL_SleepMs(5000);
+    } while ((download_success == false) || (upload_success == false));
+#endif
 
 exit:
-    HAL_Free(res_ctx);
-    IOT_Resource_Destroy(res_handle);
+    HAL_Free(resource_ctx);
+
+    if (NULL != resource_handle) {
+        IOT_Resource_DeInit(resource_handle);
+    }
+
     IOT_MQTT_Destroy(&mqtt_client);
+
     return 0;
 }

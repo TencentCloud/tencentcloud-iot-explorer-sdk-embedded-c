@@ -40,7 +40,7 @@ typedef struct {
     HTTPClientData http_data; /* http client data */
 } HTTPUrlUploadHandle;
 
-void *qcloud_url_upload_init(const char *url, uint32_t content_len)
+void *qcloud_url_upload_init(const char *url, uint32_t content_len, char *custom_header)
 {
     POINTER_SANITY_CHECK(url, NULL);
 
@@ -60,11 +60,15 @@ void *qcloud_url_upload_init(const char *url, uint32_t content_len)
     }
     memset(handle->http.header, 0, HTTP_HEAD_CONTENT_LEN);
 
-    HAL_Snprintf(handle->http.header, HTTP_HEAD_CONTENT_LEN,
-                 "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
-                 "Content-Type: image/jpeg\r\n"
-                 "Content-Length: %d\r\n",
-                 content_len);
+    if (custom_header == NULL) {
+        HAL_Snprintf(handle->http.header, HTTP_HEAD_CONTENT_LEN,
+                     "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
+                     "Content-Type: image/jpeg\r\n"
+                     "Content-Length: %d\r\n",
+                     content_len);
+    } else {
+        HAL_Snprintf(handle->http.header, HTTP_HEAD_CONTENT_LEN, "%s", custom_header);
+    }
 
     // Log_d("head_content:%s", handle->http.header);
 
@@ -85,11 +89,12 @@ int32_t qcloud_url_upload_connect(void *handle, int method)
     int         port   = 80;
     const char *ca_crt = NULL;
 
+#ifndef AUTH_WITH_NOTLS
     if (strstr(pHandle->url, "https")) {
         port   = 443;
         ca_crt = iot_https_ca_get();
     }
-
+#endif
     pHandle->http_data.post_buf_len = 0;
     pHandle->http_data.post_buf     = NULL;  // only send head
     int rc =

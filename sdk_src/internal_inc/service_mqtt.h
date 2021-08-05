@@ -29,11 +29,13 @@ extern "C" {
 #define METHOD_RES_REQ_URL_RESP       "request_url_resp"
 #define METHOD_FACE_AI_REPLY          "call_service_reply"
 #define METHOD_UNBIND_DEVICE          "unbind_device"
+#define METHOD_UNBIND_DEVICE_REPLY    "unbind_device_reply"
 
 typedef enum {
     eSERVICE_RESOURCE   = 0,
     eSERVICE_FACE_AI    = 1,
     eSERVICE_UNBIND_DEV = 2,
+    eSERVICE_UNBIND_DEV_REPLY = 3,
     eSERVICE_DEFAULT    = 0xff
 } eServiceEvent;
 

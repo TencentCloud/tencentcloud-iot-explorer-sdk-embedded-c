@@ -35,6 +35,7 @@ static char sg_cert_file[PATH_MAX + 1];  // full path of device cert file
 static char sg_key_file[PATH_MAX + 1];   // full path of device key file
 #endif
 
+
 static MQTTEventType sg_subscribe_event_result = MQTT_EVENT_UNDEF;
 static bool          sg_control_msg_arrived    = false;
 static char          sg_data_report_buffer[2048];
@@ -51,6 +52,8 @@ typedef struct _ProductDataDefine {
 } ProductDataDefine;
 
 static   ProductDataDefine     sg_ProductData;
+static   DeviceInfo            sg_DeviceInfo;
+
 
 static void _init_data_template(void)
 {
@@ -118,11 +121,11 @@ static void _usr_init(void)
 }
 
 // Setup MQTT construct parameters
-static int _setup_connect_init_params(TemplateInitParams *initParams, DeviceInfo device_info)
+static int _setup_connect_init_params(TemplateInitParams *initParams, DeviceInfo *device_info)
 {
-    initParams->region      = device_info.region;
-    initParams->device_name = device_info.device_name;
-    initParams->product_id  = device_info.product_id;
+    initParams->region      = device_info->region;
+    initParams->device_name = device_info->device_name;
+    initParams->product_id  = device_info->product_id;
 
 #ifdef AUTH_MODE_CERT
     /* TLS with certs*/
@@ -139,7 +142,7 @@ static int _setup_connect_init_params(TemplateInitParams *initParams, DeviceInfo
     initParams->cert_file = sg_cert_file;
     initParams->key_file  = sg_key_file;
 #else
-    initParams->device_secret = device_info.device_secret;
+    initParams->device_secret = device_info->device_secret;
 #endif
 
     initParams->command_timeout        = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
@@ -293,7 +296,7 @@ static int find_wait_report_property(DeviceProperty *pReportDataList[])
 static int _resource_event_usr_cb(void *pContext, const char *msg, uint32_t msgLen, int event)
 {
     int  ret = QCLOUD_RET_SUCCESS;
-    Log_d("resource event %d", (IOT_RES_UsrEvent)event);
+    Log_d("resource event %d", (IOT_FILE_UsrEvent)event);
 
     return ret;
 }
@@ -358,7 +361,7 @@ int main(int argc, char **argv)
 	void         	*asr_client = NULL;
 
     // init log level
-    IOT_Log_Set_Level(eLOG_INFO);
+    IOT_Log_Set_Level(eLOG_DEBUG);
     // parse arguments for device info file
     rc = parse_arguments(argc, argv);
     if (rc != QCLOUD_RET_SUCCESS) {
@@ -366,8 +369,8 @@ int main(int argc, char **argv)
         return rc;
     }
 
-    DeviceInfo devInfo;
-    rc = HAL_GetDevInfo(&devInfo);
+    
+    rc = HAL_GetDevInfo(&sg_DeviceInfo);
     if (QCLOUD_RET_SUCCESS != rc) {
         Log_e("get device info failed: %d", rc);
         return rc;
@@ -375,7 +378,7 @@ int main(int argc, char **argv)
 
     // init connection
     TemplateInitParams init_params = DEFAULT_TEMPLATE_INIT_PARAMS;
-    rc                             = _setup_connect_init_params(&init_params, devInfo);
+    rc                             = _setup_connect_init_params(&init_params, &sg_DeviceInfo);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("init params err,rc=%d", rc);
         return rc;
@@ -432,7 +435,7 @@ int main(int argc, char **argv)
         Log_d("Get data status success");
     }
 
-    asr_client = IOT_Asr_Init(devInfo.product_id, devInfo.device_name, data_template_client, _resource_event_usr_cb);
+    asr_client = IOT_Asr_Init(sg_DeviceInfo.product_id, sg_DeviceInfo.device_name, data_template_client, _resource_event_usr_cb);
     if (asr_client == NULL) {
         Log_e("Asr client Construct Failed");
         goto exit;

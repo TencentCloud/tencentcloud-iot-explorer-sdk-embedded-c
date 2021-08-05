@@ -47,6 +47,13 @@ static uint16_t _get_random_start_packet_id(void)
     return rand() % 65536 + 1;
 }
 
+DeviceInfo *IOT_MQTT_GetDeviceInfo(void *pClient)
+{
+    POINTER_SANITY_CHECK(pClient, NULL);
+    Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
+    return &mqtt_client->device_info;
+}
+
 // currently return a constant value
 int IOT_MQTT_GetErrCode(void)
 {

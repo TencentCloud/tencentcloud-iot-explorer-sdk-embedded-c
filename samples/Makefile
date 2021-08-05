@@ -42,9 +42,9 @@ ifeq ($(FEATURE_AUTH_MODE),CERT)
 CFLAGS += -DAUTH_MODE_CERT
 endif
 
-.PHONY: ota_mqtt_sample resource_mqtt_sample data_template_sample asr_data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample wifi_config_sample
+.PHONY: ota_mqtt_sample resource_mqtt_sample data_template_sample file_mqtt_sample asr_data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample wifi_config_sample
 
-all: ota_mqtt_sample resource_mqtt_sample data_template_sample	asr_data_template_sample gateway_sample	mqtt_sample dynreg_dev_sample wifi_config_sample
+all: ota_mqtt_sample resource_mqtt_sample data_template_sample file_mqtt_sample	asr_data_template_sample gateway_sample	mqtt_sample dynreg_dev_sample wifi_config_sample
 
 
 ifneq (,$(filter -DOTA_COMM_ENABLED,$(CFLAGS)))
@@ -60,6 +60,15 @@ ifneq (,$(filter -DRESOURCE_UPDATE_ENABLED,$(CFLAGS)))
 resource_mqtt_sample:
 	$(TOP_Q) \
 	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/resource/$@.c $(LDFLAGS) -o $@
+
+	$(TOP_Q) \
+	mv $@ $(FINAL_DIR)/bin
+endif
+
+ifneq (,$(filter -DFILE_MANAGE_ENABLED, $(CFLAGS)))
+file_mqtt_sample:
+	$(TOP_Q) \
+	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/file_manage/$@.c $(LDFLAGS) -o $@
 
 	$(TOP_Q) \
 	mv $@ $(FINAL_DIR)/bin

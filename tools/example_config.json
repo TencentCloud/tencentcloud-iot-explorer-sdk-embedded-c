@@ -94,6 +94,20 @@
                 ]
             },
             "required": false
+        },
+        {
+            "id": "power",
+            "name": "功率",
+            "desc": "灯泡功率",
+            "mode": "rw",
+            "define": {
+                "type": "stringenum",
+                "mapping": {
+                    "high": "High",
+                    "medium": "Medium",
+                    "low": "Low"
+                }
+            }
         }
     ],
     "events": [

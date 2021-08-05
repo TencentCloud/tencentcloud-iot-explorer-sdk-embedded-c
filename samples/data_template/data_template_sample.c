@@ -343,7 +343,8 @@ static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
 
     /*self define info*/
     DeviceProperty self_info[] = {
-        {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"}, {.key = NULL, .data = NULL}  // end
+        {.key = "append_info", .type = TYPE_TEMPLATE_STRING, .data = "your self define info"},
+        {.key = NULL, .data = NULL}  // end
     };
 
     return IOT_Template_JSON_ConstructSysInfo(handle, pJsonDoc, sizeOfBuffer, plat_info, self_info);

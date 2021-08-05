@@ -58,12 +58,16 @@ typedef enum {
     eCOLOR_BLUE  = 2,
 } eColor;
 
+#define eCOLOR_STRING_RED   "red"
+#define eCOLOR_STRING_GREEN "green"
+#define eCOLOR_STRING_BLUE  "blue"
+
 typedef struct _ProductDataDefine {
-    TYPE_DEF_TEMPLATE_BOOL   m_light_switch;
-    TYPE_DEF_TEMPLATE_ENUM   m_color;
-    TYPE_DEF_TEMPLATE_INT    m_brightness;
-    TYPE_DEF_TEMPLATE_STRING m_name[MAX_STR_NAME_LEN + 1];
-    TYPE_DEF_TEMPLATE_OBJECT m_position;
+    TYPE_DEF_TEMPLATE_BOOL       m_light_switch;
+    TYPE_DEF_TEMPLATE_STRINGENUM m_color[MAX_STR_NAME_LEN + 1];
+    TYPE_DEF_TEMPLATE_INT        m_brightness;
+    TYPE_DEF_TEMPLATE_STRING     m_name[MAX_STR_NAME_LEN + 1];
+    TYPE_DEF_TEMPLATE_OBJECT     m_position;
 } ProductDataDefine;
 
 static ProductDataDefine sg_ProductData;
@@ -103,10 +107,13 @@ static void _init_data_template(void)
     sg_DataTemplate[0].data_property.data = &sg_ProductData.m_light_switch;
     sg_DataTemplate[0].data_property.type = TYPE_TEMPLATE_BOOL;
 
-    sg_ProductData.m_color                = eCOLOR_RED;
-    sg_DataTemplate[1].data_property.key  = "color";
-    sg_DataTemplate[1].data_property.data = &sg_ProductData.m_color;
-    sg_DataTemplate[1].data_property.type = TYPE_TEMPLATE_ENUM;
+    // sg_ProductData.m_color                = eCOLOR_RED;
+    strcpy(sg_ProductData.m_color, eCOLOR_STRING_RED);
+    sg_ProductData.m_color[strlen(eCOLOR_STRING_RED)] = '\0';
+    sg_DataTemplate[1].data_property.key              = "color";
+    sg_DataTemplate[1].data_property.data             = &sg_ProductData.m_color;
+    sg_DataTemplate[1].data_property.data_buff_len    = MAX_STR_NAME_LEN;
+    sg_DataTemplate[1].data_property.type             = TYPE_TEMPLATE_STRINGENUM;
 
     sg_ProductData.m_brightness           = 0;
     sg_DataTemplate[2].data_property.key  = "brightness";
@@ -143,6 +150,7 @@ static DeviceProperty           g_propertyEvent_status_report[] = {
 
     {.key = "status", .data = &sg_status, .type = TYPE_TEMPLATE_BOOL},
     {.key = "message", .data = sg_message, .type = TYPE_TEMPLATE_STRING},
+    {.key = "color", .data = sg_ProductData.m_color, .type = TYPE_TEMPLATE_STRINGENUM}
 };
 
 static TYPE_DEF_TEMPLATE_FLOAT sg_voltage;
@@ -250,9 +258,13 @@ static TYPE_DEF_TEMPLATE_INT sg_blink_in_period    = 5;
 static DeviceProperty        g_actionInput_blink[] = {
     {.key = "period", .data = &sg_blink_in_period, .type = TYPE_TEMPLATE_INT}};
 static TYPE_DEF_TEMPLATE_BOOL sg_blink_out_result    = 0;
+static TYPE_DEF_TEMPLATE_INT sg_blink_out_period = 0;
+static TYPE_DEF_TEMPLATE_STRINGENUM sg_blink_out_color[5+1]={0};
 static DeviceProperty         g_actionOutput_blink[] = {
 
     {.key = "result", .data = &sg_blink_out_result, .type = TYPE_TEMPLATE_BOOL},
+    {.key = "period", .data = &sg_blink_out_period, .type = TYPE_TEMPLATE_INT},
+    {.key = "color", .data = sg_blink_out_color, .type = TYPE_TEMPLATE_STRINGENUM}
 };
 
 static DeviceAction g_actions[] = {
@@ -299,7 +311,8 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
 
     DeviceProperty *pActionOutnput   = pAction->pOutput;
     *(int *)(pActionOutnput[0].data) = 0;  // set result
-
+    *(int *)(pActionOutnput[1].data) = period;
+    strcpy(pActionOutnput[2].data , sg_ProductData.m_color);
     IOT_Action_Reply(pClient, pClientToken, sg_data_report_buffer, sg_data_report_buffersize, pAction, &replyPara);
 }
 
@@ -527,7 +540,7 @@ static void deal_down_stream_user_logic(void *client, ProductDataDefine *light)
     char        brightness_bar[]   = "||||||||||||||||||||";
     int         brightness_bar_len = strlen(brightness_bar);
 
-    /* light color */
+    /* light color
     switch (light->m_color) {
         case eCOLOR_RED:
             ansi_color      = ANSI_COLOR_RED;
@@ -545,6 +558,20 @@ static void deal_down_stream_user_logic(void *client, ProductDataDefine *light)
             ansi_color      = ANSI_COLOR_YELLOW;
             ansi_color_name = "UNKNOWN";
             break;
+    }*/
+
+    if (!strcmp(light->m_color, eCOLOR_STRING_RED)) {
+        ansi_color      = ANSI_COLOR_RED;
+        ansi_color_name = " RED ";
+    } else if (!strcmp(light->m_color, eCOLOR_STRING_GREEN)) {
+        ansi_color      = ANSI_COLOR_GREEN;
+        ansi_color_name = "GREEN";
+    } else if (!strcmp(light->m_color, eCOLOR_STRING_BLUE)) {
+        ansi_color      = ANSI_COLOR_BLUE;
+        ansi_color_name = " BLUE";
+    } else {
+        ansi_color      = ANSI_COLOR_YELLOW;
+        ansi_color_name = "UNKNOWN";
     }
 
     /* light brightness bar */

@@ -37,6 +37,9 @@ FEATURE_OTA_COMM_ENABLED                = y
 # 是否打开资源管理总开关
 FEATURE_RESOURCE_UPDATE_ENABLED         = y
 
+# 是否打开文件管理总开关
+FEATURE_FILE_MANAGE_ENABLED             = y
+
 # 是否使能语音识别功能
 FEATURE_ASR_ENABLED        				= y
 
