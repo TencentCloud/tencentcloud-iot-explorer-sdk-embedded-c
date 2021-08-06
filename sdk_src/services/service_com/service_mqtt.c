@@ -38,10 +38,10 @@ typedef struct {
 static Service_Event_Struct_t sg_service_event_map[] = {{eSERVICE_RESOURCE, NULL, NULL},
                                                         {eSERVICE_FACE_AI, NULL, NULL},
                                                         {eSERVICE_UNBIND_DEV, NULL, NULL},
-                                                        {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL}};
+                                                        {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL},
+                                                        {eSERVICE_GATEWAY_AUTOMATION, NULL, NULL}};
 
 static char sg_service_pub_topic[MAX_SIZE_OF_CLOUD_TOPIC];
-
 
 /* gen service topic: "$thing/down/service/$(product_id)/$(device_name)" */
 static int _gen_service_mqtt_topic_info(const char *productId, const char *deviceName, char *sub_topic)
@@ -102,6 +102,10 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
     if (!strcmp(method, METHOD_RES_REPORT_VERSION_RSP) || !strcmp(method, METHOD_RES_UPDATE_RESOURCE) ||
         !strcmp(method, METHOD_RES_DELETE_RESOURCE) || !strcmp(method, METHOD_RES_REQ_URL_RESP)) {
         return eSERVICE_RESOURCE;
+    } else if ((0 == strncmp(method, METHOD_GATEWAY_AUTOMATION_SET, sizeof(METHOD_GATEWAY_AUTOMATION_SET) - 1)) ||
+               (0 == strncmp(method, METHOD_GATEWAY_AUTOMATION_DEL, sizeof(METHOD_GATEWAY_AUTOMATION_DEL) - 1)) ||
+               (0 == strncmp(method, METHOD_GATEWAY_AUTOMATION_LIST, sizeof(METHOD_GATEWAY_AUTOMATION_LIST) - 1))) {
+        return eSERVICE_GATEWAY_AUTOMATION;
     }
     Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));
     return eSERVICE_DEFAULT;
@@ -184,8 +188,6 @@ static void _service_mqtt_sub_event_handler(void *pClient, MQTTEventType event_t
     }
 }
 
-
-
 int qcloud_service_mqtt_init(const char *productId, const char *deviceName, void *mqtt_client)
 {
     int ret;
@@ -248,8 +250,6 @@ int qcloud_service_mqtt_event_register(eServiceEvent evt, OnServiceMessageCallba
 {
     return _set_service_event_handle(evt, callback, context);
 }
-
-
 
 #ifdef __cplusplus
 }

@@ -23,9 +23,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "qcloud_iot_export.h"
 #include "utils_getopt.h"
+#include "lite-utils.h"
+#include "json_parser.h"
 
 #define MAX_SIZE_OF_TOPIC (128)
 #define MAX_SIZE_OF_DATA  (128)
@@ -277,6 +280,721 @@ static void _property_topic_publish(void *pClient, const char *pid, const char *
     IOT_MQTT_Publish(pClient, topic, &pubParams);
 }
 
+#ifdef GATEWAY_AUTOMATION_ENABLED
+
+#define MAX_SIZE_OF_ALIAS_NAME     MAX_SIZE_OF_DEVICE_NAME
+#define MAX_SIZE_OF_ICON_URL       (128)
+#define MAX_SIZE_OF_PROPERTY_ID    MAX_SIZE_OF_DEVICE_NAME
+#define MAX_SIZE_OF_OP             (4)
+#define MAX_SIZE_OF_PROPERTY_VALUE (1024)
+#define MAX_SIZE_OF_AUTOMATION_ID  (64)
+#define MAX_SIZE_OF_CONDITION_ID   (64)
+#define MAX_SIZE_OF_ACTION_RESULT  (64)
+#define MAX_SIZE_OF_ACTION_DATA    (64)
+
+/* local automation action */
+/**
+struct tm {
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;
+    int tm_yday;
+    int tm_isdst;
+};
+*/
+static void _get_current_datetime(struct tm *time_value)
+{
+    time_t now;
+
+    time(&now);
+#ifdef WIN32
+    localtime_s(time_value, &now);
+#else
+    *time_value = *localtime(&now);
+#endif
+}
+
+typedef enum gateway_automation_action_type_e {
+    GATEWAY_AUTOMATION_ACTION_DEVICE_E = 0,
+    GATEWAY_AUTOMATION_ACTION_DELAY_E  = 1,
+    GATEWAY_AUTOMATION_ACTION_SCENE_E  = 2
+} GATEWAY_AUTOMATION_ACTION_TYPE_E;
+
+typedef struct gateway_automation_action {
+    GATEWAY_AUTOMATION_ACTION_TYPE_E e_action_type;
+    char                             product_id[MAX_SIZE_OF_PRODUCT_ID + 2];
+    char                             device_name[MAX_SIZE_OF_DEVICE_NAME];
+    char                             data[MAX_SIZE_OF_ACTION_DATA];
+    char                             result[MAX_SIZE_OF_ACTION_RESULT];
+} GATEWAY_AUTOMATION_ACTION_T;
+
+typedef enum gateway_automation_condition_type_e {
+    GATEWAY_AUTOMATION_CONDITION_PROPERTY_E = 0,
+    GATEWAY_AUTOMATION_CONDITION_TIMER_E    = 1,
+} GATEWAY_AUTOMATION_CONDITION_TYPE_E;
+
+typedef struct {
+    char product_id[MAX_SIZE_OF_PRODUCT_ID + 2];
+    char device_name[MAX_SIZE_OF_DEVICE_NAME];
+    char alias_name[MAX_SIZE_OF_ALIAS_NAME];
+    char icon_url[MAX_SIZE_OF_ICON_URL];
+    char property_id[MAX_SIZE_OF_PROPERTY_ID];
+    char op[MAX_SIZE_OF_OP];  // eq ne gt lt ge le
+    char value[MAX_SIZE_OF_PROPERTY_VALUE];
+} GATEWAY_AUTOMATION_CONDITION_PROPERTY_T;
+
+typedef struct {
+    char week_days[7];   // 0 is off, 1 is on, 7 1 2 3 4 5 6
+    int  time_point[2];  // start time point
+    bool checked;
+    int  expire;
+} GATEWAY_AUTOMATION_CONDITION_TIMER_T;
+
+typedef struct gateway_automation_condition {
+    char                                cond_id[MAX_SIZE_OF_CONDITION_ID];
+    GATEWAY_AUTOMATION_CONDITION_TYPE_E cond_type;  // 0 device_property cond; 1 timer cond
+    union {
+        GATEWAY_AUTOMATION_CONDITION_PROPERTY_T property;
+        GATEWAY_AUTOMATION_CONDITION_TIMER_T    timer;
+    } condition_timerproperty;
+} GATEWAY_AUTOMATION_CONDITION_T;
+
+#define GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT    10
+#define GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT 10
+#define GATEWAY_AUTOMATION_MAXCOUNT            5
+
+typedef struct gateway_local_automation {
+    char                           automation_id[MAX_SIZE_OF_AUTOMATION_ID];
+    int                            status;           // off is 0, on is 1
+    int                            cond_match_type;  // 0 is all conds, 1 is one of conds
+    int                            effective_begintime[2];
+    int                            effective_endtime[2];
+    char                           effective_days[7];  // 0 is off, 1 is on, 7 1 2 3 4 5 6
+    GATEWAY_AUTOMATION_ACTION_T    actions[GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT];
+    GATEWAY_AUTOMATION_CONDITION_T conditions[GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT];
+} GATEWAY_LOCAL_AUTOMATION_T;
+
+static GATEWAY_LOCAL_AUTOMATION_T sg_automation[GATEWAY_AUTOMATION_MAXCOUNT];
+static char                       sg_automation_log_buf[1024];
+
+static void _gateway_local_automation_del_conds(
+    GATEWAY_AUTOMATION_CONDITION_T cond[GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT])
+{
+    for (int i = 0; i < GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT; i++) {
+        if (cond[i].cond_id[0] == 0) {
+            continue;
+        }
+        memset(&cond[i], 0, sizeof(cond[i]));
+    }
+}
+
+static int _getway_local_automation_conds_init(
+    GATEWAY_AUTOMATION_CONDITION_T cond[GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT], int index, char *jsondoc)
+{
+    int   rc          = QCLOUD_RET_SUCCESS;
+    char *product_id  = NULL;
+    char *device_name = NULL;
+    char *alias_name  = NULL;
+    char *icon_url    = NULL;
+    char *property_id = NULL;
+    char *op          = NULL;
+    char *value       = NULL;
+    char *week_days   = NULL;
+    char *time_point  = NULL;
+    char *expire_time = NULL;
+    // proc
+    char *cond_id   = LITE_json_value_of("CondId", jsondoc);
+    char *cond_type = LITE_json_value_of("CondType", jsondoc);
+    if (cond_id == NULL || cond_type == NULL) {
+        HAL_Free(cond_id);
+        HAL_Free(cond_type);
+        rc = QCLOUD_ERR_FAILURE;
+        goto exit;
+    }
+    strncpy(cond[index].cond_id, cond_id, sizeof(cond[index].cond_id));
+    cond[index].cond_type = atoi(cond_type);
+    if (cond[index].cond_type == GATEWAY_AUTOMATION_CONDITION_PROPERTY_E) {
+        product_id  = LITE_json_value_of("Property.ProductId", jsondoc);
+        device_name = LITE_json_value_of("Property.DeviceName", jsondoc);
+        alias_name  = LITE_json_value_of("Property.AliasName", jsondoc);
+        icon_url    = LITE_json_value_of("Property.IconUrl", jsondoc);
+        property_id = LITE_json_value_of("Property.PropertyId", jsondoc);
+        op          = LITE_json_value_of("Property.Op", jsondoc);
+        value       = LITE_json_value_of("Property.Value", jsondoc);
+        if (product_id == NULL || device_name == NULL || property_id == NULL || op == NULL || value == NULL) {
+            memset(cond[index].cond_id, 0, sizeof(cond[index].cond_id));
+            rc = QCLOUD_ERR_FAILURE;
+            goto exit;
+        } else {
+            strncpy(cond[index].condition_timerproperty.property.product_id, product_id,
+                    sizeof(cond[index].condition_timerproperty.property.product_id));
+            strncpy(cond[index].condition_timerproperty.property.device_name, device_name,
+                    sizeof(cond[index].condition_timerproperty.property.device_name));
+            if (alias_name) {
+                strncpy(cond[index].condition_timerproperty.property.alias_name, alias_name,
+                        sizeof(cond[index].condition_timerproperty.property.alias_name));
+            }
+            if (icon_url) {
+                strncpy(cond[index].condition_timerproperty.property.icon_url, icon_url,
+                        sizeof(cond[index].condition_timerproperty.property.icon_url));
+            }
+
+            strncpy(cond[index].condition_timerproperty.property.property_id, property_id,
+                    sizeof(cond[index].condition_timerproperty.property.property_id));
+            strncpy(cond[index].condition_timerproperty.property.op, op,
+                    sizeof(cond[index].condition_timerproperty.property.op));
+            strncpy(cond[index].condition_timerproperty.property.value, value,
+                    sizeof(cond[index].condition_timerproperty.property.value));
+        }
+
+    } else if (cond[index].cond_type == GATEWAY_AUTOMATION_CONDITION_TIMER_E) {
+        week_days   = LITE_json_value_of("Timer.Days", jsondoc);
+        time_point  = LITE_json_value_of("Timer.TimePoint", jsondoc);
+        expire_time = LITE_json_value_of("Timer.Expire", jsondoc);
+        if (week_days != NULL && time_point != NULL) {
+            sscanf(time_point, "%02d:%02d", &cond[index].condition_timerproperty.timer.time_point[0],
+                   &cond[index].condition_timerproperty.timer.time_point[1]);
+            strncpy(cond[index].condition_timerproperty.timer.week_days, week_days,
+                    sizeof(cond[index].condition_timerproperty.timer.week_days));
+            if (expire_time != NULL) {
+                cond[index].condition_timerproperty.timer.expire = atoi(expire_time);
+            }
+        } else {
+            rc = QCLOUD_ERR_FAILURE;
+        }
+
+    } else {
+        Log_e("cond type error %s", cond_type);
+        rc = QCLOUD_ERR_FAILURE;
+    }
+
+exit:
+    HAL_Free(product_id);
+    HAL_Free(device_name);
+    HAL_Free(alias_name);
+    HAL_Free(icon_url);
+    HAL_Free(property_id);
+    HAL_Free(op);
+    HAL_Free(value);
+    HAL_Free(cond_id);
+    HAL_Free(cond_type);
+    HAL_Free(week_days);
+    HAL_Free(time_point);
+    HAL_Free(expire_time);
+    return rc;
+}
+
+static void _gateway_local_automation_set_conds(
+    char *conds_str, GATEWAY_AUTOMATION_CONDITION_T cond[GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT])
+{
+    char *pos        = NULL;
+    char *entry      = NULL;
+    int   entry_len  = 0;
+    int   entry_type = 0;
+    char  old_ch     = 0;
+
+    int cond_count = 0;
+    json_array_for_each_entry(conds_str, pos, entry, entry_len, entry_type)
+    {
+        if (cond_count >= GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT) {
+            break;
+        }
+
+        if (!entry)
+            continue;
+        backup_json_str_last_char(entry, entry_len, old_ch);
+        Log_d("conds :%s", entry);
+        // proc
+        if (_getway_local_automation_conds_init(cond, cond_count, entry) != QCLOUD_RET_SUCCESS) {
+            Log_e("parse json array error. ");
+            break;
+        }
+
+        cond_count++;
+
+        restore_json_str_last_char(entry, entry_len, old_ch);
+    }
+}
+
+static void _gateway_local_automation_del_actions(
+    GATEWAY_AUTOMATION_ACTION_T action[GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT])
+{
+    for (int i = 0; i < GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT; i++) {
+        action[i].e_action_type = 0;
+        memset(&action[i], 0, sizeof(action[i]));
+    }
+}
+
+static void _gateway_local_automation_set_actions(
+    char *actions_str, GATEWAY_AUTOMATION_ACTION_T action[GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT])
+{
+    char *pos        = NULL;
+    char *entry      = NULL;
+    int   entry_len  = 0;
+    int   entry_type = 0;
+    char  old_ch     = 0;
+
+    int action_count = 0;
+    json_array_for_each_entry(actions_str, pos, entry, entry_len, entry_type)
+    {
+        if (action_count >= GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT) {
+            break;
+        }
+
+        if (!entry)
+            continue;
+        backup_json_str_last_char(entry, entry_len, old_ch);
+        Log_d("actions :%s", entry);
+        // proc
+        char *data        = LITE_json_value_of("Data", entry);
+        char *action_type = LITE_json_value_of("ActionType", entry);
+        char *product_id  = LITE_json_value_of("ProductId", entry);
+        char *device_name = LITE_json_value_of("DeviceName", entry);
+
+        if (data == NULL || action_type == NULL) {
+            HAL_Free(data);
+            HAL_Free(action_type);
+            continue;
+        }
+        strncpy(action[action_count].data, data, sizeof(action[action_count].data));
+        action[action_count].e_action_type = atoi(action_type);
+        switch (action[action_count].e_action_type) {
+            case GATEWAY_AUTOMATION_ACTION_DEVICE_E: {
+                if (product_id) {
+                    strncpy(action[action_count].product_id, product_id, sizeof(action[action_count].product_id));
+                }
+                if (device_name) {
+                    strncpy(action[action_count].device_name, device_name, sizeof(action[action_count].device_name));
+                }
+            } break;
+
+            default:
+                break;
+        }
+
+        action_count++;
+
+        HAL_Free(data);
+        HAL_Free(action_type);
+        HAL_Free(product_id);
+        HAL_Free(device_name);
+
+        restore_json_str_last_char(entry, entry_len, old_ch);
+    }
+}
+
+static int _gateway_local_automation_delete(char *automation_id, void *user_data)
+{
+    GATEWAY_LOCAL_AUTOMATION_T *automation = NULL;
+
+    for (int i = 0; i < sizeof(sg_automation) / sizeof(GATEWAY_LOCAL_AUTOMATION_T); i++) {
+        if ((0 != sg_automation[i].automation_id[0]) && (0 == strcmp(automation_id, sg_automation[i].automation_id))) {
+            automation = &sg_automation[i];
+            break;
+        }
+    }
+
+    if (automation == NULL) {
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    _gateway_local_automation_del_actions(automation->actions);
+    _gateway_local_automation_del_conds(automation->conditions);
+
+    memset(automation, 0, sizeof(GATEWAY_LOCAL_AUTOMATION_T));
+
+    return QCLOUD_RET_SUCCESS;
+}
+
+static int _gateway_local_automation_set(char *automation_id, int mation_status, char *params, void *user_data)
+{
+    GATEWAY_LOCAL_AUTOMATION_T *automation = NULL;
+
+    if (automation_id == NULL || params == NULL) {
+        return QCLOUD_ERR_INVAL;
+    }
+
+    _gateway_local_automation_delete(automation_id, user_data);
+
+    for (int i = 0; i < sizeof(sg_automation) / sizeof(GATEWAY_LOCAL_AUTOMATION_T); i++) {
+        if (sg_automation[i].automation_id[0] == 0) {
+            automation = &sg_automation[i];
+            break;
+        }
+    }
+
+    if (automation == NULL) {
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    memset(automation, 0, sizeof(GATEWAY_LOCAL_AUTOMATION_T));
+
+    strcpy(automation->automation_id, automation_id);
+
+    char *actions    = LITE_json_value_of("actions", params);
+    char *conditions = LITE_json_value_of("conditions", params);
+
+    char *match_type            = LITE_json_value_of("matchType", params);
+    automation->cond_match_type = atoi(match_type);
+
+    char *effective_begintime = LITE_json_value_of("effectiveBeginTime", params);
+    char *effective_endtime   = LITE_json_value_of("effectiveEndTime", params);
+    char *effective_days      = LITE_json_value_of("effectiveDays", params);
+
+    sscanf(effective_begintime, "%02d:%02d", (int *)&automation->effective_begintime[0],
+           (int *)&automation->effective_begintime[1]);
+    sscanf(effective_endtime, "%02d:%02d", (int *)&automation->effective_endtime[0],
+           (int *)&automation->effective_endtime[1]);
+    strncpy(automation->effective_days, effective_days, sizeof(automation->effective_days));
+
+    _gateway_local_automation_set_actions(actions, automation->actions);
+    _gateway_local_automation_set_conds(conditions, automation->conditions);
+
+    automation->status = mation_status;
+
+    HAL_Free(match_type);
+    HAL_Free(effective_begintime);
+    HAL_Free(effective_endtime);
+    HAL_Free(effective_days);
+    HAL_Free(actions);
+    HAL_Free(conditions);
+
+    return QCLOUD_RET_SUCCESS;
+}
+
+static void _gateway_local_automation_report_log(void *clent, GATEWAY_LOCAL_AUTOMATION_T *automation)
+{
+    char *log_json_str = "{\"code\":0,\"result\":\"success\",\"reportTime\":%d,\"actionResults\":[";
+
+    int   remain_len = 1024;
+    char *log_point  = HAL_Malloc(1024);
+    if (NULL == log_point) {
+        Log_e("malloc failed");
+        return;
+    }
+
+    char *log_json = log_point;
+    int   json_len = HAL_Snprintf(log_json, remain_len, log_json_str, HAL_Timer_current_sec());
+    remain_len -= json_len;
+    log_json += json_len;
+
+    for (int i = 0; i < GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT; i++) {
+        if (0 == automation->actions[i].data[0]) {
+            continue;
+        }
+
+        if (automation->actions[i].e_action_type == GATEWAY_AUTOMATION_ACTION_DEVICE_E) {
+            json_len =
+                HAL_Snprintf(log_json, remain_len, "{\"productId\":\"%s\",\"deviceName\":\"%s\",\"result\":\"%s\"},",
+                             automation->actions[i].product_id, automation->actions[i].device_name,
+                             automation->actions[i].result == NULL ? "success" : automation->actions[i].result);
+        } else {
+            json_len = HAL_Snprintf(log_json, remain_len, "{\"result\":\"%s\"},",
+                                    automation->actions[i].result == NULL ? "success" : automation->actions[i].result);
+        }
+
+        remain_len -= json_len;
+        log_json += json_len;
+    }
+
+    if (',' != *(log_json - 1)) {
+        HAL_Free(log_point);
+        return;
+    }
+
+    log_json -= 1;
+    remain_len += 1;
+    json_len = HAL_Snprintf(log_json, remain_len, "]}");
+    remain_len -= json_len;
+    log_json += json_len;
+
+    json_len = IOT_Gateway_LocalAutoMationLogCreate(sg_automation_log_buf, sizeof(sg_automation_log_buf) - 1, clent,
+                                                    automation->automation_id, log_point);
+
+    if (QCLOUD_RET_SUCCESS != IOT_Gateway_LocalAutoMationReportLog(clent, sg_automation_log_buf, json_len)) {
+        Log_e("report log error, automationid:%s", automation->automation_id);
+    } else {
+        Log_e("report log success, automationid:%s", automation->automation_id);
+    }
+
+    HAL_Free(log_point);
+}
+
+typedef struct {
+    char *product_id;
+    char *device_name;
+    char *property_id;
+    int   value;
+} GATEWAY_AUTOMATION_PROPERTY_T;
+
+static GATEWAY_AUTOMATION_PROPERTY_T sg_automation_property[] = {
+    {NULL, NULL, "brightness", 10},
+    {NULL, NULL, "power_switch", 1},
+    {NULL, NULL, "color", 0},
+};
+
+static void _gateway_set_device_property(char *product_id, char *device_name)
+{
+    for (int i = 0; i < sizeof(sg_automation_property) / sizeof(GATEWAY_AUTOMATION_PROPERTY_T); i++) {
+        if (sg_automation_property[i].product_id == NULL) {
+            sg_automation_property[i].product_id  = product_id;
+            sg_automation_property[i].device_name = device_name;
+            break;
+        }
+    }
+}
+
+static void _gateway_automation_set_device_allproperty(void)
+{
+    for (int i = 0; i < sizeof(sg_automation_property) / sizeof(GATEWAY_AUTOMATION_PROPERTY_T); i++) {
+        sg_automation_property[i].value = ~(sg_automation_property[i].value);
+    }
+}
+
+static bool _gateway_local_automation_cond_property(GATEWAY_AUTOMATION_CONDITION_PROPERTY_T *property_cond)
+{
+    bool                           result   = false;
+    GATEWAY_AUTOMATION_PROPERTY_T *property = NULL;
+
+    for (int i = 0; i < sizeof(sg_automation_property) / sizeof(GATEWAY_AUTOMATION_PROPERTY_T); i++) {
+        if (0 == strcmp(sg_automation_property[i].property_id, property_cond->property_id) &&
+            0 == strcmp(sg_automation_property[i].product_id, property_cond->product_id) &&
+            0 == strcmp(sg_automation_property[i].device_name, property_cond->device_name)) {
+            property = &sg_automation_property[i];
+        }
+    }
+
+    if (property == NULL) {
+        // Log_e("error property cond %s ,%s ,%s", property_cond->product_id, property_cond->device_name,
+        //      property_cond->property_id);
+        return false;
+    }
+    if (0 == strcmp("eq", property_cond->op)) {
+        if (property->value == atoi(property_cond->value)) {
+            result = true;
+            Log_d("property id :%s, vlaue:%d, op:%s", property->property_id, property->value, property_cond->op);
+        }
+    } else if (0 == strcmp("ne", property_cond->op)) {
+        if (property->value != atoi(property_cond->value)) {
+            result = true;
+            Log_d("property id :%s, vlaue:%d, op:%s", property->property_id, property->value, property_cond->op);
+        }
+    } else if (0 == strcmp("gt", property_cond->op)) {
+        if (property->value > atoi(property_cond->value)) {
+            result = true;
+            Log_d("property id :%s, vlaue:%d, op:%s", property->property_id, property->value, property_cond->op);
+        }
+
+    } else if (0 == strcmp("lt", property_cond->op)) {
+        if (property->value < atoi(property_cond->value)) {
+            result = true;
+            Log_d("property id :%s, vlaue:%d, op:%s", property->property_id, property->value, property_cond->op);
+        }
+
+    } else if (0 == strcmp("ge", property_cond->op)) {
+        if (property->value >= atoi(property_cond->value)) {
+            result = true;
+            Log_d("property id :%s, vlaue:%d, op:%s", property->property_id, property->value, property_cond->op);
+        }
+
+    } else if (0 == strcmp("le", property_cond->op)) {
+        if (property->value <= atoi(property_cond->value)) {
+            result = true;
+            Log_d("property id :%s, vlaue:%d, op:%s", property->property_id, property->value, property_cond->op);
+        }
+
+    } else {
+        Log_e("op error :%s", property_cond->op);
+    }
+
+    return result;
+}
+
+static bool _gateway_local_automation_cond_timer(GATEWAY_AUTOMATION_CONDITION_TIMER_T *timer_cond)
+{
+    int timestamp = HAL_Timer_current_sec();
+    if ((timer_cond->expire != 0) && (timestamp > timer_cond->expire)) {
+        return false;
+    }
+
+    struct tm time_value;
+    _get_current_datetime(&time_value);
+
+    if (timer_cond->week_days[time_value.tm_wday] == '0' && timer_cond->expire == 0) {
+        return false;
+    }
+
+    if ((time_value.tm_hour == timer_cond->time_point[0]) && (time_value.tm_min == timer_cond->time_point[1])) {
+        // one minute only one time
+        if (timer_cond->checked == false) {
+            Log_d("time point");
+            timer_cond->checked = true;
+            return true;
+        }
+    } else {
+        timer_cond->checked = false;
+    }
+
+    return false;
+}
+
+static bool _gateway_local_automation_cond_check(
+    int match_type, GATEWAY_AUTOMATION_CONDITION_T conds[GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT])
+{
+    bool cond_result      = false;
+    bool result           = false;
+    int  cond_valid_count = 0;
+
+    // set cond init value
+    cond_result = match_type == 0 ? true : false;
+
+    for (int i = 0; i < GATEWAY_AUTOMATION_CONDITIONS_MAXCOUNT; i++) {
+        if (conds[i].cond_id == NULL) {
+            continue;
+        }
+
+        cond_valid_count++;
+        if (conds[i].cond_type == GATEWAY_AUTOMATION_CONDITION_PROPERTY_E) {
+            // device property compare
+            result = _gateway_local_automation_cond_property(&(conds[i].condition_timerproperty.property));
+        }
+        if (conds[i].cond_type == GATEWAY_AUTOMATION_CONDITION_TIMER_E) {
+            // device timer compare
+            result = _gateway_local_automation_cond_timer(&(conds[i].condition_timerproperty.timer));
+        }
+        if (match_type == 0) {
+            cond_result &= result;
+        }
+
+        if (match_type == 1) {
+            cond_result |= result;
+        }
+    }
+
+    if (cond_valid_count == 0) {
+        cond_result = true;
+    }
+
+    return cond_result;
+}
+
+static int _gateway_local_automation_action_execution(
+    GATEWAY_AUTOMATION_ACTION_T actions[GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT])
+{
+    for (int i = 0; i < GATEWAY_AUTOMATION_ACTIONS_MAXCOUNT; i++) {
+        if (actions[i].data == NULL) {
+            continue;
+        }
+        strncpy(actions[i].result, "failed", sizeof(actions[i].result));
+
+        if (actions[i].e_action_type == GATEWAY_AUTOMATION_ACTION_DEVICE_E) {
+            // to do something for device property
+            int data_len = 0;
+            int position = 0;
+            while (((char *)actions[i].data)[data_len] != '\0') {
+                if (((char *)actions[i].data)[data_len] == '\\') {
+                    data_len++;
+                    continue;
+                }
+                ((char *)(actions[i].data))[position] = ((char *)(actions[i].data))[data_len];
+                position++;
+                data_len++;
+            }
+            ((char *)(actions[i].data))[position]   = '\0';
+            GATEWAY_AUTOMATION_PROPERTY_T *property = NULL;
+            for (int j = 0; j < sizeof(sg_automation_property) / sizeof(GATEWAY_AUTOMATION_PROPERTY_T); j++) {
+                if (0 == strcmp(sg_automation_property[j].product_id, actions[i].product_id) &&
+                    0 == strcmp(sg_automation_property[j].device_name, actions[i].device_name)) {
+                    property    = &sg_automation_property[j];
+                    char *value = LITE_json_value_of(property->property_id, (char *)actions[i].data);
+                    if (value != NULL) {
+                        property->value = atoi(value);
+                        HAL_Free(value);
+                        value = NULL;
+                        strncpy(actions[i].result, "success", sizeof(actions[i].result));
+                        Log_d("set %s-%s property id %s, value :%d", property->product_id, property->device_name,
+                              property->property_id, property->value);
+                    }
+                }
+            }
+        }
+
+        if (actions[i].e_action_type == GATEWAY_AUTOMATION_ACTION_DELAY_E) {
+            int delay_time = atoi(actions[i].data);
+            strncpy(actions[i].result, "success", sizeof(actions[i].result));
+            Log_d("delay_time :%d, to do delay task", delay_time);
+
+            _gateway_automation_set_device_allproperty();
+        }
+
+        if (actions[i].e_action_type == GATEWAY_AUTOMATION_ACTION_SCENE_E) {
+            int scene_id = atoi(actions[i].data);
+            strncpy(actions[i].result, "success", sizeof(actions[i].result));
+            Log_d("scene id :%d, to do something", scene_id);
+        }
+    }
+
+    return QCLOUD_RET_SUCCESS;
+}
+
+static int _gateway_local_automation_execution(void *client, GATEWAY_LOCAL_AUTOMATION_T *automation)
+{
+    if (automation->status == 0) {
+        return QCLOUD_RET_SUCCESS;
+    }
+
+    struct tm time_value;
+    _get_current_datetime(&time_value);
+
+    if (automation->effective_days[time_value.tm_wday] == '0') {
+        return QCLOUD_RET_SUCCESS;
+    }
+
+    if (time_value.tm_hour < automation->effective_begintime[0]) {
+        return QCLOUD_RET_SUCCESS;
+    }
+
+    if ((time_value.tm_hour == automation->effective_begintime[0]) &&
+        (time_value.tm_min < automation->effective_begintime[1])) {
+        return QCLOUD_RET_SUCCESS;
+    }
+
+    if (time_value.tm_hour > automation->effective_endtime[0]) {
+        return QCLOUD_RET_SUCCESS;
+    }
+    if ((time_value.tm_hour == automation->effective_endtime[0]) &&
+        (time_value.tm_min > automation->effective_endtime[1])) {
+        return QCLOUD_RET_SUCCESS;
+    }
+
+    // check cond
+    if (false == _gateway_local_automation_cond_check(automation->cond_match_type, automation->conditions)) {
+        return QCLOUD_RET_SUCCESS;
+    }
+
+    _gateway_local_automation_action_execution(automation->actions);
+    _gateway_local_automation_report_log(client, automation);
+
+    return QCLOUD_RET_SUCCESS;
+}
+
+static void _gateway_local_automation_foreach(void *client)
+{
+    GATEWAY_LOCAL_AUTOMATION_T *automation = NULL;
+
+    for (int i = 0; i < sizeof(sg_automation) / sizeof(GATEWAY_LOCAL_AUTOMATION_T); i++) {
+        if (sg_automation[i].automation_id != NULL) {
+            automation = &sg_automation[i];
+            _gateway_local_automation_execution(client, automation);
+        }
+    }
+}
+#endif
+
 static struct {
     bool     power_off;
     uint8_t  brightness;
@@ -329,6 +1047,22 @@ int main(int argc, char **argv)
 #ifdef GATEWAY_DYN_BIND_SUBDEV_ENABLED
     // show gateway dynamic bind/unbind sub-devices
     show_subdev_bind_unbind(client, &param);
+#endif
+
+#ifdef GATEWAY_AUTOMATION_ENABLED
+    memset(sg_automation, 0, sizeof(sg_automation));
+    QCLOUD_IO_GATEWAY_AUTOMATION_T aution = {client, NULL, _gateway_local_automation_set,
+                                             _gateway_local_automation_delete};
+    _gateway_set_device_property(param.product_id, param.device_name);
+    for (i = 0; i < gw->sub_dev_num; i++) {
+        sub = &gw->sub_dev_info[i];
+        _gateway_set_device_property(sub->product_id, sub->device_name);
+    }
+    if (QCLOUD_RET_SUCCESS < IOT_Gateway_EnableLocalAutoMation(client, &aution)) {
+        Log_e("enable auto mation failed");
+    } else {
+        IOT_Gateway_GetAutoMationList(client);
+    }
 #endif
 
     // make sub-device online
@@ -417,6 +1151,11 @@ int main(int argc, char **argv)
                 Log_e("exit with error: %d", rc);
                 break;
             }
+
+#ifdef GATEWAY_AUTOMATION_ENABLED
+            /* local auto mation */
+            _gateway_local_automation_foreach(client);
+#endif
 
             HAL_SleepMs(1000);
         }

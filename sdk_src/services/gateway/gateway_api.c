@@ -24,6 +24,9 @@
 #include "gateway_common.h"
 #include "mqtt_client.h"
 #include "utils_param_check.h"
+#include "lite-utils.h"
+#include "service_mqtt.h"
+#include "json_parser.h"
 
 #ifdef MULTITHREAD_ENABLED
 int IOT_Gateway_Start_Yield_Thread(void *pClient)
@@ -549,4 +552,217 @@ int IOT_Gateway_Publish(void *client, char *topic_name, PublishParams *params)
     POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
 
     return IOT_MQTT_Publish(gateway->mqtt, topic_name, params);
+}
+
+static int sg_gateway_automation_client_token_index = 1;
+
+#define GATEWAY_AUTOMATION_CLIENT_TOKEN_FORMAT "gatewayautomation-%s-%d"
+
+static void _gateway_automation_set_reply(void *client, char *client_token, char *automation_id, int code)
+{
+    char payload[256] = {0};
+    int  payload_len =
+        HAL_Snprintf(payload, sizeof(payload),
+                     "{\"method\":\"set_automation_reply\",\"clientToken\":\"%s\",\"automationId\":\"%s\",\"code\":%d}",
+                     client_token, automation_id, code);
+
+    Gateway *          gateway = (Gateway *)client;
+    Qcloud_IoT_Client *mqtt    = (Qcloud_IoT_Client *)gateway->mqtt;
+
+    qcloud_service_mqtt_post_msg(mqtt, payload, QOS0);
+}
+
+static void _gateway_automation_del_reply(void *client, char *client_token, char *automation_id, int code)
+{
+    char payload[256] = {0};
+
+    int payload_len = HAL_Snprintf(
+        payload, sizeof(payload),
+        "{\"method\":\"delete_automation_reply\",\"clientToken\":\"%s\",\"automationId\":\"%s\",\"code\":%d}",
+        client_token, automation_id, code);
+
+    Gateway *          gateway = (Gateway *)client;
+    Qcloud_IoT_Client *mqtt    = (Qcloud_IoT_Client *)gateway->mqtt;
+
+    qcloud_service_mqtt_post_msg(mqtt, payload, QOS0);
+}
+
+static int _gateway_automation_set(bool reply, char *payload, void *user_data)
+{
+    char *automation_id = LITE_json_value_of("automationId", payload);
+    if (automation_id == NULL) {
+        Log_e("mation error id is null");
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    char *key_status = LITE_json_value_of("status", payload);
+    char *params     = LITE_json_value_of("params", payload);
+
+    if (key_status == NULL || params == NULL) {
+        HAL_Free(key_status);
+        HAL_Free(params);
+        HAL_Free(automation_id);
+        Log_e("mation error status and params is null");
+        return QCLOUD_ERR_FAILURE;
+    }
+
+    QCLOUD_IO_GATEWAY_AUTOMATION_T *automation = (QCLOUD_IO_GATEWAY_AUTOMATION_T *)user_data;
+
+    int ret = automation->set_automation_callback(automation_id, atoi(key_status), params, automation->user_data);
+
+    if (true == reply) {
+        char *client_token = LITE_json_value_of("clientToken", payload);
+        _gateway_automation_set_reply(automation->client, client_token, automation_id, ret);
+        HAL_Free(client_token);
+    }
+
+    HAL_Free(key_status);
+    HAL_Free(params);
+    HAL_Free(automation_id);
+
+    return ret;
+}
+
+static void _gateway_automation_del(char *payload, void *user_data)
+{
+    POINTER_SANITY_CHECK_RTN(payload);
+    POINTER_SANITY_CHECK_RTN(user_data);
+
+    char *automation_id = LITE_json_value_of("automationId", payload);
+    if (NULL == automation_id) {
+        Log_e("Fail to parse params");
+        return;
+    }
+    QCLOUD_IO_GATEWAY_AUTOMATION_T *automation = (QCLOUD_IO_GATEWAY_AUTOMATION_T *)user_data;
+
+    int ret = automation->del_automation_callback(automation_id, automation->user_data);
+
+    char *client_token = LITE_json_value_of("clientToken", payload);
+    if (NULL == client_token) {
+        Log_e("Fail to parse params");
+        goto exit;
+    }
+    _gateway_automation_del_reply(automation->client, client_token, automation_id, ret);
+
+exit:
+    HAL_Free(automation_id);
+    HAL_Free(client_token);
+}
+
+static void _gateway_automation_list(char *payload, void *user_data)
+{
+    POINTER_SANITY_CHECK_RTN(payload);
+    POINTER_SANITY_CHECK_RTN(user_data);
+
+    char *auto_list  = LITE_json_value_of("auto_list", payload);
+    char *pos        = NULL;
+    char *entry      = NULL;
+    int   entry_len  = 0;
+    int   entry_type = 0;
+    char  old_ch     = 0;
+    int   ret        = 0;
+
+    json_array_for_each_entry(auto_list, pos, entry, entry_len, entry_type)
+    {
+        if (!entry)
+            continue;
+        backup_json_str_last_char(entry, entry_len, old_ch);
+        Log_d("list :%s", entry);
+        // proc
+        ret = _gateway_automation_set(false, entry, user_data);
+        if (QCLOUD_RET_SUCCESS != ret) {
+            break;
+        }
+        restore_json_str_last_char(entry, entry_len, old_ch);
+    }
+}
+
+static void _gateway_automation_callback(void *user_data, const char *payload, unsigned int payload_len)
+{
+    POINTER_SANITY_CHECK_RTN(user_data);
+
+    QCLOUD_IO_GATEWAY_AUTOMATION_T *automation = (QCLOUD_IO_GATEWAY_AUTOMATION_T *)user_data;
+
+    POINTER_SANITY_CHECK_RTN(automation->client);
+    POINTER_SANITY_CHECK_RTN(automation->set_automation_callback);
+    POINTER_SANITY_CHECK_RTN(automation->del_automation_callback);
+
+    POINTER_SANITY_CHECK_RTN(payload);
+
+    Log_d("recv: %s", payload);
+
+    char *method = LITE_json_value_of("method", (char *)payload);
+
+    if (0 == strncmp(method, METHOD_GATEWAY_AUTOMATION_SET, sizeof(METHOD_GATEWAY_AUTOMATION_SET) - 1)) {
+        // set auto mation
+        _gateway_automation_set(true, (char *)payload, user_data);
+    } else if (0 == strncmp(method, METHOD_GATEWAY_AUTOMATION_DEL, sizeof(METHOD_GATEWAY_AUTOMATION_DEL) - 1)) {
+        // delete auto mation
+        _gateway_automation_del((char *)payload, user_data);
+    } else if (0 == strncmp(method, METHOD_GATEWAY_AUTOMATION_LIST, sizeof(METHOD_GATEWAY_AUTOMATION_LIST) - 1)) {
+        // proc auto mation list
+        _gateway_automation_list((char *)payload, user_data);
+    }
+
+    HAL_Free(method);
+}
+
+int IOT_Gateway_LocalAutoMationLogCreate(char *json_buf, int buf_len, void *client, char *automation_id, char *log_json)
+{
+    Gateway *          gateway = (Gateway *)client;
+    Qcloud_IoT_Client *mqtt    = (Qcloud_IoT_Client *)gateway->mqtt;
+
+    return HAL_Snprintf(
+        json_buf, buf_len,
+        "{\"method\":\"report_automation_log\",\"clientToken\":\"" GATEWAY_AUTOMATION_CLIENT_TOKEN_FORMAT
+        "\",\"automationId\":"
+        "\"%s\",\"log\":%s}",
+        mqtt->device_info.product_id, sg_gateway_automation_client_token_index, automation_id, log_json);
+    sg_gateway_automation_client_token_index += 1;
+}
+
+int IOT_Gateway_LocalAutoMationReportLog(void *client, char *json_buf, int json_len)
+{
+    Log_d("report :%s", json_buf);
+
+    Gateway *          gateway = (Gateway *)client;
+    Qcloud_IoT_Client *mqtt    = (Qcloud_IoT_Client *)gateway->mqtt;
+
+    return qcloud_service_mqtt_post_msg(mqtt, json_buf, QOS0);
+}
+
+int IOT_Gateway_GetAutoMationList(void *client)
+{
+    char               payload[128] = {0};
+    Gateway *          gateway      = (Gateway *)client;
+    Qcloud_IoT_Client *mqtt         = (Qcloud_IoT_Client *)gateway->mqtt;
+
+    HAL_Snprintf(payload, sizeof(payload),
+                 "{\"method\":\"get_automation_list\",\"clientToken\":\"" GATEWAY_AUTOMATION_CLIENT_TOKEN_FORMAT "\"}",
+                 mqtt->device_info.product_id, sg_gateway_automation_client_token_index);
+
+    sg_gateway_automation_client_token_index += 1;
+
+    return qcloud_service_mqtt_post_msg(mqtt, payload, QOS0);
+}
+
+int IOT_Gateway_EnableLocalAutoMation(void *client, QCLOUD_IO_GATEWAY_AUTOMATION_T *automation)
+{
+    Gateway *gateway = (Gateway *)client;
+
+    POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
+
+    Qcloud_IoT_Client *mqtt = (Qcloud_IoT_Client *)gateway->mqtt;
+
+    POINTER_SANITY_CHECK(mqtt, QCLOUD_ERR_INVAL);
+    STRING_PTR_SANITY_CHECK(mqtt->device_info.product_id, QCLOUD_ERR_INVAL);
+    STRING_PTR_SANITY_CHECK(mqtt->device_info.device_name, QCLOUD_ERR_INVAL);
+
+    POINTER_SANITY_CHECK(automation->client, QCLOUD_ERR_INVAL);
+    POINTER_SANITY_CHECK(automation->set_automation_callback, QCLOUD_ERR_INVAL);
+    POINTER_SANITY_CHECK(automation->del_automation_callback, QCLOUD_ERR_INVAL);
+
+    qcloud_service_mqtt_event_register(eSERVICE_GATEWAY_AUTOMATION, _gateway_automation_callback, automation);
+
+    return qcloud_service_mqtt_init(mqtt->device_info.product_id, mqtt->device_info.device_name, mqtt);
 }
