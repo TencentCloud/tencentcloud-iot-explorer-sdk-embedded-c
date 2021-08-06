@@ -131,7 +131,7 @@ static void _service_mqtt_cb(void *pClient, MQTTMessage *message, void *pContext
     if (json_method) {
         eServiceEvent           event  = _service_mqtt_parse_event(json_method);
         Service_Event_Struct_t *handle = _get_service_event_handle(event);
-        if (handle->callback) {
+        if (handle != NULL && handle->callback) {
             handle->callback(handle->context, recv_payload, len);
         }
         HAL_Free(json_method);
