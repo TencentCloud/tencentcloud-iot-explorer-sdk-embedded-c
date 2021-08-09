@@ -561,10 +561,10 @@ static int sg_gateway_automation_client_token_index = 1;
 static void _gateway_automation_set_reply(void *client, char *client_token, char *automation_id, int code)
 {
     char payload[256] = {0};
-    int  payload_len =
-        HAL_Snprintf(payload, sizeof(payload),
-                     "{\"method\":\"set_automation_reply\",\"clientToken\":\"%s\",\"automationId\":\"%s\",\"code\":%d}",
-                     client_token, automation_id, code);
+
+    HAL_Snprintf(payload, sizeof(payload),
+                 "{\"method\":\"set_automation_reply\",\"clientToken\":\"%s\",\"automationId\":\"%s\",\"code\":%d}",
+                 client_token, automation_id, code);
 
     Gateway *          gateway = (Gateway *)client;
     Qcloud_IoT_Client *mqtt    = (Qcloud_IoT_Client *)gateway->mqtt;
@@ -576,10 +576,9 @@ static void _gateway_automation_del_reply(void *client, char *client_token, char
 {
     char payload[256] = {0};
 
-    int payload_len = HAL_Snprintf(
-        payload, sizeof(payload),
-        "{\"method\":\"delete_automation_reply\",\"clientToken\":\"%s\",\"automationId\":\"%s\",\"code\":%d}",
-        client_token, automation_id, code);
+    HAL_Snprintf(payload, sizeof(payload),
+                 "{\"method\":\"delete_automation_reply\",\"clientToken\":\"%s\",\"automationId\":\"%s\",\"code\":%d}",
+                 client_token, automation_id, code);
 
     Gateway *          gateway = (Gateway *)client;
     Qcloud_IoT_Client *mqtt    = (Qcloud_IoT_Client *)gateway->mqtt;
