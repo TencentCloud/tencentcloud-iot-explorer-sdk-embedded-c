@@ -89,7 +89,7 @@ void HAL_QueueDestory(void *queue_handle)
     HAL_MutexDestroy(mutex);
 }
 
-uint32_t HAL_QueueReset(void *queue_handle)
+int HAL_QueueReset(void *queue_handle)
 {
     QCLOUD_MESSAGE_QUEUE_T *queue = (QCLOUD_MESSAGE_QUEUE_T *)queue_handle;
     void *                  mutex = queue->queue_mutex;
@@ -101,7 +101,7 @@ uint32_t HAL_QueueReset(void *queue_handle)
     return QCLOUD_RET_SUCCESS;
 }
 
-unsigned long HAL_QueueItemWaitingCount(void *queue_handle)
+int HAL_QueueItemWaitingCount(void *queue_handle)
 {
     QCLOUD_MESSAGE_QUEUE_T *queue     = (QCLOUD_MESSAGE_QUEUE_T *)queue_handle;
     sRingbuff *             ring_buff = &(queue->ring_buff);
@@ -126,7 +126,7 @@ unsigned long HAL_QueueItemWaitingCount(void *queue_handle)
     return len / queue->queue_item_size;
 }
 
-unsigned long HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)
+int HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)
 {
     QCLOUD_MESSAGE_QUEUE_T *queue     = (QCLOUD_MESSAGE_QUEUE_T *)queue_handle;
     sRingbuff *             ring_buff = &(queue->ring_buff);
@@ -154,7 +154,7 @@ unsigned long HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint
     return QCLOUD_RET_SUCCESS;
 }
 
-unsigned long HAL_QueueItemPush(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)
+int HAL_QueueItemPush(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)
 {
     QCLOUD_MESSAGE_QUEUE_T *queue     = (QCLOUD_MESSAGE_QUEUE_T *)queue_handle;
     sRingbuff *             ring_buff = &(queue->ring_buff);

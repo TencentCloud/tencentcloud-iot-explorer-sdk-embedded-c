@@ -25,7 +25,7 @@ extern "C" {
 #include "resource_client.h"
 #include "resource_lib.h"
 
-#define QCLOUD_RESOURCE_MAX_TOPIC_LEN (64)
+#define QCLOUD_RESOURCE_MAX_TOPIC_LEN (128)
 
 typedef struct {
     void *mqtt_client;  // MQTT cient

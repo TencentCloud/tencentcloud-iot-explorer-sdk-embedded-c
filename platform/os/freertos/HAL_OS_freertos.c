@@ -54,7 +54,7 @@ void HAL_QueueDestory(void *queue_handle)
     vQueueDelete(queue_handle);
 }
 
-uint32_t HAL_QueueReset(void *queue_handle)
+int HAL_QueueReset(void *queue_handle)
 {
     if (pdPASS == xQueueReset(queue_handle)) {
         return QCLOUD_RET_SUCCESS;
@@ -63,12 +63,12 @@ uint32_t HAL_QueueReset(void *queue_handle)
     }
 }
 
-unsigned long HAL_QueueItemWaitingCount(void *queue_handle)
+int HAL_QueueItemWaitingCount(void *queue_handle)
 {
     return uxQueueMessagesWaiting(queue_handle);
 }
 
-unsigned long HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)
+int HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)
 {
     if (pdPASS == xQueueReceive(queue_handle, item_buffer, wait_timeout)) {
         return QCLOUD_RET_SUCCESS;
@@ -77,7 +77,7 @@ unsigned long HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint
     }
 }
 
-unsigned long HAL_QueueItemPush(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)
+int HAL_QueueItemPush(void *queue_handle, void *const item_buffer, uint32_t wait_timeout)
 {
     if (pdPASS == xQueueSend(queue_handle, item_buffer, wait_timeout)) {
         return QCLOUD_RET_SUCCESS;
