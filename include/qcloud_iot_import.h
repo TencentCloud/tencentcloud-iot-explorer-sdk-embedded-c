@@ -163,18 +163,18 @@ void HAL_QueueDestory(void *queue_handle);
  *
  * @return 0 is success other failue
  */
-uint32_t HAL_QueueReset(void *queue_handle);
+int HAL_QueueReset(void *queue_handle);
 /**
  * @brief get queue item count
  * @param queue_handle
  *
  * @return 0 is success other failue
  */
-unsigned long HAL_QueueItemWaitingCount(void *queue_handle);
+int HAL_QueueItemWaitingCount(void *queue_handle);
 
-unsigned long HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint32_t wait_timeout);
+int HAL_QueueItemPop(void *queue_handle, void *const item_buffer, uint32_t wait_timeout);
 
-unsigned long HAL_QueueItemPush(void *queue_handle, void *const item_buffer, uint32_t wait_timeout);
+int HAL_QueueItemPush(void *queue_handle, void *const item_buffer, uint32_t wait_timeout);
 #endif  // WIFI_CONFIG_ENABLED
 
 /**

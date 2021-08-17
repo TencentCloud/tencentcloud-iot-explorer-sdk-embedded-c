@@ -114,6 +114,8 @@ typedef enum {
 
     MQTT_EVENT_GATEWAY_CHANGE = 16,
 
+    MQTT_EVENT_GATEWAY_UNBIND_ALL = 17,
+
 } MQTTEventType;
 
 /**

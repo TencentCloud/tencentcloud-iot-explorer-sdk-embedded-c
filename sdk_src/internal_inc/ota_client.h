@@ -28,7 +28,7 @@ extern "C" {
 #include <stdint.h>
 
 /* Specify the maximum characters of version */
-#define OTA_MAX_TOPIC_LEN (64)
+#define OTA_MAX_TOPIC_LEN (128)
 
 #define TYPE_FIELD     "type"
 #define MD5_FIELD      "md5sum"
