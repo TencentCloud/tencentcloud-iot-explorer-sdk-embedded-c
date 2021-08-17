@@ -42,6 +42,8 @@ static char sg_cert_file[PATH_MAX + 1];  // full path of device cert file
 static char sg_key_file[PATH_MAX + 1];   // full path of device key file
 #endif
 
+static bool sg_unbind_all_subdev = false;
+
 void _event_handler(void *client, void *context, MQTTEventMsg *msg)
 {
     MQTTMessage *mqtt_messge = (MQTTMessage *)msg->msg;
@@ -112,6 +114,11 @@ void _event_handler(void *client, void *context, MQTTEventMsg *msg)
             gw_change_notify_t *p_notify = (gw_change_notify_t *)(msg->msg);
             Log_d("Get change notice: sub devices %s to %s", p_notify->devices, p_notify->status ? "bind" : "unbind");
         } break;
+
+        case MQTT_EVENT_GATEWAY_UNBIND_ALL:
+            sg_unbind_all_subdev = true;
+            Log_d("gateway all subdev have been unbind");
+            break;
 
         default:
             Log_i("Should NOT arrive here.");
@@ -1156,6 +1163,12 @@ int main(int argc, char **argv)
             /* local auto mation */
             _gateway_local_automation_foreach(client);
 #endif
+            if (true == sg_unbind_all_subdev) {
+                Log_d("gateway all subdev have been unbind by cloud platform stop publish subdev msg");
+                sg_unbind_all_subdev = false;
+                sg_loop_count        = 0;
+                break;
+            }
 
             HAL_SleepMs(1000);
         }

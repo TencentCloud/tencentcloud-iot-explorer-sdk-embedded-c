@@ -33,7 +33,7 @@ extern "C" {
 #include "resource_lib.h"
 
 #define IOT_RESOURCE_NAME_LEN 64
-#define IOT_RREOURCE_URL_LEN  1024
+#define IOT_REOURCE_URL_LEN  1024
 
 struct QCLOUD_RESOURCE_INFO_T
 {
@@ -42,7 +42,7 @@ struct QCLOUD_RESOURCE_INFO_T
     uint32_t                     size_last;                                   /* size of last  */
     uint32_t                     size_prepared;                                 /* size of already prepared */
     uint32_t                     resource_size;                               /* size of file */
-    char                         resource_url[IOT_RREOURCE_URL_LEN];          /* point to URL */
+    char                         resource_url[IOT_REOURCE_URL_LEN];          /* point to URL */
     char                         resource_name[IOT_RESOURCE_NAME_LEN];        /* point to string */
     char                         md5sum[33];                                  /* MD5 string */
     iot_md5_context              md5;                                         /* MD5 handle */
