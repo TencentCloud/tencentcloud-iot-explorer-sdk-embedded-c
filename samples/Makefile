@@ -42,9 +42,9 @@ ifeq ($(FEATURE_AUTH_MODE),CERT)
 CFLAGS += -DAUTH_MODE_CERT
 endif
 
-.PHONY: ota_mqtt_sample resource_mqtt_sample data_template_sample file_mqtt_sample asr_data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample wifi_config_sample
+.PHONY: ota_mqtt_sample resource_mqtt_sample data_template_sample file_mqtt_sample asr_data_template_sample gateway_sample  mqtt_sample dynreg_dev_sample wifi_config_sample kgmusic_data_template_sample
 
-all: ota_mqtt_sample resource_mqtt_sample data_template_sample file_mqtt_sample	asr_data_template_sample gateway_sample	mqtt_sample dynreg_dev_sample wifi_config_sample
+all: ota_mqtt_sample resource_mqtt_sample data_template_sample file_mqtt_sample	asr_data_template_sample gateway_sample	mqtt_sample dynreg_dev_sample wifi_config_sample kgmusic_data_template_sample
 
 
 ifneq (,$(filter -DOTA_COMM_ENABLED,$(CFLAGS)))
@@ -131,6 +131,15 @@ ifneq (,$(filter -DWIFI_CONFIG_ENABLED,$(CFLAGS)))
 wifi_config_sample:
 	$(TOP_Q) \
 	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/wifi_config/$@.c $(LDFLAGS) -o $@
+
+	$(TOP_Q) \
+	mv $@ $(FINAL_DIR)/bin
+endif
+
+ifneq (,$(filter -DKGMUSIC_ENABLED,$(CFLAGS)))
+kgmusic_data_template_sample:
+	$(TOP_Q) \
+	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/kgmusic/$@.c $(LDFLAGS) -o $@
 
 	$(TOP_Q) \
 	mv $@ $(FINAL_DIR)/bin

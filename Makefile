@@ -99,6 +99,10 @@ $(call CompLib_Map, WIFI_CONFIG_ENABLED, \
     $(SRC_DIR)/wifi_config \
 )
 
+$(call CompLib_Map, KGMUSIC_ENABLED, \
+    $(SRC_DIR)/services/kgmusic \
+)
+
 IOTSDK_SRC_FILES := \
 
 $(foreach v, \

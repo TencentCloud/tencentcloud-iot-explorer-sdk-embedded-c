@@ -88,4 +88,6 @@ FEATURE_AT_DEBUG                        = y
 # 是否打开WIFI配网功能
 FEATURE_WIFI_CONFIG_ENABLED             = n
 
+# 是否打开酷狗音乐功能
+FEATURE_KGMUSIC_ENABLED                 = y
 

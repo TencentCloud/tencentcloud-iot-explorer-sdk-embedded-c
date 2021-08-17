@@ -35,11 +35,10 @@ typedef struct {
     void *                   context;
 } Service_Event_Struct_t;
 
-static Service_Event_Struct_t sg_service_event_map[] = {{eSERVICE_RESOURCE, NULL, NULL},
-                                                        {eSERVICE_FACE_AI, NULL, NULL},
-                                                        {eSERVICE_UNBIND_DEV, NULL, NULL},
-                                                        {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL},
-                                                        {eSERVICE_GATEWAY_AUTOMATION, NULL, NULL}};
+static Service_Event_Struct_t sg_service_event_map[] = {
+    {eSERVICE_RESOURCE, NULL, NULL},           {eSERVICE_FACE_AI, NULL, NULL},
+    {eSERVICE_UNBIND_DEV, NULL, NULL},         {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL},
+    {eSERVICE_GATEWAY_AUTOMATION, NULL, NULL}, {eSERVICE_KGMUSIC, NULL, NULL}};
 
 static char sg_service_pub_topic[MAX_SIZE_OF_CLOUD_TOPIC];
 
@@ -106,6 +105,11 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
                (0 == strncmp(method, METHOD_GATEWAY_AUTOMATION_DEL, sizeof(METHOD_GATEWAY_AUTOMATION_DEL) - 1)) ||
                (0 == strncmp(method, METHOD_GATEWAY_AUTOMATION_LIST, sizeof(METHOD_GATEWAY_AUTOMATION_LIST) - 1))) {
         return eSERVICE_GATEWAY_AUTOMATION;
+    } else if ((0 == strncmp(method, METHOD_KGMUSIC_QUERY_SONG_REPLY, sizeof(METHOD_KGMUSIC_QUERY_SONG_REPLY) - 1)) ||
+               (0 == strncmp(method, METHOD_KGMUSIC_QUERY_PID_REPLY, sizeof(METHOD_KGMUSIC_QUERY_PID_REPLY) - 1)) ||
+               (0 == strncmp(method, METHOD_KGMUSIC_QUERY_SONGLIST_REPLY,
+                             sizeof(METHOD_KGMUSIC_QUERY_SONGLIST_REPLY) - 1))) {
+        return eSERVICE_KGMUSIC;
     }
     Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));
     return eSERVICE_DEFAULT;
