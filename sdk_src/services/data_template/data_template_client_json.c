@@ -61,116 +61,176 @@ void insert_str(char *pDestStr, char *pSourceStr, int pos)
 
 static int _direct_update_value(char *value, DeviceProperty *pProperty)
 {
-    int rc = QCLOUD_RET_SUCCESS;
+    int      rc    = QCLOUD_RET_SUCCESS;
     uint16_t index = 0;
 
-    if (pProperty->type == JBOOL) {
-        rc = LITE_get_boolean(pProperty->data, value);
-    } else if (pProperty->type == JINT32) {
-        rc = LITE_get_int32(pProperty->data, value);
-    } else if (pProperty->type == JINT16) {
-        rc = LITE_get_int16(pProperty->data, value);
-    } else if (pProperty->type == JINT8) {
-        rc = LITE_get_int8(pProperty->data, value);
-    } else if (pProperty->type == JUINT32) {
-        rc = LITE_get_uint32(pProperty->data, value);
-    } else if (pProperty->type == JUINT16) {
-        rc = LITE_get_uint16(pProperty->data, value);
-    } else if (pProperty->type == JUINT8) {
-        rc = LITE_get_uint8(pProperty->data, value);
-    } else if (pProperty->type == JFLOAT) {
-        rc = LITE_get_float(pProperty->data, value);
-    } else if (pProperty->type == JDOUBLE) {
-        rc = LITE_get_double(pProperty->data, value);
-    } else if (pProperty->type == JSTRING) {
-        rc = LITE_get_string(pProperty->data, value, pProperty->data_buff_len);
-    } else if (pProperty->type == JOBJECT) {
-        for (index = 0; index < pProperty->struct_obj_num; index++) {
-            DeviceProperty *pJsonNode = &((((sDataPoint *)(pProperty->data)) + index)->data_property);
-            if ((pJsonNode != NULL) && (pJsonNode->key != NULL)) {
-                update_value_if_key_match(value, pJsonNode);
+    switch (pProperty->type) {
+        case JBOOL:
+            rc = LITE_get_boolean(pProperty->data, value);
+            break;
+        case JINT32:
+            rc = LITE_get_int32(pProperty->data, value);
+            break;
+        case JINT16:
+            rc = LITE_get_int16(pProperty->data, value);
+            break;
+        case JINT8:
+            rc = LITE_get_int8(pProperty->data, value);
+            break;
+        case JUINT32:
+            rc = LITE_get_uint32(pProperty->data, value);
+            break;
+        case JUINT16:
+            rc = LITE_get_uint16(pProperty->data, value);
+            break;
+        case JUINT8:
+            rc = LITE_get_uint8(pProperty->data, value);
+            break;
+        case JFLOAT:
+            rc = LITE_get_float(pProperty->data, value);
+            break;
+        case JDOUBLE:
+            rc = LITE_get_double(pProperty->data, value);
+            break;
+        case JSTRING:
+            Log_d("property data_buff_len %d", pProperty->data_buff_len);
+            rc = LITE_get_string(pProperty->data, value, pProperty->data_buff_len);
+            break;
+        case JOBJECT:
+            for (index = 0; index < pProperty->struct_obj_num; index++) {
+                DeviceProperty *pJsonNode = &((((sDataPoint *)(pProperty->data)) + index)->data_property);
+                if ((pJsonNode != NULL) && (pJsonNode->key != NULL)) {
+                    update_value_if_key_match(value, pJsonNode);
+                }
             }
-        }
-    } else {
-        Log_e("pProperty type unknow,%d", pProperty->type);
+            break;
+        case JARRAY:
+            rc = LITE_get_string(pProperty->data, value, pProperty->data_buff_len);
+            break;
+        default:
+            Log_e("Unknown type %d", pProperty->type);
+            break;
     }
 
     return rc;
 }
 
+static int _format_json_buffer(char *jsonBuffer, size_t remain_size, int type, void *pData)
+{
+    int rc_of_snprintf = -1;
+    switch (type) {
+        case JINT32:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "%" PRIi32 ",", *(int32_t *)(pData));
+            break;
+        case JINT16:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "%" PRIi16 ",", *(int16_t *)(pData));
+            break;
+        case JINT8:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "%" PRIi8 ",", *(int8_t *)(pData));
+            break;
+        case JUINT32:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "%" PRIu32 ",", *(uint32_t *)(pData));
+            break;
+        case JUINT16:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "%" PRIu16 ",", *(uint16_t *)(pData));
+            break;
+        case JUINT8:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "%" PRIu8 ",", *(uint8_t *)(pData));
+            break;
+        case JDOUBLE:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "%f,", *(double *)(pData));
+            break;
+        case JFLOAT:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "%f,", *(float *)(pData));
+            break;
+        case JSTRING:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer, remain_size, "\"%s\",", (char *)(pData));
+            break;
+        default:
+            Log_e("Shouldnt reach here");
+            break;
+    }
+
+    return rc_of_snprintf;
+}
+
 int put_json_node(char *jsonBuffer, size_t sizeOfBuffer, DeviceProperty *pJsonNode)
 {
-    int     rc;
-    int32_t rc_of_snprintf = 0;
-    size_t  remain_size    = 0;
-    char *pKey = pJsonNode->key;
-    void *pData = pJsonNode->data;
-    JsonDataType type = pJsonNode->type;
+    int          rc;
+    int32_t      rc_of_snprintf = 0;
+    size_t       remain_size    = 0;
+    size_t       current_size   = 0;
+    char *       pKey           = pJsonNode->key;
+    void *       pData          = pJsonNode->data;
+    JsonDataType type           = pJsonNode->type;
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    current_size = strlen(jsonBuffer);
+    if ((ssize_t)(remain_size = sizeOfBuffer - current_size) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
     rc_of_snprintf =
-        HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\":", STRING_PTR_PRINT_SANITY_CHECK(pKey));
+        HAL_Snprintf(jsonBuffer + current_size, remain_size, "\"%s\":", STRING_PTR_PRINT_SANITY_CHECK(pKey));
     rc = check_snprintf_return(rc_of_snprintf, remain_size);
     if (rc != QCLOUD_RET_SUCCESS) {
         return rc;
     }
+    current_size += rc_of_snprintf;
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - current_size) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
     if (pData == NULL) {
-        rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "null,");
-    } else {
-        if (type == JINT32) {
+        rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "null,");
+        return check_snprintf_return(rc_of_snprintf, remain_size);
+    }
+
+    if (type != JBOOL && type != JOBJECT && type != JARRAY) {
+        return check_snprintf_return(_format_json_buffer(jsonBuffer + current_size, remain_size, type, pData),
+                                     remain_size);
+    }
+
+    switch (type) {
+        case JBOOL:
             rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIi32 ",", *(int32_t *)(pData));
-        } else if (type == JINT16) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIi16 ",", *(int16_t *)(pData));
-        } else if (type == JINT8) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIi8 ",", *(int8_t *)(pData));
-        } else if (type == JUINT32) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIu32 ",", *(uint32_t *)(pData));
-        } else if (type == JUINT16) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIu16 ",", *(uint16_t *)(pData));
-        } else if (type == JUINT8) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIu8 ",", *(uint8_t *)(pData));
-        } else if (type == JDOUBLE) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%f,", *(double *)(pData));
-        } else if (type == JFLOAT) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%f,", *(float *)(pData));
-        } else if (type == JBOOL) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%s,", *(bool *)(pData) ? "true" : "false");
-        } else if (type == JSTRING) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\",", (char *)(pData));
-        } else if (type == JOBJECT) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "{");
-            rc = check_snprintf_return(rc_of_snprintf, remain_size);
+                HAL_Snprintf(jsonBuffer + current_size, remain_size, "%s,", *(bool *)(pData) ? "true" : "false");
+            break;
+        case JOBJECT:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "{");
+            rc             = check_snprintf_return(rc_of_snprintf, remain_size);
             if (rc != QCLOUD_RET_SUCCESS) {
                 return rc;
+            }
+            current_size += rc_of_snprintf;
+            remain_size = sizeOfBuffer - current_size;
+            if ((ssize_t)remain_size <= 1) {
+                return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
             }
             uint16_t index = 0;
 
             for (index = 0; index < pJsonNode->struct_obj_num; index++) {
                 DeviceProperty *pNode = &((((sDataPoint *)(pJsonNode->data)) + index)->data_property);
                 if ((pNode != NULL) && (pNode->key) != NULL) {
-                    rc = put_json_node(jsonBuffer + strlen(jsonBuffer), remain_size, pNode);
+                    rc = put_json_node(jsonBuffer + current_size, remain_size, pNode);
                     if (rc != QCLOUD_RET_SUCCESS) {
                         return rc;
                     }
+                    current_size = strlen(jsonBuffer);
+                    remain_size  = sizeOfBuffer - current_size;
+                    if ((ssize_t)remain_size <= 1) {
+                        return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
+                    }
                 }
             }
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "},");
-        }
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size - 1, remain_size, "},");
+            break;
+        case JARRAY:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "%s,", (char *)(pData));
+            break;
+        default:
+            Log_e("Type %d is unknown", type);
+            break;
     }
 
     rc = check_snprintf_return(rc_of_snprintf, remain_size);
@@ -182,56 +242,48 @@ int template_put_json_node(char *jsonBuffer, size_t sizeOfBuffer, const char *pK
 {
     int     rc;
     int32_t rc_of_snprintf = 0;
-    size_t  remain_size    = 0;
+    size_t  current_size   = strlen(jsonBuffer);
+    size_t  remain_size    = sizeOfBuffer - current_size;
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)remain_size <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
     rc_of_snprintf =
-        HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\":", STRING_PTR_PRINT_SANITY_CHECK(pKey));
+        HAL_Snprintf(jsonBuffer + current_size, remain_size, "\"%s\":", STRING_PTR_PRINT_SANITY_CHECK(pKey));
     rc = check_snprintf_return(rc_of_snprintf, remain_size);
     if (rc != QCLOUD_RET_SUCCESS) {
         return rc;
     }
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    current_size += rc_of_snprintf;
+    if ((ssize_t)(remain_size = sizeOfBuffer - current_size) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
     if (pData == NULL) {
-        rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "null,");
-    } else {
-        if (type == JINT32) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIi32 ",", *(int32_t *)(pData));
-        } else if (type == JINT16) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIi16 ",", *(int16_t *)(pData));
-        } else if (type == JINT8) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIi8 ",", *(int8_t *)(pData));
-        } else if (type == JUINT32) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIu32 ",", *(uint32_t *)(pData));
-        } else if (type == JUINT16) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIu16 ",", *(uint16_t *)(pData));
-        } else if (type == JUINT8) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%" PRIu8 ",", *(uint8_t *)(pData));
-        } else if (type == JDOUBLE) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%f,", *(double *)(pData));
-        } else if (type == JFLOAT) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%f,", *(float *)(pData));
-        } else if (type == JBOOL) {
-            rc_of_snprintf =
-                HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%u,", *(bool *)(pData) ? 1 : 0);
-        } else if (type == JSTRING) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "\"%s\",", (char *)(pData));
-        } else if (type == JOBJECT) {
-            rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer), remain_size, "%s,", (char *)(pData));
-        }
+        rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "null,");
+        return check_snprintf_return(rc_of_snprintf, remain_size);
+    }
+
+    if (type != JBOOL && type != JOBJECT && type != JARRAY) {
+        return check_snprintf_return(_format_json_buffer(jsonBuffer + current_size, remain_size, type, pData),
+                                     remain_size);
+    }
+
+    switch (type) {
+        case JBOOL:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "%u,", *(bool *)(pData) ? 1 : 0);
+            break;
+        case JOBJECT:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "%s,", (char *)(pData));
+            break;
+        case JARRAY:
+            rc_of_snprintf = HAL_Snprintf(jsonBuffer + current_size, remain_size, "\"%s\",", (char *)(pData));
+            break;
+        default:
+            Log_e("Unknown type %d", type);
+            break;
     }
 
     rc = check_snprintf_return(rc_of_snprintf, remain_size);
@@ -319,9 +371,7 @@ bool update_value_if_key_match(char *pJsonDoc, DeviceProperty *pProperty)
         ret = true;
     }
 
-    if (property_data) {
-        HAL_Free(property_data);
-    }
+    HAL_Free(property_data);
 
     return ret;
 }

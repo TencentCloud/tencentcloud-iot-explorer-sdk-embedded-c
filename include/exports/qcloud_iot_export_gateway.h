@@ -281,6 +281,9 @@ int IOT_Gateway_EnableLocalAutoMation(void *client, QCLOUD_IO_GATEWAY_AUTOMATION
 
 #endif
 
+int  IOT_Gateway_Subdev_GetBindList(void *client, GatewayParam *param, SubdevBindList *subdev_bindlist);
+void IOT_Gateway_Subdev_DestoryBindList(SubdevBindList *subdev_bindlist);
+
 #ifdef __cplusplus
 }
 #endif

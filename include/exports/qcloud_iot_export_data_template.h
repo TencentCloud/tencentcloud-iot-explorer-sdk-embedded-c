@@ -34,14 +34,15 @@ extern "C" {
  * @brief Data type of template
  */
 
-#define TYPE_TEMPLATE_INT     JINT32
-#define TYPE_TEMPLATE_ENUM    JINT32
-#define TYPE_TEMPLATE_FLOAT   JFLOAT
-#define TYPE_TEMPLATE_BOOL    JINT8
-#define TYPE_TEMPLATE_STRING  JSTRING
-#define TYPE_TEMPLATE_TIME    JUINT32
-#define TYPE_TEMPLATE_JOBJECT JOBJECT
-#define TYPE_TEMPLATE_STRINGENUM    JSTRING
+#define TYPE_TEMPLATE_INT        JINT32
+#define TYPE_TEMPLATE_ENUM       JINT32
+#define TYPE_TEMPLATE_FLOAT      JFLOAT
+#define TYPE_TEMPLATE_BOOL       JINT8
+#define TYPE_TEMPLATE_STRING     JSTRING
+#define TYPE_TEMPLATE_TIME       JUINT32
+#define TYPE_TEMPLATE_JOBJECT    JOBJECT
+#define TYPE_TEMPLATE_STRINGENUM JSTRING
+#define TYPE_TEMPLATE_ARRAY      JARRAY
 
 typedef int32_t  TYPE_DEF_TEMPLATE_INT;
 typedef int32_t  TYPE_DEF_TEMPLATE_ENUM;
@@ -51,7 +52,6 @@ typedef char     TYPE_DEF_TEMPLATE_STRING;
 typedef uint32_t TYPE_DEF_TEMPLATE_TIME;
 typedef void *   TYPE_DEF_TEMPLATE_OBJECT;
 typedef char     TYPE_DEF_TEMPLATE_STRINGENUM;
-
 
 #ifdef EVENT_POST_ENABLED  // enable event function of data_template
 
@@ -85,10 +85,10 @@ typedef struct _sEvent_ {
 
 #endif
 
-typedef enum{
-	eGET_CTL,
-	eOPERATION_CTL,	
-}eControlType;
+typedef enum {
+    eGET_CTL,
+    eOPERATION_CTL,
+} eControlType;
 typedef void (*ControlMsgCb)(void *pClient, char *control_str, eControlType type);
 
 /* The structure of data_template init parameters */
@@ -114,8 +114,8 @@ typedef struct {
     uint8_t auto_connect_enable;  // flag of auto reconnection, 1 is enable and
     // recommended
 
-    MQTTEventHandler event_handle;   // event callback
-	ControlMsgCb	 usr_control_handle; // user can register cb to handle control msg instend of sdk's handle 
+    MQTTEventHandler event_handle;        // event callback
+    ControlMsgCb     usr_control_handle;  // user can register cb to handle control msg instend of sdk's handle
 } TemplateInitParams;
 
 #ifdef AUTH_MODE_CERT

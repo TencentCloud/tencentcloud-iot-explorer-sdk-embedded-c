@@ -95,6 +95,81 @@ typedef struct _json_key_t {
         pos = (void *)list_first_entry((list_head_t *)keylist, json_key_t, list), iter_key = ((json_key_t *)pos)->key; \
          (iter_key = ((json_key_t *)pos)->key); pos = list_next_entry((json_key_t *)pos, list, json_key_t))
 
+typedef struct {
+    void * str_data;
+    size_t str_len;
+} dt_array_elem_t;
+
+/**
+ * @brief callback function type of parsing one object json string to struct
+ *
+ * @param json_str		 json string
+ * @param str_len		 the length of json_str
+ * @param obj    	     the buffer for the struct
+ * @param item_sz 	     the size of struct
+ * @return				 0 for success, negative for failure
+ */
+typedef int (*json_object_parse_t)(const char *json_str, size_t str_len, void *obj, size_t obj_len);
+
+/**
+ * @brief format array json string for array of string or object
+ *
+ * @param out_res		 the buffer for the result string
+ * @param out_sz		 the size of out_res
+ * @param items 	     the input items, if array is for object, convert items to json string
+ * @param item_sz 	     the size of items
+ * @return				 true for success
+ */
+int LITE_dt_format_strobj_array(char *out_res, size_t out_sz, char *items[], size_t item_sz);
+
+/**
+ * @brief format array json string for array of primitive types, int & float supported
+ *
+ * @param out_res		 the buffer for the result string
+ * @param out_sz		 the size of out_res
+ * @param data   	     the input data storing primitive types
+ * @param data_sz 	     the size of data in bytes
+ * @param type   		 the primitive type enum
+ * @return				 true for success
+ */
+int LITE_dt_format_primitive_array(char *out_res, size_t out_sz, void *data, size_t data_sz, int type);
+
+/**
+ * @brief parse array of primitive type(int32 or float) [12, 34] -> int32 array {12, 34}
+ *          [12.34, 56.78] -> float array {12.34, 56.78}
+ *
+ * @param out_res		 the buffer for array of the primitive type
+ * @param out_len		 the buffer length of out_res
+ * @param json_str   	 the array json string
+ * @param type   		 the primitive type int32 or float
+ * @return				 the length of json array, negative if there is error
+ */
+int LITE_dt_parse_primitive_array(void *out_res, size_t out_len, const char *json_str, int type);
+
+/**
+ * @brief parse array of string, ["aaaaa", "bbbbb", "ccccc"] -> char *str[] = {"aaaaa", "bbbbb", "ccccc"}
+ *
+ * @param out_res		 the buffer for result, a array of char * pointers
+ * @param arr_len		 the array length of string
+ * @param json_str   	 the array json string
+ * @return				 the length of array, negative if there is error
+ */
+int LITE_dt_parse_str_array(char *out_res[], size_t arr_len, size_t str_len, const char *json_str);
+
+/**
+ * @brief parse array of object, [{"Red":100, "Green":128, "Blue":34}, {"Red":20, "Green":28, "Blue":34}] -> struct rgb
+ * {int red, green, blue} rgbs[2]
+ *                              {{.red = 100, .green = 128, .blue = 34}, {.red = 20, .green = 28, .blue = 34}}
+ *
+ * @param out_res		 the buffer for result, a array of struct
+ * @param arr_len		 the array length
+ * @param obj_len		 the length of the struct
+ * @param json_str   	 the array json string
+ * @param parse_fn   	 the function of parsing a object json string to struct
+ * @return				 the length of array, negative if there is error
+ */
+int LITE_dt_parse_obj_array(void *out_res, size_t arr_len, size_t obj_len, const char *json_str,
+                            json_object_parse_t parse_fn);
 #ifdef __cplusplus
 }
 #endif
