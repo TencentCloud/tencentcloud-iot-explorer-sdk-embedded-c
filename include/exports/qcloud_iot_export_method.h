@@ -67,6 +67,9 @@ typedef enum {
 /**
  * @brief Define a device property, as a JSON document node
  */
+#if defined(__CC_ARM)
+#pragma anon_unions
+#endif
 typedef struct _JSONNode {
     char *key;   // Key of this JSON node
     void *data;  // Value of this JSON node

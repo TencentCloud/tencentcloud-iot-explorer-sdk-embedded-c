@@ -184,6 +184,7 @@ EXIT:
     HAL_Free(type_str);
     HAL_Free(client_token);
     HAL_Free(pInput);
+    HAL_Free(action_id);
 }
 
 int IOT_Action_Init(void *c)
