@@ -14,16 +14,16 @@
         "subdev_num": 3,
         "subdev_list": [
             {
-                "sub_productId": "WPDA0S6S08",
-                "sub_devName": "dev001"
+                "sub_productId": "VQ2AWWC1R6",
+                "sub_devName": "subDev001"
             },
             {
-                "sub_productId": "WPDA0S6S08",
-                "sub_devName": "dev002"
+                "sub_productId": "VQ2AWWC1R6",
+                "sub_devName": "subDev002"
             },
             {
-                "sub_productId": "WPDA0S6S08",
-                "sub_devName": "dev003"
+                "sub_productId": "VQ2AWWC1R6",
+                "sub_devName": "subDev003"
             }
         ]
     },

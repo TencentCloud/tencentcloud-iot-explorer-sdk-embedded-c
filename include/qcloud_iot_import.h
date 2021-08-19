@@ -501,7 +501,21 @@ int HAL_DTLS_Read(uintptr_t handle, unsigned char *data, size_t datalen, uint32_
  * @return  TCP socket handle (value>0) when success, or 0 otherwise
  */
 uintptr_t HAL_TCP_Connect(const char *host, uint16_t port);
-
+/**
+ * @brief Creat tcp server
+ *
+ * @host    server address
+ * @port    server port
+ * @return  TCP socket handle (value>0) when success, or 0 otherwise
+ */
+uintptr_t HAL_TCP_CreatBind(const char *host, uint16_t port);
+/**
+ * @brief tcp server accept
+ *
+ * @server_fd    tcp server file discriptor
+ * @return  TCP socket handle (value>0) when success, or 0 otherwise
+ */
+uintptr_t HAL_TCP_Accept(int server_fd);
 /**
  * @brief Disconnect with server and release resource
  *

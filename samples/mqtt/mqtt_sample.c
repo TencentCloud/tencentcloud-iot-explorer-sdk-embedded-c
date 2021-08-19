@@ -26,9 +26,9 @@
 
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
+#include "service_mqtt.h"
 #include "utils_getopt.h"
 #include "lite-utils.h"
-
 
 #ifdef AUTH_MODE_CERT
 static char sg_cert_file[PATH_MAX + 1];  // full path of device cert file
@@ -36,18 +36,17 @@ static char sg_key_file[PATH_MAX + 1];   // full path of device key file
 #endif
 
 typedef struct {
-    bool power_off;
-    uint8_t brightness;
+    bool     power_off;
+    uint8_t  brightness;
     uint16_t color;
-    char device_name[MAX_SIZE_OF_DEVICE_NAME + 1];
-}LedInfo;
+    char     device_name[MAX_SIZE_OF_DEVICE_NAME + 1];
+} LedInfo;
 
 static DeviceInfo sg_devInfo;
-static LedInfo sg_led_info;
+static LedInfo    sg_led_info;
 
 // led attributes, corresponding to struct LedInfo
 static char *sg_property_name[] = {"power_switch", "brightness", "color", "name"};
-
 
 // user's log print callback
 static bool log_handler(const char *message)
@@ -192,23 +191,25 @@ static void property_topic_publish(void *pClient, const char *message, int messa
 
 static void property_get_status(void *pClient)
 {
-    char message[256] = {0};
-    int message_len = 0;
+    char       message[256]        = {0};
+    int        message_len         = 0;
     static int sg_get_status_index = 0;
 
     sg_get_status_index++;
-    message_len = HAL_Snprintf(message, sizeof(message), "{\"method\":\"get_status\", \"clientToken\":\"%s-%d\"}", sg_devInfo.product_id, sg_get_status_index);
+    message_len = HAL_Snprintf(message, sizeof(message), "{\"method\":\"get_status\", \"clientToken\":\"%s-%d\"}",
+                               sg_devInfo.product_id, sg_get_status_index);
     property_topic_publish(pClient, message, message_len);
 }
 
 static void property_report(void *pClient)
 {
-    char message[256] = {0};
-    int message_len = 0;
+    char       message[256]    = {0};
+    int        message_len     = 0;
     static int sg_report_index = 0;
 
     sg_report_index++;
-    message_len = HAL_Snprintf(message, sizeof(message), "{\"method\":\"report\", \"clientToken\":\"%s-%d\", "
+    message_len = HAL_Snprintf(message, sizeof(message),
+                               "{\"method\":\"report\", \"clientToken\":\"%s-%d\", "
                                "\"params\":{\"power_switch\":%d, \"color\":%d, \"brightness\":%d, \"name\":\"%s\"}}",
                                sg_devInfo.product_id, sg_report_index, sg_led_info.power_off, sg_led_info.color,
                                sg_led_info.brightness, sg_devInfo.device_name);
@@ -220,18 +221,18 @@ static void property_report(void *pClient)
 
 static void property_control_handle(void *pClient, const char *token, const char *control_data)
 {
-    char *params = NULL;
+    char *params         = NULL;
     char *property_param = NULL;
-    char message[256] = {0};
-    int message_len = 0;
+    char  message[256]   = {0};
+    int   message_len    = 0;
 
     params = LITE_json_value_of("params", (char *)control_data);
-    if (NULL == params){
+    if (NULL == params) {
         Log_e("Fail to parse params");
         return;
     }
 
-    for (int i = 0; i < sizeof(sg_property_name) / sizeof(sg_property_name[0]); i++){
+    for (int i = 0; i < sizeof(sg_property_name) / sizeof(sg_property_name[0]); i++) {
         property_param = LITE_json_value_of(sg_property_name[i], params);
         if (NULL != property_param) {
             Log_i("\t%-16s = %-10s", sg_property_name[i], property_param);
@@ -242,9 +243,10 @@ static void property_control_handle(void *pClient, const char *token, const char
             HAL_Free(property_param);
         }
     }
-	
-	//method: control_reply
-    message_len = HAL_Snprintf(message, sizeof(message), "{\"method\":\"control_reply\", \"code\":0, \"clientToken\":\"%s\"}", token);
+
+    // method: control_reply
+    message_len = HAL_Snprintf(message, sizeof(message),
+                               "{\"method\":\"control_reply\", \"code\":0, \"clientToken\":\"%s\"}", token);
     property_topic_publish(pClient, message, message_len);
 
     HAL_Free(params);
@@ -252,27 +254,27 @@ static void property_control_handle(void *pClient, const char *token, const char
 
 static void property_get_status_reply_handle(const char *get_status_reply_data)
 {
-    char *data = NULL;
-    char *report = NULL;
+    char *data           = NULL;
+    char *report         = NULL;
     char *property_param = NULL;
 
     data = LITE_json_value_of("data", (char *)get_status_reply_data);
-    if (NULL == data){
+    if (NULL == data) {
         Log_e("Fail to parse data");
         return;
     }
     report = LITE_json_value_of("reported", (char *)data);
-    if (NULL == report){
+    if (NULL == report) {
         Log_e("Fail to parse report");
         HAL_Free(data);
         return;
     }
 
-    for (int i = 0; i < sizeof(sg_property_name) / sizeof(sg_property_name[0]); i++){
+    for (int i = 0; i < sizeof(sg_property_name) / sizeof(sg_property_name[0]); i++) {
         property_param = LITE_json_value_of(sg_property_name[i], report);
         if (NULL != property_param) {
             Log_i("\t%-16s = %-10s", sg_property_name[i], property_param);
-            if (i == 1){
+            if (i == 1) {
                 sg_led_info.brightness = atoi(property_param);
             }
             HAL_Free(property_param);
@@ -288,7 +290,7 @@ static void property_report_reply_handle(const char *report_reply_data)
     char *status = NULL;
 
     status = LITE_json_value_of("status", (char *)report_reply_data);
-    if (NULL == status){
+    if (NULL == status) {
         Log_e("Fail to parse data");
         return;
     }
@@ -296,13 +298,18 @@ static void property_report_reply_handle(const char *report_reply_data)
     HAL_Free(status);
 }
 
+void unbind_device_callback(void *pContext, const char *msg, uint32_t msgLen)
+{
+    Log_i("unbind device.");
+}
+
 // callback when MQTT msg arrives
 static void property_message_callback(void *pClient, MQTTMessage *message, void *userData)
 {
-    char property_data_buf[QCLOUD_IOT_MQTT_RX_BUF_LEN + 1] = {0};
-    int property_data_len = 0;
-    char *type_str = NULL;
-    char *token_str = NULL;
+    char  property_data_buf[QCLOUD_IOT_MQTT_RX_BUF_LEN + 1] = {0};
+    int   property_data_len                                 = 0;
+    char *type_str                                          = NULL;
+    char *token_str                                         = NULL;
 
     if (message == NULL) {
         return;
@@ -310,7 +317,8 @@ static void property_message_callback(void *pClient, MQTTMessage *message, void 
     Log_i("Receive Message With topicName:%.*s, payload:%.*s", (int)message->topic_len, message->ptopic,
           (int)message->payload_len, (char *)message->payload);
 
-    property_data_len = sizeof(property_data_buf) > message->payload_len ? message->payload_len : QCLOUD_IOT_MQTT_RX_BUF_LEN;
+    property_data_len =
+        sizeof(property_data_buf) > message->payload_len ? message->payload_len : QCLOUD_IOT_MQTT_RX_BUF_LEN;
     memcpy(property_data_buf, message->payload, property_data_len);
 
     type_str = LITE_json_value_of("method", property_data_buf);
@@ -325,16 +333,16 @@ static void property_message_callback(void *pClient, MQTTMessage *message, void 
         return;
     }
 
-    if (0 == strncmp(type_str, "control", sizeof("control") - 1)){ 
-		//method: control 
+    if (0 == strncmp(type_str, "control", sizeof("control") - 1)) {
+        // method: control
         property_control_handle(pClient, token_str, property_data_buf);
-    }else if (0 == strncmp(type_str, "get_status_reply", sizeof("get_status_reply") - 1)){
-    	//method: get_status_reply 
+    } else if (0 == strncmp(type_str, "get_status_reply", sizeof("get_status_reply") - 1)) {
+        // method: get_status_reply
         property_get_status_reply_handle(property_data_buf);
-    }else if (0 == strncmp(type_str, "report_reply", sizeof("report_reply") - 1)){
-		//method: report_reply
+    } else if (0 == strncmp(type_str, "report_reply", sizeof("report_reply") - 1)) {
+        // method: report_reply
         property_report_reply_handle(property_data_buf);
-    }else{
+    } else {
         // do nothing
     }
 
@@ -347,15 +355,15 @@ static int subscribe_property_topic_wait_result(void *client)
 {
     char topic_name[128] = {0};
 
-    int size = HAL_Snprintf(topic_name, sizeof(topic_name), "$thing/down/property/%s/%s", sg_devInfo.product_id, \
+    int size = HAL_Snprintf(topic_name, sizeof(topic_name), "$thing/down/property/%s/%s", sg_devInfo.product_id,
                             sg_devInfo.device_name);
     if (size < 0 || size > sizeof(topic_name) - 1) {
         Log_e("topic content length not enough! content size:%d  buf size:%d", size, (int)sizeof(topic_name));
         return QCLOUD_ERR_FAILURE;
     }
 
-    SubscribeParams sub_params = DEFAULT_SUB_PARAMS;
-    sub_params.qos = QOS0;
+    SubscribeParams sub_params    = DEFAULT_SUB_PARAMS;
+    sub_params.qos                = QOS0;
     sub_params.on_message_handler = property_message_callback;
 
     int rc = IOT_MQTT_Subscribe(client, topic_name, &sub_params);
@@ -390,8 +398,8 @@ static int _init_log_upload(MQTTInitParams *init_params)
     LogUploadInitParams log_init_params;
     memset(&log_init_params, 0, sizeof(LogUploadInitParams));
 
-    log_init_params.region = init_params->region;
-    log_init_params.product_id = init_params->product_id;
+    log_init_params.region      = init_params->region;
+    log_init_params.product_id  = init_params->product_id;
     log_init_params.device_name = init_params->device_name;
 #ifdef AUTH_MODE_CERT
     log_init_params.sign_key = init_params->cert_file;
@@ -400,9 +408,9 @@ static int _init_log_upload(MQTTInitParams *init_params)
 #endif
 
 #if defined(__linux__) || defined(WIN32)
-    log_init_params.read_func = HAL_Log_Read;
-    log_init_params.save_func = HAL_Log_Save;
-    log_init_params.del_func = HAL_Log_Del;
+    log_init_params.read_func     = HAL_Log_Read;
+    log_init_params.save_func     = HAL_Log_Save;
+    log_init_params.del_func      = HAL_Log_Del;
     log_init_params.get_size_func = HAL_Log_Get_Size;
 #endif
 
@@ -492,7 +500,9 @@ int main(int argc, char **argv)
         Log_e("Client Subscribe Topic Failed: %d", rc);
         return rc;
     }
-	//method: get_status 
+    // when platform unbind this device. the callback function will run
+    IOT_Unbind_Device_ByCloud(client, unbind_device_callback, NULL);
+    // method: get_status
     property_get_status(client);
     do {
         rc = IOT_MQTT_Yield(client, 500);
@@ -507,11 +517,11 @@ int main(int argc, char **argv)
         if (sg_loop_test)
             HAL_SleepMs(1000);
 
-		//method: report 
+        // method: report
         property_report(client);
     } while (sg_loop_test);
-    rc = IOT_Unbind_Device_Request(client, sg_devInfo.product_id, sg_devInfo.device_name, 5000);
-    if(rc != QCLOUD_RET_SUCCESS){
+    rc = IOT_Unbind_Device_Request(client, 5000);
+    if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("unbind device request error.");
     }
     rc = IOT_MQTT_Destroy(&client);

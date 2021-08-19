@@ -23,7 +23,8 @@ extern "C" {
 
 /**
  * @brief Register a callback function to receive the device unbinding message
- *        sent by the platform
+ *        sent by the platform.
+ *        before use it you must call qcloud_service_mqtt_init() to sub service topic
  *
  * @param callback [in] a callback function
  * @param context  [in] the program context
@@ -31,15 +32,23 @@ extern "C" {
  */
 int IOT_Unbind_Device_Register(void *callback, void *context);
 /**
+ * @brief Register a callback function to receive the device unbinding message
+ *        sent by the platform
+ *
+ * @param mqtt_client the mqtt client
+ * @param callback [in] a callback function
+ * @param context  [in] the program context
+ * @return QCLOUD_RET_SUCCESS for success, or err code for failure
+ */
+int IOT_Unbind_Device_ByCloud(void *mqtt_client, void *callback, void *context);
+/**
  * @brief Actively initiate a request to unbind the device to the platform
  *
  * @param mqtt_client the mqtt client
- * @param productId   deviceInfo.productId
- * @param deviceName  deviceInfo.deviceName
  * @param timeout_ms timeout value (unit: ms) for this operation
  * @return QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int IOT_Unbind_Device_Request(void *mqtt_client, const char *productId, const char *deviceName, int timeout_ms);
+int IOT_Unbind_Device_Request(void *mqtt_client, int timeout_ms);
 
 #ifdef __cplusplus
 }

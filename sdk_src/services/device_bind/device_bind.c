@@ -56,19 +56,30 @@ int IOT_Unbind_Device_Register(void *callback, void *context)
 {
     POINTER_SANITY_CHECK(callback, QCLOUD_ERR_INVAL);
     OnServiceMessageCallback cb = (OnServiceMessageCallback)callback;
-    Log_d("cb : %p", cb);
     return qcloud_service_mqtt_event_register(eSERVICE_UNBIND_DEV, cb, context);
 }
 
-int IOT_Unbind_Device_Request(void *mqtt_client, const char *productId, const char *deviceName, int timeout_ms)
+int IOT_Unbind_Device_ByCloud(void *mqtt_client, void *callback, void *context)
+{
+    int rc = -1;
+    POINTER_SANITY_CHECK(mqtt_client, QCLOUD_ERR_INVAL);
+    Qcloud_IoT_Client *m_client = (Qcloud_IoT_Client *)mqtt_client;
+    rc = qcloud_service_mqtt_init(m_client->device_info.product_id, m_client->device_info.device_name, mqtt_client);
+    if (rc < 0) {
+        Log_e("service init failed: %d", rc);
+        return rc;
+    }
+    return IOT_Unbind_Device_Register(callback, context);
+}
+
+int IOT_Unbind_Device_Request(void *mqtt_client, int timeout_ms)
 {
     int        rc;
     char       message[256]           = {0};
     static int sg_unbind_device_index = 0;
     POINTER_SANITY_CHECK(mqtt_client, QCLOUD_ERR_INVAL);
-    POINTER_SANITY_CHECK(productId, QCLOUD_ERR_INVAL);
-    POINTER_SANITY_CHECK(deviceName, QCLOUD_ERR_INVAL);
-    rc = qcloud_service_mqtt_init(productId, deviceName, mqtt_client);
+    Qcloud_IoT_Client *m_client = (Qcloud_IoT_Client *)mqtt_client;
+    rc = qcloud_service_mqtt_init(m_client->device_info.product_id, m_client->device_info.device_name, mqtt_client);
     if (rc < 0) {
         Log_e("service init failed: %d", rc);
         return rc;
@@ -82,7 +93,8 @@ int IOT_Unbind_Device_Request(void *mqtt_client, const char *productId, const ch
     HAL_Snprintf(message, sizeof(message),
                  "{\"method\":\"unbind_device_request\", \"clientToken\":\"%s-%d\", \"deviceName\":\"%s\", "
                  "\"productId\":\"%s\"}",
-                 productId, sg_unbind_device_index, deviceName, productId);
+                 m_client->device_info.product_id, sg_unbind_device_index, m_client->device_info.device_name,
+                 m_client->device_info.product_id);
     rc = qcloud_service_mqtt_post_msg(mqtt_client, message, QOS0);
     if (QCLOUD_RET_SUCCESS > rc) {
         Log_e("service mqtt post msg failed");

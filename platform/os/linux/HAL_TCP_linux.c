@@ -116,6 +116,72 @@ uintptr_t HAL_TCP_Connect(const char *host, uint16_t port)
     return (uintptr_t)ret;
 }
 
+uintptr_t HAL_TCP_CreatBind(const char *host, uint16_t port)
+{
+    int             ret;
+    struct addrinfo hints, *addr_list, *cur;
+    int             fd = 0;
+
+    char port_str[6];
+    HAL_Snprintf(port_str, 6, "%d", port);
+
+    memset(&hints, 0x00, sizeof(hints));
+    hints.ai_family   = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    ret = getaddrinfo(host, port_str, &hints, &addr_list);
+    if (ret) {
+        if (ret == EAI_SYSTEM)
+            Log_e("getaddrinfo(%s:%s) error: %s", STRING_PTR_PRINT_SANITY_CHECK(host), port_str, strerror(errno));
+        else
+            Log_e("getaddrinfo(%s:%s) error: %s", STRING_PTR_PRINT_SANITY_CHECK(host), port_str, gai_strerror(ret));
+        return 0;
+    }
+
+    for (cur = addr_list; cur != NULL; cur = cur->ai_next) {
+        fd = (int)socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
+        if (fd < 0) {
+            ret = 0;
+            continue;
+        }
+
+        if (bind(fd, cur->ai_addr, cur->ai_addrlen) == 0) {
+            if(listen(fd, 5)== 0){
+                ret = fd;
+                goto exit;
+            }
+        }
+        close(fd);
+        ret = 0;
+    }
+exit:
+    if (0 == ret) {
+        Log_e("fail to creat TCP server: %s:%s", STRING_PTR_PRINT_SANITY_CHECK(host), port_str);
+    } else {
+        /* reduce log print due to frequent log server connect/disconnect */
+        if (strstr(host, LOG_UPLOAD_SERVER_PATTEN))
+            UPLOAD_DBG("creat TCP server: %s:%s", STRING_PTR_PRINT_SANITY_CHECK(host), port_str);
+        else
+            Log_i("creat TCP server: %s:%s", STRING_PTR_PRINT_SANITY_CHECK(host), port_str);
+    }
+
+    freeaddrinfo(addr_list);
+
+    return (uintptr_t)ret;
+}
+
+uintptr_t HAL_TCP_Accept(int server_fd) 
+{
+    struct sockaddr_in cli_addr;
+    socklen_t          sz;
+    int                fd = accept(server_fd, (struct sockaddr *)&cli_addr, &sz);
+    if (fd < 0)
+        return -1;
+    Log_d("connected from %s %d", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+    return fd;
+}
+
 int HAL_TCP_Disconnect(uintptr_t fd)
 {
     int rc;

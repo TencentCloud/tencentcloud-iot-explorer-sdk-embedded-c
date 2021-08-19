@@ -12,8 +12,8 @@ set(BUILD_TYPE "release")
 set(EXTRACT_SRC OFF)
 
 # 编译工具链
-set(COMPILE_TOOLS "gcc") 
-set(PLATFORM 	  "linux")
+ set(COMPILE_TOOLS "gcc") 
+ set(PLATFORM 	  "linux")
  
 #set(COMPILE_TOOLS "MSVC") 
 #set(PLATFORM 	  "windows") 
