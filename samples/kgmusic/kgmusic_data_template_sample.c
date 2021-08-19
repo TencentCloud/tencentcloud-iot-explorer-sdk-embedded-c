@@ -349,17 +349,17 @@ static int parse_arguments(int argc, char **argv)
 #define QCLOUD_IOT_KGMUSIC_PAGESIZE 5
 
 typedef enum {
-    QCLOUD_IOT_KGMUSIC_SONG_CAN          = 0,
-    QCLOUD_IOT_KGMUSIC_SONG_CHINA_AREA   = 1,
-    QCLOUD_IOT_KGMUSIC_SONG_NO_COPYRIGHT = 2,
-    QCLOUD_IOT_KGMUSIC_SONG_ISVIP        = 3,
-} QCLOUD_IOT_KGMUSIC_SONG_CODE_E;
+    KGMUSIC_SONG_CAN          = 0,
+    KGMUSIC_SONG_CHINA_AREA   = 1,
+    KGMUSIC_SONG_NO_COPYRIGHT = 2,
+    KGMUSIC_SONG_ISVIP        = 3,
+} KgmusicSongPlayAbleCode;
 
 typedef enum {
-    QCLOUD_IOT_KGMUSIC_MODE_CYCLE  = 0,
-    QCLOUD_IOT_KGMUSIC_MODE_SINGLE = 1,
-    QCLOUD_IOT_KGMUSIC_MODE_RANDOM = 2,
-} QCLOUD_IOT_KGMUSIC_PLAY_MODE_E;
+    KGMUSIC_MODE_CYCLE  = 0,
+    KGMUSIC_MODE_SINGLE = 1,
+    KGMUSIC_MODE_RANDOM = 2,
+} KgmusicPlayMode;
 
 typedef struct {
     char *url;
@@ -367,57 +367,57 @@ typedef struct {
     int   quality;
     char *singer_name;
     char *song_name;
-} PLAYER_SONG_INFO_T;
+} PlayerSongInfo;
 
 typedef struct {
-    char *                         song_id;
-    char *                         song_name;
-    char *                         singer_name;
-    char *                         song_url;
-    int                            song_size;
-    char *                         song_url_hq;
-    int                            song_size_hq;
-    char *                         song_url_sq;
-    int                            song_size_sq;
-    int                            duration;
-    QCLOUD_IOT_KGMUSIC_SONG_CODE_E playable_code;
-    char *                         try_url;
-    int                            try_size;
-    int                            try_begin;
-    int                            try_end;
-    bool                           has_info;
-} QCLOUD_IOT_KGMUSIC_SONGINFO_T;
+    char *                  song_id;
+    char *                  song_name;
+    char *                  singer_name;
+    char *                  song_url;
+    int                     song_size;
+    char *                  song_url_hq;
+    int                     song_size_hq;
+    char *                  song_url_sq;
+    int                     song_size_sq;
+    int                     duration;
+    KgmusicSongPlayAbleCode playable_code;
+    char *                  try_url;
+    int                     try_size;
+    int                     try_begin;
+    int                     try_end;
+    bool                    has_info;
+} KgmusicSongInfo;
 
 typedef struct {
-    int                           list_curr_count;
-    int                           list_total_count;
-    int                           curr_play_index;
-    int                           song_reply_index;
-    int                           curr_song_duration;
-    int                           curr_play_position;
-    int                           seek_play_position;
-    int                           set_play_quality;
-    int                           curr_play_volume;
-    int                           page_num;
-    char *                        list_id;
-    char *                        list_type;
-    char *                        list_img;
-    char *                        list_name;
-    bool                          passive_next;
-    bool                          user_next;
-    bool                          user_prev;
-    bool                          not_in_list;
-    bool                          start_play;
-    bool                          switch_quality;
-    QCLOUD_IOT_KGMUSIC_SONGINFO_T song_info_list[QCLOUD_IOT_KGMUSIC_PAGESIZE + 1];
-} QCLOUD_IOT_KGMUSIC_SONGLIST_T;
+    int             list_curr_count;
+    int             list_total_count;
+    int             curr_play_index;
+    int             song_reply_index;
+    int             curr_song_duration;
+    int             curr_play_position;
+    int             seek_play_position;
+    int             set_play_quality;
+    int             curr_play_volume;
+    int             page_num;
+    char *          list_id;
+    char *          list_type;
+    char *          list_img;
+    char *          list_name;
+    bool            passive_next;
+    bool            user_next;
+    bool            user_prev;
+    bool            not_in_list;
+    bool            start_play;
+    bool            switch_quality;
+    KgmusicSongInfo song_info_list[QCLOUD_IOT_KGMUSIC_PAGESIZE + 1];
+} KgmusicSongList;
 
 typedef struct {
     char *type_key;
     char *except_fields;
-} QCLOUD_IOT_KGMUSIC_EXCEPT_FIELDS_T;
+} KgmusicExceptFields;
 
-static QCLOUD_IOT_KGMUSIC_EXCEPT_FIELDS_T sg_kgmusic_except_fields[] = {
+static KgmusicExceptFields sg_kgmusic_except_fields[] = {
     {"album_info",
      "publish_time|album_translate_name|company|singer_name|intro|album_name|album_img|singer_id,songs.*.has_accompany|"
      "singer_img|mv_id|album_id|album_img_mini|singer_name|album_img_small|album_img_medium|album_img_large|album_name|"
@@ -438,15 +438,16 @@ static QCLOUD_IOT_KGMUSIC_EXCEPT_FIELDS_T sg_kgmusic_except_fields[] = {
     {"top_song",
      "songs.*.has_accompany|"
      "singer_img|mv_id|album_id|album_img_mini|singer_name|album_img_small|album_img_medium|album_img_large|album_name|"
-     "album_img|singer_id"}};
+     "album_img|singer_id"},
+};
 
 #define QCLOUD_IOT_KGMUSIC_SYNC_SEND_FAILED  -1
 #define QCLOUD_IOT_KGMUSIC_SYNC_RECV_TIMEOUT -2
 
-static QCLOUD_IOT_KGMUSIC_SONGLIST_T sg_song_list = {0};
-static QCLOUD_IOT_KGMUSIC_T          sg_kgmusic   = {0};
+static KgmusicSongList  sg_song_list   = {0};
+static QcloudIotKgmusic sg_iot_kgmusic = {0};
 
-static void _kgmusic_song_info_clear(QCLOUD_IOT_KGMUSIC_SONGINFO_T *song_info)
+static void _kgmusic_song_info_clear(KgmusicSongInfo *song_info)
 {
     if (song_info == NULL) {
         return;
@@ -459,7 +460,7 @@ static void _kgmusic_song_info_clear(QCLOUD_IOT_KGMUSIC_SONGINFO_T *song_info)
     HAL_Free(song_info->song_url_sq);
     HAL_Free(song_info->try_url);
     HAL_Free(song_info->song_id);
-    memset(song_info, 0, sizeof(QCLOUD_IOT_KGMUSIC_SONGINFO_T));
+    memset(song_info, 0, sizeof(KgmusicSongInfo));
 }
 
 static int _kgmusic_query_songlist_callback(char *song_info_json, char *userdata)
@@ -537,7 +538,7 @@ static int _kgmusic_query_songinfo_callback(char *song_info_json, char *userdata
         goto exit;
     }
 
-    QCLOUD_IOT_KGMUSIC_SONGINFO_T *song_info = NULL;
+    KgmusicSongInfo *song_info = NULL;
 
     // get song info index
     if (sg_song_list.song_info_list[sg_song_list.song_reply_index].song_id != NULL &&
@@ -623,7 +624,7 @@ static int _kgmusic_query_song_list(void *client)
     if (sg_song_list.list_type == NULL) {
         return QCLOUD_ERR_FAILURE;
     }
-    QCLOUD_IOT_KGMUSIC_SONGLIST_PARAMS_T params;
+    QcloudIotKgmusicSongListParams params;
     params.list_id       = sg_song_list.list_id;
     params.list_type     = sg_song_list.list_type;
     params.page_size     = QCLOUD_IOT_KGMUSIC_PAGESIZE;
@@ -631,14 +632,14 @@ static int _kgmusic_query_song_list(void *client)
     params.except_fields = "";
 
     int i = 0;
-    for (i = 0; i < sizeof(sg_kgmusic_except_fields) / sizeof(QCLOUD_IOT_KGMUSIC_EXCEPT_FIELDS_T); i++) {
+    for (i = 0; i < sizeof(sg_kgmusic_except_fields) / sizeof(KgmusicExceptFields); i++) {
         if (NULL != strstr(sg_song_list.list_type, sg_kgmusic_except_fields[i].type_key)) {
             params.except_fields = sg_kgmusic_except_fields[i].except_fields;
             break;
         }
     }
 
-    int ret = QCLOUD_IOT_kgmusic_syncquery_songlist(client, &params, &sg_kgmusic, 5000);
+    int ret = IOT_KGMUSIC_syncquery_songlist(client, &params, &sg_iot_kgmusic, 5000);
     if (QCLOUD_RET_SUCCESS == ret) {
         sg_song_list.page_num = params.page;
     }
@@ -648,10 +649,10 @@ static int _kgmusic_query_song_list(void *client)
 
 static int _kgmusic_get_song_info(void *client, bool get_next)
 {
-    int                            ret           = QCLOUD_RET_SUCCESS;
-    int                            index         = 0;
-    bool                           get_song_list = false;
-    QCLOUD_IOT_KGMUSIC_SONGINFO_T *song_info     = NULL;
+    int              ret           = QCLOUD_RET_SUCCESS;
+    int              index         = 0;
+    bool             get_song_list = false;
+    KgmusicSongInfo *song_info     = NULL;
 
     int song_index = 0;
 
@@ -690,7 +691,7 @@ static int _kgmusic_get_song_info(void *client, bool get_next)
     }
 
     if (false == song_info->has_info) {
-        ret = QCLOUD_IOT_kgmusic_syncquery_song(client, song_info->song_id, &sg_kgmusic, 5000);
+        ret = IOT_KGMUSIC_syncquery_song(client, song_info->song_id, &sg_iot_kgmusic, 5000);
     }
 
     // get failed or success setted
@@ -713,7 +714,7 @@ static int _kgmusic_find_index_from_list(void *client, char *song_id)
 
     sg_song_list.song_reply_index = sg_song_list.curr_play_index % QCLOUD_IOT_KGMUSIC_PAGESIZE;
 
-    if (false == (start_index <= sg_song_list.curr_play_index && sg_song_list.curr_play_index <= end_index)) {
+    if (!(start_index <= sg_song_list.curr_play_index && sg_song_list.curr_play_index <= end_index)) {
         _kgmusic_query_song_list(client);
     }
 
@@ -738,16 +739,15 @@ static int _kgmusic_find_index_from_list(void *client, char *song_id)
     return i + ((sg_song_list.page_num - 1) * QCLOUD_IOT_KGMUSIC_PAGESIZE);
 }
 
-static void _qcloud_kgmusic_next_song(void *client, bool set)
+static void _kgmusic_next_prev_play_song(void *client, bool manual, bool next)
 {
     int curr_play_index = sg_song_list.curr_play_index;
 
-    sg_ProductData.m_pause_play = 1;
-    sg_DataTemplate[0].state    = eCHANGED;
+    sg_ProductData.m_pause_play           = 1;
+    sg_DataTemplate[M_PAUSE_PLAY_E].state = eCHANGED;
 
-    if (set == false &&
-        (sg_song_list.list_total_count == 0 || sg_ProductData.m_play_mode == QCLOUD_IOT_KGMUSIC_MODE_SINGLE)) {
-        int find_index = _kgmusic_find_index_from_list(client, sg_DataTemplate[6].data_property.data);
+    if (!manual && (sg_song_list.list_total_count == 0 || sg_ProductData.m_play_mode == KGMUSIC_MODE_SINGLE)) {
+        int find_index = _kgmusic_find_index_from_list(client, sg_ProductData.m_cur_song_id);
         if (find_index != -1) {
             sg_song_list.curr_play_index = find_index;
         }
@@ -755,73 +755,34 @@ static void _qcloud_kgmusic_next_song(void *client, bool set)
         return;
     }
 
-    if (sg_ProductData.m_play_mode == QCLOUD_IOT_KGMUSIC_MODE_RANDOM) {
+    if (sg_ProductData.m_play_mode == KGMUSIC_MODE_RANDOM) {
         srand((unsigned)time(NULL));
         while (curr_play_index == sg_song_list.curr_play_index) {
             curr_play_index = rand() % sg_song_list.list_total_count;
         }
-
         Log_d("random song index:%d", curr_play_index);
-    } else {
-        curr_play_index += 1;
     }
 
-    if (curr_play_index == sg_song_list.list_total_count) {
-        if (sg_ProductData.m_play_mode == QCLOUD_IOT_KGMUSIC_MODE_CYCLE) {
+    // next
+    if (sg_ProductData.m_play_mode == KGMUSIC_MODE_CYCLE && next) {
+        curr_play_index += 1;
+        if (curr_play_index >= sg_song_list.list_total_count) {
             curr_play_index = 0;
             Log_d("cycle play head");
         }
     }
 
-    int end_index = sg_song_list.page_num * QCLOUD_IOT_KGMUSIC_PAGESIZE - 1;
-    end_index     = end_index >= sg_song_list.list_total_count ? sg_song_list.list_total_count - 1 : end_index;
-
-    int start_index = end_index + 1 - QCLOUD_IOT_KGMUSIC_PAGESIZE;
-    start_index     = start_index < 0 ? 0 : start_index;
-
-    sg_song_list.curr_play_index  = curr_play_index;
-    sg_song_list.song_reply_index = curr_play_index % QCLOUD_IOT_KGMUSIC_PAGESIZE;
-
-    if (false == (start_index <= curr_play_index && curr_play_index <= end_index)) {
-        _kgmusic_query_song_list(client);
-    }
-
-    return;
-}
-
-static void _qcloud_kgmusic_prev_song(void *client, bool set)
-{
-    int curr_play_index = sg_song_list.curr_play_index;
-
-    sg_ProductData.m_pause_play = 1;
-
-    if (set == false &&
-        (sg_song_list.list_total_count == 0 || sg_ProductData.m_play_mode == QCLOUD_IOT_KGMUSIC_MODE_SINGLE)) {
-        int find_index = _kgmusic_find_index_from_list(client, sg_DataTemplate[6].data_property.data);
-        if (find_index != -1) {
-            sg_song_list.curr_play_index = find_index;
-        }
-        Log_d("single song play");
-        return;
-    }
-
-    if (sg_ProductData.m_play_mode == QCLOUD_IOT_KGMUSIC_MODE_RANDOM) {
-        srand((unsigned)time(NULL));
-        while (curr_play_index == sg_song_list.curr_play_index) {
-            curr_play_index = rand() % sg_song_list.list_total_count;
-        }
-        Log_d("random song index:%d", curr_play_index);
-    }
-
-    if (curr_play_index <= 0) {
-        if (sg_ProductData.m_play_mode == QCLOUD_IOT_KGMUSIC_MODE_CYCLE) {
+    // prev
+    if (sg_ProductData.m_play_mode == KGMUSIC_MODE_CYCLE && !next) {
+        if (curr_play_index <= 0) {
             curr_play_index = sg_song_list.list_total_count - 1;
-            Log_d("play tail");
+            Log_d("cycle play tail");
+        } else {
+            curr_play_index -= 1;
         }
-    } else {
-        curr_play_index -= 1;
     }
 
+    // check song id is in list
     int end_index   = sg_song_list.page_num * QCLOUD_IOT_KGMUSIC_PAGESIZE - 1;
     end_index       = end_index >= sg_song_list.list_total_count ? sg_song_list.list_total_count - 1 : end_index;
     int start_index = end_index + 1 - QCLOUD_IOT_KGMUSIC_PAGESIZE;
@@ -834,7 +795,19 @@ static void _qcloud_kgmusic_prev_song(void *client, bool set)
         _kgmusic_query_song_list(client);
     }
 
-    Log_d("prev play index;%d", sg_song_list.curr_play_index);
+    Log_d("play index;%d", sg_song_list.curr_play_index);
+}
+
+static void _kgmusic_next_song(void *client, bool manual)
+{
+    _kgmusic_next_prev_play_song(client, manual, true);
+    return;
+}
+
+static void _kgmusic_prev_song(void *client, bool manual)
+{
+    _kgmusic_next_prev_play_song(client, manual, false);
+    return;
 }
 
 static void _kgmusic_passive_play_next()
@@ -842,7 +815,11 @@ static void _kgmusic_passive_play_next()
     sg_song_list.passive_next = true;
 }
 
-static char *sg_play_params_list_id[] = {"play_params.playlist_id", "play_params.album_id", "play_params.top_id"};
+static char *sg_play_params_list_id[] = {
+    "play_params.playlist_id",
+    "play_params.album_id",
+    "play_params.top_id",
+};
 
 static int _kgmusic_parse_curr_play_list(void *client, char *data)
 {
@@ -891,7 +868,7 @@ static int _kgmusic_parse_curr_play_list(void *client, char *data)
 static bool _kgmusic_passive_play_proc(void *client)
 {
     if (true == sg_song_list.passive_next) {
-        _qcloud_kgmusic_next_song(client, false);
+        _kgmusic_next_song(client, false);
         return true;
     }
 
@@ -901,33 +878,33 @@ static bool _kgmusic_passive_play_proc(void *client)
 static bool _kgmusic_user_play_proc(void *client)
 {
     if (true == sg_song_list.user_next) {
-        _qcloud_kgmusic_next_song(client, true);
+        _kgmusic_next_song(client, true);
         return true;
     }
 
     if (true == sg_song_list.user_prev) {
-        _qcloud_kgmusic_prev_song(client, true);
+        _kgmusic_prev_song(client, true);
         return true;
     }
 
     return false;
 }
 
-typedef struct qcloud_kgmusic_player {
+typedef struct kgmusic_player {
     int  play_duration;
     int  play_position;
     int  curr_volume;
     bool start_play;
     bool end_play;
-    void (*set_volume)(struct qcloud_kgmusic_player *player, int volume);
-    void (*set_position)(struct qcloud_kgmusic_player *player, int position_sec);
-    int (*get_position)(struct qcloud_kgmusic_player *player);
-    int (*get_volume)(struct qcloud_kgmusic_player *player);
-    void (*play)(struct qcloud_kgmusic_player *player, PLAYER_SONG_INFO_T *play_song_info);
-    bool (*check_play_end)(struct qcloud_kgmusic_player *player);
-    void (*pause)(struct qcloud_kgmusic_player *player);
-    void (*unpause)(struct qcloud_kgmusic_player *player, int position);
-} QCLOUD_KGMUSIC_PLAYER_T;
+    void (*set_volume)(struct kgmusic_player *player, int volume);
+    void (*set_position)(struct kgmusic_player *player, int position_sec);
+    int (*get_position)(struct kgmusic_player *player);
+    int (*get_volume)(struct kgmusic_player *player);
+    void (*play)(struct kgmusic_player *player, PlayerSongInfo *play_song_info);
+    bool (*check_play_end)(struct kgmusic_player *player);
+    void (*pause)(struct kgmusic_player *player);
+    void (*unpause)(struct kgmusic_player *player, int position);
+} KgmusicPlayer;
 
 #ifdef WIN32
 #include <Windows.h>
@@ -944,7 +921,7 @@ STARTUPINFO siStartInfo;
 
 PROCESS_INFORMATION piProcInfo;
 
-static void _player_destory(QCLOUD_KGMUSIC_PLAYER_T *player)
+static void _player_destory(KgmusicPlayer *player)
 {
     if (hStdOutRead != -1) {
         CloseHandle(hStdOutRead);
@@ -967,7 +944,7 @@ static void _player_destory(QCLOUD_KGMUSIC_PLAYER_T *player)
     Log_e("player end");
 }
 
-static void _player_read_pipe(QCLOUD_KGMUSIC_PLAYER_T *player)
+static void _player_read_pipe(KgmusicPlayer *player)
 {
     char  buf[256];
     int   size    = 0;
@@ -1040,7 +1017,7 @@ static void _player_read_pipe(QCLOUD_KGMUSIC_PLAYER_T *player)
     } while (hStdOutRead != -1 && false == expired(&read_timer));
 }
 
-static bool _player_play_end_check(QCLOUD_KGMUSIC_PLAYER_T *player)
+static bool _player_play_end_check(KgmusicPlayer *player)
 {
     if (hStdOutRead == -1) {
         _player_destory(player);
@@ -1054,7 +1031,7 @@ static bool _player_play_end_check(QCLOUD_KGMUSIC_PLAYER_T *player)
     return player->end_play;
 }
 
-static void _player_setvolume(QCLOUD_KGMUSIC_PLAYER_T *player, int volume)
+static void _player_setvolume(KgmusicPlayer *player, int volume)
 {
     char cmd[128];
     if (hStdInWrite == -1 || volume == player->curr_volume) {
@@ -1069,7 +1046,7 @@ static void _player_setvolume(QCLOUD_KGMUSIC_PLAYER_T *player, int volume)
     Log_d("player set volume %d, size %d", volume, size);
 }
 
-static int _player_getvolume(QCLOUD_KGMUSIC_PLAYER_T *player)
+static int _player_getvolume(KgmusicPlayer *player)
 {
     if (player->start_play == true && hStdInWrite != -1) {
         int wite_len = 0;
@@ -1084,7 +1061,7 @@ static int _player_getvolume(QCLOUD_KGMUSIC_PLAYER_T *player)
     return player->curr_volume;
 }
 
-static void _player_play(QCLOUD_KGMUSIC_PLAYER_T *player, PLAYER_SONG_INFO_T *play_song_info)
+static void _player_play(KgmusicPlayer *player, PlayerSongInfo *play_song_info)
 {
     Log_d("play song %s-%s-%s-%d-%d", play_song_info->song_name, play_song_info->singer_name, play_song_info->url,
           play_song_info->duration, play_song_info->quality);
@@ -1132,14 +1109,14 @@ static void _player_play(QCLOUD_KGMUSIC_PLAYER_T *player, PLAYER_SONG_INFO_T *pl
     return;
 }
 
-static void _player_pause(QCLOUD_KGMUSIC_PLAYER_T *player)
+static void _player_pause(KgmusicPlayer *player)
 {
     int write_len = 0;
     WriteFile(hStdInWrite, "pause\n", sizeof("pause\n") - 1, &write_len, NULL);
     Log_d("player pause or unpause %d", write_len);
 }
 
-static void _player_unpause(QCLOUD_KGMUSIC_PLAYER_T *player, int last_position)
+static void _player_unpause(KgmusicPlayer *player, int last_position)
 {
     int write_len = 0;
     Log_d("write size");
@@ -1148,7 +1125,7 @@ static void _player_unpause(QCLOUD_KGMUSIC_PLAYER_T *player, int last_position)
     Log_d("player pause or unpause ");
 }
 
-static int _player_getposition(QCLOUD_KGMUSIC_PLAYER_T *player)
+static int _player_getposition(KgmusicPlayer *player)
 {
     if (player->start_play == false || hStdInWrite == -1) {
         return -1;
@@ -1166,7 +1143,7 @@ static int _player_getposition(QCLOUD_KGMUSIC_PLAYER_T *player)
     return player->play_position;
 }
 
-static void _player_setposition(QCLOUD_KGMUSIC_PLAYER_T *player, int position_sec)
+static void _player_setposition(KgmusicPlayer *player, int position_sec)
 {
     char cmd[128];
 
@@ -1197,7 +1174,7 @@ static int sg_fd_fifo = -1;
 static int sg_fd_pipe[2];
 static FILE *sg_pipe_file = NULL;
 
-static void _player_destory(QCLOUD_KGMUSIC_PLAYER_T *player)
+static void _player_destory(KgmusicPlayer *player)
 {
     if (sg_fd_fifo != -1) {
         close(sg_fd_fifo);
@@ -1218,7 +1195,7 @@ static void _player_destory(QCLOUD_KGMUSIC_PLAYER_T *player)
     Log_e("player end %d", ret);
 }
 
-static void _player_read_pipe(QCLOUD_KGMUSIC_PLAYER_T *player)
+static void _player_read_pipe(KgmusicPlayer *player)
 {
     char buf[256];
     Timer read_timer;
@@ -1281,7 +1258,7 @@ static void _player_read_pipe(QCLOUD_KGMUSIC_PLAYER_T *player)
     } while (sg_fd_fifo != -1 && false == expired(&read_timer));
 }
 
-static bool _player_play_end_check(QCLOUD_KGMUSIC_PLAYER_T *player)
+static bool _player_play_end_check(KgmusicPlayer *player)
 {
     if (sg_fd_fifo == -1) {
         _player_destory(player);
@@ -1295,7 +1272,7 @@ static bool _player_play_end_check(QCLOUD_KGMUSIC_PLAYER_T *player)
     return player->end_play;
 }
 
-static void _player_setvolume(QCLOUD_KGMUSIC_PLAYER_T *player, int volume)
+static void _player_setvolume(KgmusicPlayer *player, int volume)
 {
     char cmd[128];
     if (sg_fd_fifo == -1 || volume == player->curr_volume) {
@@ -1309,7 +1286,7 @@ static void _player_setvolume(QCLOUD_KGMUSIC_PLAYER_T *player, int volume)
     Log_d("player set volume %d, size %d", volume, size);
 }
 
-static int _player_getvolume(QCLOUD_KGMUSIC_PLAYER_T *player)
+static int _player_getvolume(KgmusicPlayer *player)
 {
     if (player->start_play == true && sg_fd_fifo != -1) {
         int size = write(sg_fd_fifo, "pausing_keep_force get_property volume\n",
@@ -1340,7 +1317,7 @@ static void _player_signal()
 }
 #endif
 
-static void _player_play(QCLOUD_KGMUSIC_PLAYER_T *player, PLAYER_SONG_INFO_T *play_song_info)
+static void _player_play(KgmusicPlayer *player, PlayerSongInfo *play_song_info)
 {
     Log_d("play song %s-%s-%s-%d-%d", play_song_info->song_name, play_song_info->singer_name, play_song_info->url,
           play_song_info->duration, play_song_info->quality);
@@ -1391,19 +1368,19 @@ static void _player_play(QCLOUD_KGMUSIC_PLAYER_T *player, PLAYER_SONG_INFO_T *pl
     return;
 }
 
-static void _player_pause(QCLOUD_KGMUSIC_PLAYER_T *player)
+static void _player_pause(KgmusicPlayer *player)
 {
     int size = write(sg_fd_fifo, "pause\n", sizeof("pause\n") - 1);
     Log_d("player pause or unpause %d", size);
 }
 
-static void _player_unpause(QCLOUD_KGMUSIC_PLAYER_T *player, int last_position)
+static void _player_unpause(KgmusicPlayer *player, int last_position)
 {
     int size = write(sg_fd_fifo, "pause\n", sizeof("pause\n") - 1);
     Log_d("player pause or unpause %d", size);
 }
 
-static int _player_getposition(QCLOUD_KGMUSIC_PLAYER_T *player)
+static int _player_getposition(KgmusicPlayer *player)
 {
     if (player->start_play == false || sg_fd_fifo == -1) {
         return -1;
@@ -1418,7 +1395,7 @@ static int _player_getposition(QCLOUD_KGMUSIC_PLAYER_T *player)
     return player->play_position;
 }
 
-static void _player_setposition(QCLOUD_KGMUSIC_PLAYER_T *player, int position_sec)
+static void _player_setposition(KgmusicPlayer *player, int position_sec)
 {
     char cmd[128];
 
@@ -1434,19 +1411,21 @@ static void _player_setposition(QCLOUD_KGMUSIC_PLAYER_T *player, int position_se
 }
 #endif
 
-static QCLOUD_KGMUSIC_PLAYER_T sg_player = {-1,
-                                            -1,
-                                            -1,
-                                            false,
-                                            true,
-                                            _player_setvolume,
-                                            _player_setposition,
-                                            _player_getposition,
-                                            _player_getvolume,
-                                            _player_play,
-                                            _player_play_end_check,
-                                            _player_pause,
-                                            _player_unpause};
+static KgmusicPlayer sg_player = {
+    -1,
+    -1,
+    -1,
+    false,
+    true,
+    _player_setvolume,
+    _player_setposition,
+    _player_getposition,
+    _player_getvolume,
+    _player_play,
+    _player_play_end_check,
+    _player_pause,
+    _player_unpause,
+};
 
 static void OnControlMsgCallback(void *pClient, const char *pJsonValueBuffer, uint32_t valueLength,
                                  DeviceProperty *pProperty)
@@ -1485,53 +1464,7 @@ static int _register_data_template_property(void *pTemplate_client)
     return QCLOUD_RET_SUCCESS;
 }
 
-typedef enum {
-    E_KGMUSIC_STATE_INIT     = 0,
-    E_KGMUSIC_STATE_PLAY     = 1,
-    E_KGMUSIC_STATE_SUSPEND  = 2,
-    E_KGMUSIC_STATE_FORWARD  = 3,
-    E_KGMUSIC_STATE_STEPBACK = 4,
-} QCLOUD_IOT_KGMUSIC_STATE_E;
-
-typedef struct {
-    QCLOUD_IOT_KGMUSIC_STATE_E state;
-    void *                     data;
-} QCLOUD_IOT_KGMUSIC_PLAYER_CONTROL_T;
-
-// static QCLOUD_IOT_KGMUSIC_PLAYER_CONTROL_T sg_player_control = {0};
-#if 0
-static void qcloud_iot_kgmusic_player_task(void *params)
-{
-    while (1) {
-        switch () {
-            case:
-
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-int qcloud_iot_kgmusic_player_start()
-{
-    static ThreadParams thread_params;
-    thread_params.thread_func = qcloud_iot_kgmusic_player_task;
-    thread_params.thread_name = "player_task";
-    thread_params.stack_size  = 8192;
-    thread_params.priority    = 3;
-    thread_params.user_arg    = NULL;
-    int ret                   = HAL_ThreadCreate(&thread_params);
-    if (QCLOUD_RET_SUCCESS != ret) {
-        Log_e("HAL_ThreadCreate(player_task) failed!");
-        return -1;
-    }
-
-    return 0;
-}
-#endif
-
-static void _kgmusic_playsong(void *client)
+static KgmusicSongInfo *_kgmusic_get_play_songinfo(void *client)
 {
     int song_index = 0;
     // select song index
@@ -1546,7 +1479,7 @@ static void _kgmusic_playsong(void *client)
     }
 
     // get song info from list
-    QCLOUD_IOT_KGMUSIC_SONGINFO_T *song_info = &sg_song_list.song_info_list[song_index];
+    KgmusicSongInfo *song_info = &sg_song_list.song_info_list[song_index];
     if (song_info->song_id == NULL) {
         // retry get song list
         if (QCLOUD_RET_SUCCESS != _kgmusic_query_song_list(client) || sg_song_list.list_total_count == 0) {
@@ -1561,7 +1494,7 @@ static void _kgmusic_playsong(void *client)
     if (song_info->song_id == NULL) {
         _kgmusic_passive_play_next();
         sg_song_list.not_in_list = false;
-        return;
+        return NULL;
     }
 
     // check song info getted?
@@ -1569,10 +1502,20 @@ static void _kgmusic_playsong(void *client)
         if (QCLOUD_RET_SUCCESS != _kgmusic_get_song_info(client, false)) {
             _kgmusic_passive_play_next();
             sg_song_list.not_in_list = false;
-            return;
+            return NULL;
         }
     }
 
+    return song_info;
+}
+
+static void _kgmusic_playsong(void *client)
+{
+    KgmusicSongInfo *song_info = _kgmusic_get_play_songinfo(client);
+
+    if (song_info == NULL) {
+        return;
+    }
     char *song_url = NULL;
     int   quality  = sg_song_list.set_play_quality;
 
@@ -1611,7 +1554,7 @@ static void _kgmusic_playsong(void *client)
         sg_song_list.user_next    = false;
         sg_song_list.user_prev    = false;
 
-        PLAYER_SONG_INFO_T player_song_info;
+        PlayerSongInfo player_song_info;
         player_song_info.url         = song_url;
         player_song_info.singer_name = song_info->singer_name;
         player_song_info.duration    = sg_song_list.curr_song_duration;
@@ -1620,28 +1563,30 @@ static void _kgmusic_playsong(void *client)
 
         sg_player.play(&sg_player, &player_song_info);
 
-        if (sg_song_list.switch_quality == true) {
+        // The sound quality switch does not report the song information
+        if (sg_song_list.switch_quality) {
             sg_player.set_position(&sg_player, sg_ProductData.m_play_position);
-            sg_song_list.switch_quality = false;
         }
 
         // report song id play position
-        if (sg_song_list.switch_quality == false) {
+        if (!sg_song_list.switch_quality) {
             strncpy(sg_ProductData.m_cur_song_id, song_info->song_id, sizeof(sg_ProductData.m_cur_song_id) - 1);
-            sg_DataTemplate[6].state       = eCHANGED;
-            sg_DataTemplate[0].state       = eCHANGED;
-            sg_ProductData.m_play_position = 0;
-            sg_DataTemplate[5].state       = eCHANGED;
+            sg_DataTemplate[M_CUR_SONG_ID_E].state   = eCHANGED;
+            sg_DataTemplate[M_PAUSE_PLAY_E].state    = eCHANGED;
+            sg_ProductData.m_play_position           = 0;
+            sg_DataTemplate[M_PLAY_POSITION_E].state = eCHANGED;
 
             // in list set curr play index to report
-            if (sg_song_list.not_in_list == false) {
-                sg_ProductData.m_song_index = sg_song_list.curr_play_index;
-                sg_DataTemplate[9].state    = eCHANGED;
+            if (!sg_song_list.not_in_list) {
+                sg_ProductData.m_song_index           = sg_song_list.curr_play_index;
+                sg_DataTemplate[m_SONG_INDEX_E].state = eCHANGED;
             }
+        } else {
+            sg_song_list.switch_quality = false;
         }
 
-        sg_ProductData.m_recommend_quality = quality;
-        sg_DataTemplate[8].state           = eCHANGED;
+        sg_ProductData.m_recommend_quality           = quality;
+        sg_DataTemplate[M_RECOMMEND_QUALITY_E].state = eCHANGED;
 
         sg_song_list.start_play = true;
     } else {
@@ -1732,8 +1677,8 @@ static bool _kgmusic_downmsg_proc_playpause(void *client)
 {
     bool play_song = false;
 
-    if (sg_DataTemplate[0].state == eCHANGED) {
-        sg_DataTemplate[0].state = eNOCHANGE;
+    if (sg_DataTemplate[M_PAUSE_PLAY_E].state == eCHANGED) {
+        sg_DataTemplate[M_PAUSE_PLAY_E].state = eNOCHANGE;
         if (sg_ProductData.m_pause_play == 0 && sg_song_list.start_play == true) {
             sg_player.pause(&sg_player);
             Log_d("player pause");
@@ -1755,9 +1700,9 @@ static bool _kgmusic_downmsg_proc_playlist(void *client)
 {
     bool play_song = false;
 
-    if (sg_DataTemplate[1].state == eCHANGED) {
-        sg_DataTemplate[1].state = eNOCHANGE;
-        _kgmusic_parse_curr_play_list(client, sg_DataTemplate[1].data_property.data);
+    if (sg_DataTemplate[M_CUR_PLAY_LIST_E].state == eCHANGED) {
+        sg_DataTemplate[M_CUR_PLAY_LIST_E].state = eNOCHANGE;
+        _kgmusic_parse_curr_play_list(client, sg_ProductData.m_cur_play_list);
         play_song = true;
     }
 
@@ -1768,10 +1713,10 @@ static bool _kgmusic_downmsg_proc_song_index(void *client)
 {
     bool play_song = false;
 
-    if (sg_DataTemplate[9].state == eCHANGED) {
-        sg_DataTemplate[9].state     = eNOCHANGE;
-        sg_song_list.curr_play_index = sg_ProductData.m_song_index;
-        play_song                    = true;
+    if (sg_DataTemplate[m_SONG_INDEX_E].state == eCHANGED) {
+        sg_DataTemplate[m_SONG_INDEX_E].state = eNOCHANGE;
+        sg_song_list.curr_play_index          = sg_ProductData.m_song_index;
+        play_song                             = true;
     }
     return play_song;
 }
@@ -1781,18 +1726,18 @@ static bool _kgmusic_downmsg_proc_songid(void *client)
     bool play_song = false;
 
     // song id check
-    if (sg_DataTemplate[6].state == eCHANGED) {
-        sg_DataTemplate[6].state = eNOCHANGE;
-        int song_index           = sg_song_list.curr_play_index % QCLOUD_IOT_KGMUSIC_PAGESIZE;
+    if (sg_DataTemplate[M_CUR_SONG_ID_E].state == eCHANGED) {
+        sg_DataTemplate[M_CUR_SONG_ID_E].state = eNOCHANGE;
+        int song_index                         = sg_song_list.curr_play_index % QCLOUD_IOT_KGMUSIC_PAGESIZE;
 
         if ((sg_song_list.song_info_list[song_index].song_id == NULL) ||
-            (0 != strcmp(sg_DataTemplate[6].data_property.data, sg_song_list.song_info_list[song_index].song_id))) {
-            int find_index = _kgmusic_find_index_from_list(client, sg_DataTemplate[6].data_property.data);
+            (0 != strcmp(sg_ProductData.m_cur_song_id, sg_song_list.song_info_list[song_index].song_id))) {
+            int find_index = _kgmusic_find_index_from_list(client, sg_ProductData.m_cur_song_id);
             if (find_index != -1) {
                 sg_song_list.curr_play_index = find_index;
             }
             play_song = true;
-            Log_d("play song id %s, %d", sg_DataTemplate[6].data_property.data, find_index);
+            Log_d("play song id %s, %d", sg_ProductData.m_cur_song_id, find_index);
         }
     }
     return play_song;
@@ -1802,13 +1747,13 @@ static bool _kgmusic_downmsg_proc_nextprev(void *client)
 {
     bool play_song = false;
 
-    if (sg_DataTemplate[2].state == eCHANGED) {
-        sg_DataTemplate[2].state = eNOCHANGE;
+    if (sg_DataTemplate[M_PRE_NEXT_E].state == eCHANGED) {
+        sg_DataTemplate[M_PRE_NEXT_E].state = eNOCHANGE;
         if (sg_ProductData.m_pre_next == 2) {
-            _qcloud_kgmusic_next_song(client, true);
+            _kgmusic_next_song(client, true);
             Log_d("play next song %d", sg_song_list.curr_play_index);
         } else if (sg_ProductData.m_pre_next == 1) {
-            _qcloud_kgmusic_prev_song(client, true);
+            _kgmusic_prev_song(client, true);
             Log_d("play prev song %d", sg_song_list.curr_play_index);
         }
         play_song = true;
@@ -1823,17 +1768,17 @@ static bool _kgmusic_downmsg_play_proc(void *client)
     bool play_song = false;
 
     // first check
-    if (sg_DataTemplate[5].state == eCHANGED && sg_song_list.start_play == true) {
-        sg_DataTemplate[5].state = eNOCHANGE;
+    if (sg_DataTemplate[M_PLAY_POSITION_E].state == eCHANGED && sg_song_list.start_play == true) {
+        sg_DataTemplate[M_PLAY_POSITION_E].state = eNOCHANGE;
         if (sg_song_list.curr_song_duration < sg_ProductData.m_play_position * 1000) {
             _kgmusic_passive_play_next();
         } else if (sg_song_list.curr_play_position != sg_ProductData.m_play_position * 1000) {
             sg_player.set_position(&sg_player, sg_ProductData.m_play_position);
             sg_song_list.seek_play_position = sg_ProductData.m_play_position;
         }
-    } else if (sg_DataTemplate[5].state == eCHANGED && sg_song_list.start_play == false) {
-        sg_DataTemplate[5].state       = eNOCHANGE;
-        sg_ProductData.m_play_position = 0;
+    } else if (sg_DataTemplate[M_PLAY_POSITION_E].state == eCHANGED && sg_song_list.start_play == false) {
+        sg_DataTemplate[M_PLAY_POSITION_E].state = eNOCHANGE;
+        sg_ProductData.m_play_position           = 0;
     }
 
     // second check
@@ -1846,15 +1791,15 @@ static bool _kgmusic_downmsg_play_proc(void *client)
         play_song |= _kgmusic_downmsg_proc_nextprev(client);
     }
 
-    if (sg_DataTemplate[4].state == eCHANGED) {
-        sg_DataTemplate[4].state = eNOCHANGE;
+    if (sg_DataTemplate[M_VOLUME_E].state == eCHANGED) {
+        sg_DataTemplate[M_VOLUME_E].state = eNOCHANGE;
         sg_player.set_volume(&sg_player, sg_ProductData.m_volume);
         sg_song_list.curr_play_volume = sg_ProductData.m_volume;
     }
 
-    if (sg_DataTemplate[8].state == eCHANGED) {
-        sg_DataTemplate[8].state      = eNOCHANGE;
-        sg_song_list.set_play_quality = sg_ProductData.m_recommend_quality;
+    if (sg_DataTemplate[M_RECOMMEND_QUALITY_E].state == eCHANGED) {
+        sg_DataTemplate[M_RECOMMEND_QUALITY_E].state = eNOCHANGE;
+        sg_song_list.set_play_quality                = sg_ProductData.m_recommend_quality;
 
         if (play_song == false && sg_song_list.start_play == true) {
             sg_song_list.switch_quality = true;
@@ -1874,10 +1819,10 @@ static void _kgmusic_get_player_play_position()
             sg_player.set_position(&sg_player, sg_song_list.seek_play_position);
         } else if (position != -1 && position > sg_song_list.seek_play_position &&
                    position != sg_ProductData.m_play_position) {
-            sg_song_list.seek_play_position = 0;
-            sg_song_list.curr_play_position = position * 1000;
-            sg_ProductData.m_play_position  = position;
-            sg_DataTemplate[5].state        = eCHANGED;
+            sg_song_list.seek_play_position          = 0;
+            sg_song_list.curr_play_position          = position * 1000;
+            sg_ProductData.m_play_position           = position;
+            sg_DataTemplate[M_PLAY_POSITION_E].state = eCHANGED;
         }
     }
 }
@@ -1887,8 +1832,8 @@ static void _kgmusic_get_player_volume()
     if (sg_song_list.start_play == true) {
         int volume = sg_player.get_volume(&sg_player);
         if (volume != sg_ProductData.m_volume) {
-            sg_ProductData.m_volume  = volume;
-            sg_DataTemplate[4].state = eCHANGED;
+            sg_ProductData.m_volume           = volume;
+            sg_DataTemplate[M_VOLUME_E].state = eCHANGED;
         }
     }
 }
@@ -1959,13 +1904,13 @@ int main(int argc, char **argv)
     }
 
     memset(&sg_song_list, 0, sizeof(sg_song_list));
-    sg_song_list.curr_play_index  = -1;
-    sg_kgmusic.mqtt_client        = IOT_Template_Get_MQTT_Client(client);
-    sg_kgmusic.user_data          = NULL;
-    sg_kgmusic.song_info_callback = _kgmusic_query_songinfo_callback;
-    sg_kgmusic.song_list_callback = _kgmusic_query_songlist_callback;
-    QCLOUD_IOT_kgmusic_enable(IOT_Template_Get_MQTT_Client(client), init_params.product_id, init_params.device_name,
-                              &sg_kgmusic);
+    sg_song_list.curr_play_index      = -1;
+    sg_iot_kgmusic.mqtt_client        = IOT_Template_Get_MQTT_Client(client);
+    sg_iot_kgmusic.user_data          = NULL;
+    sg_iot_kgmusic.song_info_callback = _kgmusic_query_songinfo_callback;
+    sg_iot_kgmusic.song_list_callback = _kgmusic_query_songlist_callback;
+    IOT_KGMUSIC_enable(IOT_Template_Get_MQTT_Client(client), init_params.product_id, init_params.device_name,
+                       &sg_iot_kgmusic);
 
     // register data template actions here
 #ifdef ACTION_ENABLED
@@ -2052,12 +1997,13 @@ int main(int argc, char **argv)
 #ifdef EVENT_POST_ENABLED
         eventPostCheck(client);
 #endif
-        if (_kgmusic_downmsg_play_proc(IOT_Template_Get_MQTT_Client(client)) == true) {
-            _kgmusic_playsong(IOT_Template_Get_MQTT_Client(client));
-        } else if (_kgmusic_user_play_proc(IOT_Template_Get_MQTT_Client(client)) == true) {
-            _kgmusic_playsong(IOT_Template_Get_MQTT_Client(client));
-        } else if (_kgmusic_passive_play_proc(IOT_Template_Get_MQTT_Client(client)) == true) {
-            _kgmusic_playsong(IOT_Template_Get_MQTT_Client(client));
+        void *mqtt_client = IOT_Template_Get_MQTT_Client(client);
+        if (_kgmusic_downmsg_play_proc(mqtt_client)) {
+            _kgmusic_playsong(mqtt_client);
+        } else if (_kgmusic_user_play_proc(mqtt_client)) {
+            _kgmusic_playsong(mqtt_client);
+        } else if (_kgmusic_passive_play_proc(mqtt_client)) {
+            _kgmusic_playsong(mqtt_client);
         } else {
             _kgmusic_get_player_play_position();
             _kgmusic_get_player_volume();

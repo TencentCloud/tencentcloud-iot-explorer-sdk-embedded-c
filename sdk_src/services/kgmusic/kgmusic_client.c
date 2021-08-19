@@ -40,9 +40,9 @@ typedef struct {
     char *json_format;
     bool  no_page;
     bool  no_list_id;
-} QCLOUD_IOT_KGMUSIC_COMMAND_JSON_FORMAT_T;
+} KgmusicCommandJsonFormat;
 
-static QCLOUD_IOT_KGMUSIC_COMMAND_JSON_FORMAT_T sg_kgmusic_command_json_format[] = {
+const static KgmusicCommandJsonFormat sg_kgmusic_command_json_format[] = {
     {"album_info", "{\"album_id\":\"%s\",\"page\":%d,\"size\":%d,\"kugou_command\":\"%s\",\"except_fields\":\"%s\"}",
      false, false},
     {"playlist_song",
@@ -55,7 +55,7 @@ static QCLOUD_IOT_KGMUSIC_COMMAND_JSON_FORMAT_T sg_kgmusic_command_json_format[]
     {"top_song", "{\"top_id\":\"%s\",\"page\":%d,\"size\":%d,\"kugou_command\":\"%s\",\"except_fields\":\"%s\"}", false,
      false}};
 
-static int _qcloud_iot_kgmusic_wait_reply(void *mqtt_client, QCLOUD_IOT_KGMUSIC_T *kgmusic, int timeout_ms)
+static int _qcloud_iot_kgmusic_wait_reply(void *mqtt_client, QcloudIotKgmusic *kgmusic, int timeout_ms)
 {
     Timer wait_timer;
     InitTimer(&wait_timer);
@@ -112,8 +112,8 @@ static int _qcloud_iot_kgmusic_publish_msg(void *mqtt_client, char *method, void
     return QCLOUD_RET_SUCCESS;
 }
 
-int QCLOUD_IOT_kgmusic_syncquery_songlist(void *client, QCLOUD_IOT_KGMUSIC_SONGLIST_PARAMS_T *list_query_params,
-                                          QCLOUD_IOT_KGMUSIC_T *kgmusic, int timeout_ms)
+int IOT_KGMUSIC_syncquery_songlist(void *client, QcloudIotKgmusicSongListParams *list_query_params,
+                                   QcloudIotKgmusic *kgmusic, int timeout_ms)
 {
     char params[512];
 
@@ -122,20 +122,17 @@ int QCLOUD_IOT_kgmusic_syncquery_songlist(void *client, QCLOUD_IOT_KGMUSIC_SONGL
     }
 
     int i = 0;
-    for (i = 0; i < sizeof(sg_kgmusic_command_json_format) / sizeof(QCLOUD_IOT_KGMUSIC_COMMAND_JSON_FORMAT_T); i++) {
+    for (i = 0; i < sizeof(sg_kgmusic_command_json_format) / sizeof(KgmusicCommandJsonFormat); i++) {
         if (NULL != strstr(list_query_params->list_type, sg_kgmusic_command_json_format[i].type_key)) {
-            if (sg_kgmusic_command_json_format[i].no_page == true &&
-                sg_kgmusic_command_json_format[i].no_list_id == true) {
+            if (sg_kgmusic_command_json_format[i].no_page && sg_kgmusic_command_json_format[i].no_list_id) {
                 HAL_Snprintf(params, sizeof(params), sg_kgmusic_command_json_format[i].json_format,
                              list_query_params->list_type,
                              list_query_params->except_fields == NULL ? "" : list_query_params->except_fields);
-            } else if (sg_kgmusic_command_json_format[i].no_page == true &&
-                       sg_kgmusic_command_json_format[i].no_list_id == false) {
+            } else if (sg_kgmusic_command_json_format[i].no_page && !sg_kgmusic_command_json_format[i].no_list_id) {
                 HAL_Snprintf(params, sizeof(params), sg_kgmusic_command_json_format[i].json_format,
                              list_query_params->list_id, list_query_params->list_type,
                              list_query_params->except_fields == NULL ? "" : list_query_params->except_fields);
-            } else if (sg_kgmusic_command_json_format[i].no_page == false &&
-                       sg_kgmusic_command_json_format[i].no_list_id == true) {
+            } else if (!sg_kgmusic_command_json_format[i].no_page && sg_kgmusic_command_json_format[i].no_list_id) {
                 HAL_Snprintf(params, sizeof(params), sg_kgmusic_command_json_format[i].json_format,
                              list_query_params->page, list_query_params->page_size, list_query_params->list_type,
                              list_query_params->except_fields == NULL ? "" : list_query_params->except_fields);
@@ -150,7 +147,7 @@ int QCLOUD_IOT_kgmusic_syncquery_songlist(void *client, QCLOUD_IOT_KGMUSIC_SONGL
         }
     }
 
-    if (i == sizeof(sg_kgmusic_command_json_format) / sizeof(QCLOUD_IOT_KGMUSIC_COMMAND_JSON_FORMAT_T)) {
+    if (i == sizeof(sg_kgmusic_command_json_format) / sizeof(KgmusicCommandJsonFormat)) {
         Log_e("error list type :%s", list_query_params->list_type);
         return QCLOUD_ERR_FAILURE;
     }
@@ -165,7 +162,7 @@ int QCLOUD_IOT_kgmusic_syncquery_songlist(void *client, QCLOUD_IOT_KGMUSIC_SONGL
     ;
 }
 
-int QCLOUD_IOT_kgmusic_syncquery_song(void *client, char *song_id, QCLOUD_IOT_KGMUSIC_T *kgmusic, int timeout_ms)
+int IOT_KGMUSIC_syncquery_song(void *client, char *song_id, QcloudIotKgmusic *kgmusic, int timeout_ms)
 {
     char params[64];
 
@@ -186,7 +183,7 @@ static int _kgmusic_query_songlist_reply_proc(void *client, char *payload, void 
         return QCLOUD_ERR_FAILURE;
     }
 
-    QCLOUD_IOT_KGMUSIC_T *kgmusic = (QCLOUD_IOT_KGMUSIC_T *)user_data;
+    QcloudIotKgmusic *kgmusic = (QcloudIotKgmusic *)user_data;
     if (kgmusic->song_list_callback == NULL) {
         kgmusic->e_reply_result = E_KGMUSIC_QUERY_REPLY_ERROR;
         return QCLOUD_ERR_FAILURE;
@@ -222,7 +219,7 @@ static int _kgmusic_query_song_reply_proc(void *client, char *payload, void *use
         return QCLOUD_ERR_FAILURE;
     }
 
-    QCLOUD_IOT_KGMUSIC_T *kgmusic = (QCLOUD_IOT_KGMUSIC_T *)user_data;
+    QcloudIotKgmusic *kgmusic = (QcloudIotKgmusic *)user_data;
     if (kgmusic->song_info_callback == NULL) {
         kgmusic->e_reply_result = E_KGMUSIC_QUERY_REPLY_ERROR;
         return QCLOUD_ERR_FAILURE;
@@ -250,7 +247,7 @@ end:
 
 static void _kgmusic_down_message_callback(void *user_data, const char *payload, unsigned int payload_len)
 {
-    QCLOUD_IOT_KGMUSIC_T *kgmusic = (QCLOUD_IOT_KGMUSIC_T *)user_data;
+    QcloudIotKgmusic *kgmusic = (QcloudIotKgmusic *)user_data;
 
     char *method = LITE_json_value_of("method", (char *)payload);
 
@@ -269,7 +266,7 @@ static void _kgmusic_down_message_callback(void *user_data, const char *payload,
     HAL_Free(method);
 }
 
-int QCLOUD_IOT_kgmusic_enable(void *mqtt_client, char *product_id, char *device_name, QCLOUD_IOT_KGMUSIC_T *kgmusic)
+int IOT_KGMUSIC_enable(void *mqtt_client, char *product_id, char *device_name, QcloudIotKgmusic *kgmusic)
 {
     if (mqtt_client == NULL || product_id == NULL || device_name == NULL || kgmusic == NULL) {
         Log_e("params is null");

@@ -29,15 +29,15 @@ typedef enum {
     E_KGMUSIC_QUERY_REPLY_OK    = 0,
     E_KGMUSIC_QUERY_REPLY_ERROR = 1,
     E_KGMUSIC_QUERY_REPLY_TIMEOUT
-} QCLOUD_IOT_KGMUSIC_REPLY_RESULT_E;
+} QcloudIotKgmusicReplyResult;
 
 typedef struct {
-    void *                            mqtt_client;                    // mqtt client handle
-    void *                            user_data;                      // user data
-    QCLOUD_IOT_KGMUSIC_REPLY_RESULT_E e_reply_result;                 // sync query result
+    void *                      mqtt_client;                          // mqtt client handle
+    void *                      user_data;                            // user data
+    QcloudIotKgmusicReplyResult e_reply_result;                       // sync query result
     int (*song_info_callback)(char *song_info_json, char *userdata);  // proc query song info reply data
     int (*song_list_callback)(char *song_list_json, char *userdata);  // proc query song list reply datas
-} QCLOUD_IOT_KGMUSIC_T;
+} QcloudIotKgmusic;
 
 typedef struct {
     int   page;       // query page of lists
@@ -45,7 +45,7 @@ typedef struct {
     char *list_id;
     char *list_type;
     char *except_fields;
-} QCLOUD_IOT_KGMUSIC_SONGLIST_PARAMS_T;
+} QcloudIotKgmusicSongListParams;
 
 #define QCLOUD_IOT_KGMUSIC_QUERY_SEND_FAILED  -1  // publish failed
 #define QCLOUD_IOT_KGMUSIC_QUERY_RECV_TIMEOUT -2  // publish success but no reply
@@ -60,8 +60,8 @@ typedef struct {
  * @param timeout_ms           wait reply data until timeout_ms
  * @return QCLOUD_RET_SUCCESS is success other is failure
  */
-int QCLOUD_IOT_kgmusic_syncquery_songlist(void *client, QCLOUD_IOT_KGMUSIC_SONGLIST_PARAMS_T *list_query_params,
-                                          QCLOUD_IOT_KGMUSIC_T *kgmusic, int timeout_ms);
+int IOT_KGMUSIC_syncquery_songlist(void *client, QcloudIotKgmusicSongListParams *list_query_params,
+                                   QcloudIotKgmusic *kgmusic, int timeout_ms);
 
 /**
  * @brief device query song info wait reply data
@@ -72,7 +72,7 @@ int QCLOUD_IOT_kgmusic_syncquery_songlist(void *client, QCLOUD_IOT_KGMUSIC_SONGL
  * @param timeout_ms wait reply data until timeout_ms
  * @return QCLOUD_RET_SUCCESS is success other is failure
  */
-int QCLOUD_IOT_kgmusic_syncquery_song(void *client, char *song_id, QCLOUD_IOT_KGMUSIC_T *kgmusic, int timeout_ms);
+int IOT_KGMUSIC_syncquery_song(void *client, char *song_id, QcloudIotKgmusic *kgmusic, int timeout_ms);
 
 /**
  * @brief device enable kgmusic
@@ -83,7 +83,7 @@ int QCLOUD_IOT_kgmusic_syncquery_song(void *client, char *song_id, QCLOUD_IOT_KG
  * @param kgmusic         middle var. stored callback etc.
  * @return QCLOUD_RET_SUCCESS is success other is failure
  */
-int QCLOUD_IOT_kgmusic_enable(void *mqtt_client, char *product_id, char *device_name, QCLOUD_IOT_KGMUSIC_T *kgmusic);
+int IOT_KGMUSIC_enable(void *mqtt_client, char *product_id, char *device_name, QcloudIotKgmusic *kgmusic);
 
 #ifdef __cplusplus
 }
