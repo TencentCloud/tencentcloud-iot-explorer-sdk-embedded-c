@@ -242,7 +242,7 @@ static int _template_ConstructControlReply(char *jsonBuffer, size_t sizeOfBuffer
         return rc;
     }
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
@@ -265,26 +265,24 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)context;
     MQTTMessage *        topic_info = (MQTTMessage *)msg->msg;
 
-    if (pTemplate) {
-        if (pclient != pTemplate->mqtt) {
-            //Log_d("not template topic event");
-            return;
-        }
+    if (!pTemplate || pclient != pTemplate->mqtt) {
+        // Log_d("not template topic event");
+        return;
     }
 
     switch (msg->event_type) {
         case MQTT_EVENT_SUBCRIBE_SUCCESS:
-            Log_d("template subscribe success, packet-id=%u", packet_id);
+            Log_d("template subscribed successfully, packet-id=%u", packet_id);
             if (pTemplate->inner_data.sync_status > 0)
                 pTemplate->inner_data.sync_status = 0;
             break;
         case MQTT_EVENT_SUBCRIBE_TIMEOUT:
-            Log_d("template subscribe wait ack timeout, packet-id=%u", packet_id);
+            Log_d("template subscribed ack timeout, packet-id=%u", packet_id);
             if (pTemplate->inner_data.sync_status > 0)
                 pTemplate->inner_data.sync_status = -1;
             break;
         case MQTT_EVENT_SUBCRIBE_NACK:
-            Log_d("template subscribe nack, packet-id=%u", packet_id);
+            Log_d("template subscribed nack, packet-id=%u", packet_id);
             if (pTemplate->inner_data.sync_status > 0)
                 pTemplate->inner_data.sync_status = -1;
             break;
@@ -304,7 +302,7 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
 }
 
 int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size_t sizeOfBuffer, uint8_t count,
-        DeviceProperty *pDeviceProperties[])
+                                           DeviceProperty *pDeviceProperties[])
 {
     POINTER_SANITY_CHECK(jsonBuffer, QCLOUD_ERR_INVAL);
     POINTER_SANITY_CHECK(pDeviceProperties, QCLOUD_ERR_INVAL);
@@ -318,7 +316,7 @@ int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size
     int8_t  i;
 
     build_empty_json(&(pTemplate->inner_data.token_num), jsonBuffer, pTemplate->device_info.product_id);
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
@@ -331,18 +329,17 @@ int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size
 
     for (i = 0; i < count; i++) {
         DeviceProperty *pJsonNode = pDeviceProperties[i];
-        if (pJsonNode != NULL && pJsonNode->key != NULL) {
-            rc = put_json_node(jsonBuffer, remain_size, pJsonNode);
-
-            if (rc != QCLOUD_RET_SUCCESS) {
-                return rc;
-            }
-        } else {
+        if (!pJsonNode || !pJsonNode->key) {
             return QCLOUD_ERR_INVAL;
+        }
+        rc = put_json_node(jsonBuffer, remain_size, pJsonNode);
+
+        if (rc != QCLOUD_RET_SUCCESS) {
+            return rc;
         }
     }
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
     rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "}}");
@@ -350,7 +347,6 @@ int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size
 
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("construct datatemplate report array failed: %d", rc);
-        return rc;
     }
 
     return rc;
@@ -453,11 +449,13 @@ int IOT_Template_Report_Sync(void *pClient, char *pJsonDoc, size_t sizeOfBuffer,
     }
 
     if (ACK_ACCEPTED == ack_report) {
-        rc = QCLOUD_RET_SUCCESS;
-    } else if (ACK_TIMEOUT == ack_report) {
-        rc = QCLOUD_ERR_REPORT_TIMEOUT;
-    } else if (ACK_REJECTED == ack_report) {
-        rc = QCLOUD_ERR_REPORT_REJECTED;
+        IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
+    }
+    if (ACK_TIMEOUT == ack_report) {
+        IOT_FUNC_EXIT_RC(QCLOUD_ERR_REPORT_TIMEOUT);
+    }
+    if (ACK_REJECTED == ack_report) {
+        IOT_FUNC_EXIT_RC(QCLOUD_ERR_REPORT_REJECTED);
     }
 
     IOT_FUNC_EXIT_RC(rc);
@@ -477,7 +475,7 @@ int IOT_Template_JSON_ConstructSysInfo(void *pClient, char *jsonBuffer, size_t s
     int     rc;
 
     build_empty_json(&(pTemplate->inner_data.token_num), jsonBuffer, pTemplate->device_info.product_id);
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
@@ -497,7 +495,7 @@ int IOT_Template_JSON_ConstructSysInfo(void *pClient, char *jsonBuffer, size_t s
         pJsonNode++;
     }
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
     rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "},");
@@ -507,7 +505,7 @@ int IOT_Template_JSON_ConstructSysInfo(void *pClient, char *jsonBuffer, size_t s
         return rc;
     }
 
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
 
@@ -538,7 +536,7 @@ int IOT_Template_JSON_ConstructSysInfo(void *pClient, char *jsonBuffer, size_t s
     }
 
 end:
-    if ((remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
+    if ((ssize_t)(remain_size = sizeOfBuffer - strlen(jsonBuffer)) <= 1) {
         return QCLOUD_ERR_JSON_BUFFER_TOO_SMALL;
     }
     rc_of_snprintf = HAL_Snprintf(jsonBuffer + strlen(jsonBuffer) - 1, remain_size, "}");
@@ -700,7 +698,7 @@ int IOT_Template_ControlReply(void *pClient, char *pJsonDoc, size_t sizeOfBuffer
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_MQTT_NO_CONN);
     }
 
-    // if topic $thing/down/property subscribe not success before, subsrcibe again
+    // if topic $thing/down/property was not subscribed successfully before, then subsrcibe again
     if (pTemplate->inner_data.sync_status < 0) {
         rc = subscribe_template_downstream_topic(pTemplate);
         if (rc < 0) {
@@ -717,7 +715,6 @@ int IOT_Template_ControlReply(void *pClient, char *pJsonDoc, size_t sizeOfBuffer
 
     RequestParams request_params = DEFAULT_REQUEST_PARAMS;
     _init_request_params(&request_params, REPLY, NULL, NULL, replyPara->timeout_ms / 1000);
-
     rc = send_template_request(pTemplate, &request_params, pJsonDoc, sizeOfBuffer);
     IOT_FUNC_EXIT_RC(rc);
 }
@@ -728,8 +725,8 @@ int IOT_Template_Start_Yield_Thread(void *pClient)
 {
     POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
     Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)pClient;
-    int rc = IOT_MQTT_StartLoop(pTemplate->mqtt);
-    if(QCLOUD_RET_SUCCESS == rc) {
+    int                  rc        = IOT_MQTT_StartLoop(pTemplate->mqtt);
+    if (QCLOUD_RET_SUCCESS == rc) {
         pTemplate->yield_thread_running = true;
     } else {
         pTemplate->yield_thread_running = false;
@@ -741,7 +738,7 @@ int IOT_Template_Start_Yield_Thread(void *pClient)
 void IOT_Template_Stop_Yield_Thread(void *pClient)
 {
     POINTER_SANITY_CHECK_RTN(pClient);
-    Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)pClient;
+    Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)pClient;
 
     IOT_MQTT_StopLoop(pTemplate->mqtt);
     pTemplate->yield_thread_running = false;
@@ -754,7 +751,7 @@ bool IOT_Template_Get_Yield_Status(void *pClient, int *exit_code)
 {
     POINTER_SANITY_CHECK(pClient, false);
 
-    Qcloud_IoT_Template *pTemplate = (Qcloud_IoT_Template *)pClient;
+    Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)pClient;
     pTemplate->yield_thread_running = IOT_MQTT_GetLoopStatus(pTemplate->mqtt, exit_code);
 
     return pTemplate->yield_thread_running;
@@ -787,7 +784,6 @@ int IOT_Template_Destroy_Except_MQTT(void *pClient)
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS)
 }
 #endif
-
 
 int IOT_Template_Yield(void *pClient, uint32_t timeout_ms)
 {
@@ -856,8 +852,8 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
 #endif
 
     pTemplate->mqtt                        = mqtt_client;
-    pTemplate->event_handle                = pParams->event_handle;	
-	pTemplate->usr_control_handle          = pParams->usr_control_handle;
+    pTemplate->event_handle                = pParams->event_handle;
+    pTemplate->usr_control_handle          = pParams->usr_control_handle;
     pTemplate->inner_data.upstream_topic   = NULL;
     pTemplate->inner_data.downstream_topic = NULL;
     pTemplate->inner_data.token_num        = 0;

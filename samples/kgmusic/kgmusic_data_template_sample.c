@@ -33,62 +33,6 @@ static bool          sg_control_msg_arrived    = false;
 static char          sg_data_report_buffer[2048];
 static size_t        sg_data_report_buffersize = sizeof(sg_data_report_buffer) / sizeof(sg_data_report_buffer[0]);
 
-#ifdef EVENT_POST_ENABLED
-
-#include "events_config.c"
-static void update_events_timestamp(sEvent *pEvents, int count)
-{
-    int i;
-
-    for (i = 0; i < count; i++) {
-        if (NULL == (&pEvents[i])) {
-            Log_e("null event pointer");
-            return;
-        }
-#ifdef EVENT_TIMESTAMP_USED
-        pEvents[i].timestamp = time(NULL);  // should be UTC and accurate
-#else
-        pEvents[i].timestamp = 0;
-#endif
-    }
-}
-
-static void event_post_cb(void *pClient, MQTTMessage *msg)
-{
-    Log_d("Reply:%.*s", msg->payload_len, msg->payload);
-    //    IOT_Event_clearFlag(pClient, FLAG_EVENT0 | FLAG_EVENT1 | FLAG_EVENT2);
-}
-
-// event check and post
-static void eventPostCheck(void *client)
-{
-    int      i;
-    int      rc;
-    uint32_t eflag;
-    uint8_t  event_count;
-    sEvent * pEventList[EVENT_COUNTS];
-
-    eflag = IOT_Event_getFlag(client);
-    if ((EVENT_COUNTS > 0) && (eflag > 0)) {
-        event_count = 0;
-        for (i = 0; i < EVENT_COUNTS; i++) {
-            if ((eflag & (1 << i)) & ALL_EVENTS_MASK) {
-                pEventList[event_count++] = &(g_events[i]);
-                update_events_timestamp(&g_events[i], 1);
-                IOT_Event_clearFlag(client, (1 << i) & ALL_EVENTS_MASK);
-            }
-        }
-
-        rc = IOT_Post_Event(client, sg_data_report_buffer, sg_data_report_buffersize, event_count, pEventList,
-                            event_post_cb);
-        if (rc < 0) {
-            Log_e("events post failed: %d", rc);
-        }
-    }
-}
-
-#endif
-
 #ifdef ACTION_ENABLED
 #include "action_config.c"
 
@@ -256,10 +200,6 @@ void deal_down_stream_user_logic(void *client, ProductDataDefine *pData)
 {
     Log_d("someting about your own product logic wait to be done");
 
-#ifdef EVENT_POST_ENABLED
-    // IOT_Event_setFlag(client, FLAG_EVENT0);  //set the events flag when the evnts your defined occured, see
-    // events_config.c
-#endif
 }
 
 /*get local property data, like sensor data*/
@@ -1994,9 +1934,7 @@ int main(int argc, char **argv)
         } else {
             // Log_d("no data need to be reported or someting goes wrong");
         }
-#ifdef EVENT_POST_ENABLED
-        eventPostCheck(client);
-#endif
+        
         void *mqtt_client = IOT_Template_Get_MQTT_Client(client);
         if (_kgmusic_downmsg_play_proc(mqtt_client)) {
             _kgmusic_playsong(mqtt_client);

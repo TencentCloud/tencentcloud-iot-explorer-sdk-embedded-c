@@ -1157,7 +1157,7 @@ static int _handle_publish_packet(Qcloud_IoT_Client *pClient, Timer *timer)
 
     if (expired(timer)) {
         /* send timeout */
-        //Log_w("puback timer expired! left:%d, increase a bit", left_ms(timer));
+        // Log_w("puback timer expired! left:%d, increase a bit", left_ms(timer));
         countdown_ms(timer, 100);
     }
 
@@ -1193,7 +1193,7 @@ static int _handle_pubrec_packet(Qcloud_IoT_Client *pClient, Timer *timer)
 
     if (expired(timer)) {
         /* send timeout */
-        //Log_w("pubrec timer expired! left:%d, increase a bit", left_ms(timer));
+        // Log_w("pubrec timer expired! left:%d, increase a bit", left_ms(timer));
         countdown_ms(timer, 100);
     }
 

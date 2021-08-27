@@ -150,7 +150,8 @@ static int _gen_file_manage_ver_info(char *buf, size_t bufLen, uint16_t res_num,
         }
     }
 
-    pos = (i > 0) ? sizeof(",") : 0;
+    // Remove the last comma
+    pos = (i > 0) ? 1 : 0;
 
     ret = HAL_Snprintf(buf + strlen(buf) - pos, bufLen - strlen(buf), "]}}");
 
