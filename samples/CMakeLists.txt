@@ -108,3 +108,10 @@ if(${FEATURE_WIFI_CONFIG_ENABLED} STREQUAL "ON")
 	target_link_libraries(wifi_config_sample 	 ${lib})
 endif()
 
+# KGMUSIC
+if(${FEATURE_KGMUSIC_ENABLED} STREQUAL "ON")
+	file(GLOB src_kgmusic_data_template_sample 			${PROJECT_SOURCE_DIR}/samples/kgmusic/kgmusic_data_template_sample.c)
+	add_executable(kgmusic_data_template_sample 		${src_kgmusic_data_template_sample})
+	target_link_libraries(kgmusic_data_template_sample 	 	 ${lib})
+endif()
+
