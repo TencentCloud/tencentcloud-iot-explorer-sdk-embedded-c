@@ -1017,7 +1017,14 @@ int main(int argc, char **argv)
             continue;
         }
         if (rc != QCLOUD_RET_SUCCESS) {
-            Log_e("Exit loop caused of errCode: %d", rc);
+            if (rc == QCLOUD_ERR_MQTT_RECONNECT_TIMEOUT) {
+                Log_e(
+                    "exit. mqtt reconnect timeout! Please check the network connection, or try to increase "
+                    "MAX_RECONNECT_WAIT_INTERVAL(%d)",
+                    MAX_RECONNECT_WAIT_INTERVAL);
+            } else {
+                Log_e("exit with error: %d", rc);
+            }
             break;
         }
 

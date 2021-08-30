@@ -27,6 +27,7 @@ static int  sg_bind_reply_code                 = -1;
 typedef struct {
     bool sub_ready;
     bool send_ready;
+    bool reply_ready;
     int  reply_code;
 } TokenHandleData;
 
@@ -120,6 +121,7 @@ static void _on_message_callback(void *pClient, MQTTMessage *message, void *user
         if (code_json) {
             TokenHandleData *app_data = (TokenHandleData *)userData;
             app_data->reply_code      = code_json->valueint;
+            app_data->reply_ready     = true;
             Log_d("token reply code = %d", code_json->valueint);
 
             sg_bind_reply_code = app_data->reply_code;
@@ -228,7 +230,8 @@ static int _send_token_wait_reply(void *client, DeviceInfo *dev_info, TokenHandl
 
     wait_cnt = 3;
 publish_token:
-    ret = _publish_token_msg(client, dev_info, sg_token_str);
+    app_data->reply_ready = false;
+    ret                   = _publish_token_msg(client, dev_info, sg_token_str);
     if (ret < 0 && (wait_cnt-- > 0)) {
         Log_e("Client publish token failed: %d", ret);
         if (IOT_MQTT_IsConnected(client)) {
@@ -255,6 +258,16 @@ publish_token:
         ret = QCLOUD_ERR_FAILURE;
     }
 
+    wait_cnt = 10;
+    while (!app_data->reply_ready && (wait_cnt-- > 0)) {
+        IOT_MQTT_Yield(client, 1000);
+        Log_i("wait for bind token replay result...");
+    }
+    ret = 0;
+    if (!app_data->reply_ready) {
+        Log_e("Client publish token timeout");
+        ret = QCLOUD_ERR_FAILURE;
+    }
     return ret;
 }
 
@@ -348,9 +361,10 @@ static int _mqtt_send_token(void)
 
     // token handle data
     TokenHandleData app_data;
-    app_data.sub_ready  = false;
-    app_data.send_ready = false;
-    app_data.reply_code = 404;
+    app_data.sub_ready   = false;
+    app_data.send_ready  = false;
+    app_data.reply_ready = false;
+    app_data.reply_code  = 404;
 
     sg_bind_reply_code = app_data.reply_code;
 
@@ -397,6 +411,10 @@ int qiot_device_bind(void)
     } else {
         Log_i("WIFI_MQTT_CONNECT_SUCCESS");
         PUSH_LOG("WIFI_MQTT_CONNECT_SUCCESS");
+    }
+    if (sg_bind_reply_code != 0) {
+        PUSH_LOG("device bind error. reply code: %d", sg_bind_reply_code);
+        return QCLOUD_ERR_FAILURE;
     }
     return ret;
 }

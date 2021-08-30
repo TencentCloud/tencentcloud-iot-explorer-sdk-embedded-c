@@ -62,6 +62,32 @@ typedef struct {
     GatewayEventHandleFun event_handler; /* event handler for gateway user*/
 } GatewayInitParam;
 
+/* The structure of subdevice bindinfo */
+typedef struct _SubdevBindInfo {
+    char                    product_id[MAX_SIZE_OF_PRODUCT_ID + 1];
+    char                    device_name[MAX_SIZE_OF_DEVICE_NAME + 1];
+    struct _SubdevBindInfo *next;
+} SubdevBindInfo;
+
+/* The structure of subdevice bindlist */
+typedef struct _SubdevBindList {
+    SubdevBindInfo *bindlist_head;
+    int             bind_num;
+} SubdevBindList;
+
+typedef struct _gw_change_notify {
+    char *devices;
+    int   status;
+} gw_change_notify_t;
+
+/* gateway automation struct */
+typedef struct {
+    void *client;
+    void *user_data;
+    int (*set_automation_callback)(char *automation_id, int mation_status, char *params, void *user_data);
+    int (*del_automation_callback)(char *automation_id, void *user_data);
+} QCLOUD_IO_GATEWAY_AUTOMATION_T;
+
 #define DEFAULT_GATEWAY_INIT_PARAMS         \
     {                                       \
         DEFAULT_MQTTINIT_PARAMS, NULL, NULL \
@@ -189,24 +215,6 @@ int IOT_Gateway_Yield(void *client, uint32_t timeout_ms);
  */
 void *IOT_Gateway_Get_Mqtt_Client(void *client);
 
-/* The structure of subdevice bindinfo */
-typedef struct _SubdevBindInfo {
-    char                    product_id[MAX_SIZE_OF_PRODUCT_ID + 1];
-    char                    device_name[MAX_SIZE_OF_DEVICE_NAME + 1];
-    struct _SubdevBindInfo *next;
-} SubdevBindInfo;
-
-/* The structure of subdevice bindlist */
-typedef struct _SubdevBindList {
-    SubdevBindInfo *bindlist_head;
-    int             bind_num;
-} SubdevBindList;
-
-typedef struct _gw_change_notify {
-    char *devices;
-    int   status;
-} gw_change_notify_t;
-
 #ifdef MULTITHREAD_ENABLED
 /**
  * @brief Start the default yield thread to read and handle gateway msg
@@ -233,13 +241,7 @@ void IOT_Gateway_Stop_Yield_Thread(void *pClient);
  */
 bool IOT_Gateway_Get_Yield_Status(void *pClient, int *exit_code);
 
-/* gateway automation struct */
-typedef struct {
-    void *client;
-    void *user_data;
-    int (*set_automation_callback)(char *automation_id, int mation_status, char *params, void *user_data);
-    int (*del_automation_callback)(char *automation_id, void *user_data);
-} QCLOUD_IO_GATEWAY_AUTOMATION_T;
+#endif
 
 /**
  * @brief automation local execution log report
@@ -278,10 +280,24 @@ int IOT_Gateway_GetAutoMationList(void *client);
  * @return >= QCLOUD_RET_SUCCESS is success other is failed
  */
 int IOT_Gateway_EnableLocalAutoMation(void *client, QCLOUD_IO_GATEWAY_AUTOMATION_T *automation);
-
-#endif
-
-int  IOT_Gateway_Subdev_GetBindList(void *client, GatewayParam *param, SubdevBindList *subdev_bindlist);
+/**
+ * @brief get sub-device bind list from cloud platform
+ *
+ * @param client            handle to gateway client
+ * @param param             gateway parameters
+ * @param subdev_bindlist   output subdev bind list
+ *
+ * @return QCLOUD_RET_SUCCESS for success, or err code for failure
+ */
+int IOT_Gateway_Subdev_GetBindList(void *client, GatewayParam *param, SubdevBindList *subdev_bindlist);
+/**
+ * @brief destory sub dev bind list
+ *
+ * @param subdev_bindlist  input subdev bind list pointer, ref IOT_Gateway_Subdev_GetBindList
+ *        output param subdev_bindlist
+ *
+ * @return QCLOUD_RET_SUCCESS for success, or err code for failure
+ */
 void IOT_Gateway_Subdev_DestoryBindList(SubdevBindList *subdev_bindlist);
 
 #ifdef __cplusplus
