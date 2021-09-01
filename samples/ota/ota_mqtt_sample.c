@@ -294,9 +294,9 @@ static int _get_local_fw_info(char *file_name, char *local_version)
         Log_w("local info offset invalid: %d", local_size);
         HAL_Free(version);
         local_size = 0;
+    } else {
+        strncpy(local_version, version, FW_VERSION_MAX_LEN);
     }
-
-    strncpy(local_version, version, FW_VERSION_MAX_LEN);
     HAL_Free(version);
     HAL_FileClose(fp);
     return local_size;
@@ -511,13 +511,13 @@ int main(int argc, char **argv)
     void *          h_ota       = NULL;
 
     IOT_Log_Set_Level(eLOG_DEBUG);
-	// parse arguments for device info file
+    // parse arguments for device info file
     rc = parse_arguments(argc, argv);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("parse arguments error, rc = %d", rc);
         return rc;
     }
-	
+
     ota_ctx = (OTAContextData *)HAL_Malloc(sizeof(OTAContextData));
     if (ota_ctx == NULL) {
         Log_e("malloc failed");
