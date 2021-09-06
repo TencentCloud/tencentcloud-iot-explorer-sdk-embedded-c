@@ -48,8 +48,17 @@ if(${FEATURE_ASR_ENABLED} STREQUAL "ON")
 	list(APPEND src_sdk ${src_asr})
 endif()
 
+# KGMUSIC
+if(${FEATURE_KGMUSIC_ENABLED} STREQUAL "ON")
 	file(GLOB src_kgmusic ${CMAKE_CURRENT_SOURCE_DIR}/services/kgmusic/*.c)
 	list(APPEND src_sdk ${src_kgmusic})
+endif()
+
+# ELECTRIC FENCE 
+if(${FEATURE_LOCATION_ENABLED} STREQUAL "ON")
+	file(GLOB src_location ${CMAKE_CURRENT_SOURCE_DIR}/services/location/*.c)
+	list(APPEND src_sdk ${src_location})
+endif()
 
 # HTTP 
 if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON" OR ${FEATURE_DEV_DYN_REG_ENABLED} STREQUAL "ON" OR ${FEATURE_LOG_UPLOAD_ENABLED} STREQUAL "ON")
