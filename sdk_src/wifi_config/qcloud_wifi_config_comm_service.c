@@ -136,6 +136,68 @@ udp_resend:
 }
 #endif
 
+static void _app_handle_broadcast_local_ipv4(int socket_id)
+{
+    char broadcast_buf[65];
+
+    if (HAL_Wifi_IsConnected()) {
+        memset(broadcast_buf, 0, sizeof(broadcast_buf));
+        int ret = HAL_Wifi_GetLocalIP(broadcast_buf, sizeof(broadcast_buf) - 1);
+        if (ret < QCLOUD_RET_SUCCESS) {
+            return;
+        }
+
+        unsigned int ip1 = 0;
+        unsigned int ip2 = 0;
+        unsigned int ip3 = 0;
+        unsigned int ip4 = 0;
+
+        sscanf(broadcast_buf, "%d.%d.%d.%d", &ip1, &ip2, &ip3, &ip4);
+
+        memset(broadcast_buf, 0, sizeof(broadcast_buf));
+        int ssid_len = HAL_Wifi_GetAP_SSID(broadcast_buf, sizeof(broadcast_buf) - 1);
+        if (ssid_len <= QCLOUD_RET_SUCCESS) {
+            return;
+        }
+
+        memset(broadcast_buf, 0, sizeof(broadcast_buf));
+        int pwd_len = HAL_Wifi_GetAP_PWD(broadcast_buf, sizeof(broadcast_buf) - 1);
+        if (pwd_len <= QCLOUD_RET_SUCCESS) {
+            return;
+        }
+
+        broadcast_buf[0]  = (ssid_len + pwd_len + 9);
+        broadcast_buf[1]  = 0x24;
+        broadcast_buf[2]  = 0x69;
+        broadcast_buf[3]  = 0x6f;
+        broadcast_buf[4]  = 0x74;
+        broadcast_buf[5]  = 0x24;
+        broadcast_buf[6]  = 0x00;
+        broadcast_buf[7]  = (ip1 & 0x000000FF);
+        broadcast_buf[8]  = (ip2 & 0x000000FF);
+        broadcast_buf[9]  = (ip3 & 0x000000FF);
+        broadcast_buf[10] = (ip4 & 0x000000FF);
+
+        int udp_resend_cnt = 3;
+    udp_resend:
+        ret = HAL_UDP_WriteTo(socket_id, (unsigned char *)broadcast_buf, 11, "255.255.255.255",
+                              APP_SERVER_BROADCAST_PORT);
+        if (ret < 0) {
+            Log_e("send error: %s", HAL_UDP_GetErrnoStr());
+            push_error_log(ERR_SOCKET_SEND, HAL_UDP_GetErrno());
+            return;
+        }
+        /* UDP packet could be lost, send it again */
+        /* NOT necessary for TCP */
+        if (--udp_resend_cnt) {
+            HAL_SleepMs(1000);
+            goto udp_resend;
+        }
+
+        HAL_Printf("broadcast local ipv4 add4: %d.%d.%d.%d, %d,%d\r\n", ip1, ip2, ip3, ip4, ssid_len, pwd_len);
+    }
+}
+
 static int _app_handle_recv_data(comm_peer_t *peer, char *pdata, int len)
 {
     int    ret  = 0;
@@ -289,6 +351,9 @@ static void _qiot_comm_service_task(void *pvParameters)
             get_and_post_error_log(&peer_client);
             continue;
         } else if (0 == ret) {
+            /* broadcast local ip to app */
+            _app_handle_broadcast_local_ipv4(server_socket);
+
             select_err_cnt = 0;
             Log_d("wait for read...");
             if (peer_client.peer_addr != NULL) {

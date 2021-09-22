@@ -24,9 +24,10 @@ extern "C" {
 
 #define SOFTAP_BOARDING_VERSION "2.0"
 
-#define APP_SERVER_PORT       (8266)
-#define LOG_SERVER_PORT       (9876)
-#define SOFT_AP_BLINK_TIME_MS (300)
+#define APP_SERVER_BROADCAST_PORT 18266
+#define APP_SERVER_PORT           (8266)
+#define LOG_SERVER_PORT           (9876)
+#define SOFT_AP_BLINK_TIME_MS     (300)
 
 #define WIFI_CONFIG_BLINK_TIME_MS (200)
 #define WIFI_CONFIG_WAIT_TIME_MS  (300 * 1000) /*300 seconds*/

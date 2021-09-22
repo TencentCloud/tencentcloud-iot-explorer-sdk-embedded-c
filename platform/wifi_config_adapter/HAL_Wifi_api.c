@@ -42,6 +42,35 @@ bool HAL_Wifi_IsConnected(void)
     return true;
 }
 
+int HAL_Wifi_GetLocalIP(char *ipv4_buf, int ipv4_buf_len)
+{
+    // TO-DO, return QCLOUD_ERR_FAILURE when invalid ip
+    // return QCLOUD_RET_SUCCESS when get valid ip
+    // copy ipv4 string to ipv4_buf
+    strncpy(ipv4_buf, "255.255.255.255", ipv4_buf_len);
+    return QCLOUD_ERR_FAILURE;
+}
+
+int HAL_Wifi_GetAP_SSID(char *ssid_buf, int ssid_buf_len)
+{
+    // TO-DO, return connected ap ssid len
+    // invalid ssid return QCLOUD_ERR_FAILURE
+    // copy ssid string to ssid_buf
+    int ssid_len = QCLOUD_ERR_FAILURE;
+    strncpy(ssid_buf, "test", ssid_buf_len);
+    return ssid_len;
+}
+
+int HAL_Wifi_GetAP_PWD(char *pwd_buf, int pwd_buf_len)
+{
+    // TO-DO, return connected ap password of ssid len
+    // invalid password return QCLOUD_ERR_FAILURE
+    // copy password string to pwd_buf
+    int password_len = QCLOUD_ERR_FAILURE;
+    strncpy(pwd_buf, "test", pwd_buf_len);
+    return password_len;
+}
+
 int HAL_Wifi_read_err_log(uint32_t offset, void *log, size_t log_size)
 {
     Log_i("HAL_Wifi_read_err_log");
