@@ -220,7 +220,8 @@ class iot_event:
             event_para_info += "static {}\n".format(field.get_global_field_declare())
             event_property_info += "\n   {"
             if field.type_id == "TYPE_TEMPLATE_STRING" or field.type_id == "TYPE_TEMPLATE_STRINGENUM" :
-                event_property_info += ".key = \"{}\", .data = sg_{}, .type = {}".format(field.id, self.prefix + field.id, field.type_id)
+                event_property_info += ".key = \"{}\", .data = sg_{},  .data_buff_len = sizeof(sg_{}) / sizeof(sg_{}[0]), .type = {}".format(
+                    field.id, self.prefix + field.id, self.prefix + field.id, self.prefix + field.id, field.type_id)
             else:
                 event_property_info += ".key = \"{}\", .data = &sg_{}, .type = {}".format(field.id, self.prefix + field.id, field.type_id)
             event_property_info += "},"
@@ -277,7 +278,8 @@ class iot_action:
             action_para_info += "static {}\n".format(field.get_global_field_declare())
             action_input_info += "\n   {"
             if field.type_id == "TYPE_TEMPLATE_STRING" or field.type_id == "TYPE_TEMPLATE_STRINEGNUM":
-                action_input_info += ".key = \"{}\", .data = sg_{}, .type = {}".format(field.id, self.action_input_prefix + field.id, field.type_id)
+                action_input_info += ".key = \"{}\", .data = sg_{}, .data_buff_len = sizeof(sg_{}) / sizeof(sg_{}[0]), .type = {}".format(
+                    field.id, self.action_input_prefix + field.id, self.action_input_prefix + field.id, self.action_input_prefix + field.id, field.type_id)
             else:
                 action_input_info += ".key = \"{}\", .data = &sg_{}, .type = {}".format(field.id, self.action_input_prefix + field.id, field.type_id)
             action_input_info += "},"
