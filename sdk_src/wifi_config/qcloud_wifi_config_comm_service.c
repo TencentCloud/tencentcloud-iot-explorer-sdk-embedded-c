@@ -138,7 +138,7 @@ udp_resend:
 
 static void _app_handle_broadcast_local_ipv4(int socket_id)
 {
-    char broadcast_buf[65];
+    char broadcast_buf[64 + 1];
 
     if (HAL_Wifi_IsConnected()) {
         memset(broadcast_buf, 0, sizeof(broadcast_buf));
@@ -166,13 +166,15 @@ static void _app_handle_broadcast_local_ipv4(int socket_id)
             return;
         }
 
+        // protocol: | ssid_len + pwd_len + 9 1B | invalid mac fill 6B | big endian local ipv4 4B |
+
         broadcast_buf[0]  = (ssid_len + pwd_len + 9);
-        broadcast_buf[1]  = 0x24;
-        broadcast_buf[2]  = 0x69;
-        broadcast_buf[3]  = 0x6f;
-        broadcast_buf[4]  = 0x74;
-        broadcast_buf[5]  = 0x24;
-        broadcast_buf[6]  = 0x00;
+        broadcast_buf[1]  = 0x31;
+        broadcast_buf[2]  = 0x32;
+        broadcast_buf[3]  = 0x33;
+        broadcast_buf[4]  = 0x34;
+        broadcast_buf[5]  = 0x35;
+        broadcast_buf[6]  = 0x30;
         broadcast_buf[7]  = (ip1 & 0x000000FF);
         broadcast_buf[8]  = (ip2 & 0x000000FF);
         broadcast_buf[9]  = (ip3 & 0x000000FF);
