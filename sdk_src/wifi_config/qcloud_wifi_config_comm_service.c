@@ -168,13 +168,18 @@ static void _app_handle_broadcast_local_ipv4(int socket_id)
 
         // protocol: | ssid_len + pwd_len + 9 1B | invalid mac fill 6B | big endian local ipv4 4B |
 
+        // 1) The unicast MAC address refers to the MAC address with the lowest bit of the first byte being 0.
+        // 2) Multicast MAC address refers to the MAC address with 1 in the lowest bit of the first byte.
+        // 3) The broadcast MAC address refers to the MAC address with 1 in each bit. Broadcast MAC address is a
+        // special case of multicast MAC address.
+
         broadcast_buf[0]  = (ssid_len + pwd_len + 9);
-        broadcast_buf[1]  = 0x31;
-        broadcast_buf[2]  = 0x32;
-        broadcast_buf[3]  = 0x33;
-        broadcast_buf[4]  = 0x34;
-        broadcast_buf[5]  = 0x35;
-        broadcast_buf[6]  = 0x30;
+        broadcast_buf[1]  = 0x30;
+        broadcast_buf[2]  = 0x31;
+        broadcast_buf[3]  = 0x32;
+        broadcast_buf[4]  = 0x33;
+        broadcast_buf[5]  = 0x34;
+        broadcast_buf[6]  = 0x35;
         broadcast_buf[7]  = (ip1 & 0x000000FF);
         broadcast_buf[8]  = (ip2 & 0x000000FF);
         broadcast_buf[9]  = (ip3 & 0x000000FF);
