@@ -52,6 +52,8 @@ uint32_t HAL_GetTimeMs(void)
 
 #elif defined PLATFORM_HAS_CMSIS
     return HAL_GetTick();
+#else
+    return xTaskGetTickCount();
 #endif
 }
 

@@ -83,9 +83,9 @@ typedef struct _ProductDataDefine {
     TYPE_DEF_TEMPLATE_STRING m_name[MAX_STR_NAME_LEN + 1];
     TYPE_DEF_TEMPLATE_OBJECT m_position;
 #if TEST_ARRAY
-    TYPE_DEF_TEMPLATE_STRING m_alias_name[MAX_ARRAY_JSON_STR_LEN + 1];
-    TYPE_DEF_TEMPLATE_STRING m_power_consumption[MAX_ARRAY_JSON_STR_LEN + 1];
-    TYPE_DEF_TEMPLATE_STRING m_recent_status[MAX_ARRAY_JSON_STR_LEN + 1];
+    TYPE_DEF_TEMPLATE_ARRAY m_alias_name[MAX_ARRAY_JSON_STR_LEN + 1];
+    TYPE_DEF_TEMPLATE_ARRAY m_power_consumption[MAX_ARRAY_JSON_STR_LEN + 1];
+    TYPE_DEF_TEMPLATE_ARRAY m_recent_status[MAX_ARRAY_JSON_STR_LEN + 1];
 #endif
 } ProductDataDefine;
 
@@ -144,7 +144,6 @@ static void _init_data_template(void)
     sg_DataTemplate[0].data_property.data = &sg_ProductData.m_light_switch;
     sg_DataTemplate[0].data_property.type = TYPE_TEMPLATE_BOOL;
 #ifdef COLOR_TYPE_STRINGENUM
-    // sg_ProductData.m_color                = eCOLOR_RED;
     strcpy(sg_ProductData.m_color, eCOLOR_STRING_RED);
     sg_ProductData.m_color[strlen(eCOLOR_STRING_RED)] = '\0';
     sg_DataTemplate[1].data_property.key              = "color";
@@ -185,6 +184,7 @@ static void _init_data_template(void)
     sg_DataTemplate[5].data_property.key                   = "alias_name";
     sg_DataTemplate[5].data_property.type                  = TYPE_TEMPLATE_ARRAY;
     sg_DataTemplate[5].state                               = eCHANGED;
+
     memset(sg_ProductData.m_power_consumption, 0, sizeof(sg_ProductData.m_power_consumption));
     sg_DataTemplate[6].data_property.data                  = sg_ProductData.m_power_consumption;
     sg_DataTemplate[6].data_property.array_info.array_size = MAX_ARRAY_JSON_STR_LEN;
@@ -192,6 +192,7 @@ static void _init_data_template(void)
     sg_DataTemplate[6].data_property.key                   = "power_consumption";
     sg_DataTemplate[6].data_property.type                  = TYPE_TEMPLATE_ARRAY;
     sg_DataTemplate[6].state                               = eCHANGED;
+
     memset(sg_ProductData.m_recent_status, 0, sizeof(sg_ProductData.m_recent_status));
     sg_DataTemplate[7].data_property.data                  = sg_ProductData.m_recent_status;
     sg_DataTemplate[7].data_property.array_info.array_size = MAX_ARRAY_JSON_STR_LEN;
