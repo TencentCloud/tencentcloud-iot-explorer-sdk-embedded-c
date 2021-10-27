@@ -194,7 +194,7 @@ static void _refresh_local_property(void)
     if (index == 0) {
         // Starting coordinates
         sg_StructDataGps_Info.m_latitude   = 34.210096;
-        sg_StructDataGps_Info.m_longtitude = 108.883105;
+        sg_StructDataGps_Info.m_longitude = 108.883105;
     }
     if (index <= 10) {
         step = 0.001;
@@ -204,7 +204,7 @@ static void _refresh_local_property(void)
         index = 0;
     index++;
     sg_StructDataGps_Info.m_latitude += step;
-    //  sg_StructDataGps_Info.m_longtitude += step;
+    //  sg_StructDataGps_Info.m_longitude += step;
     sg_DataTemplate[0].state = eCHANGED;
 }
 
