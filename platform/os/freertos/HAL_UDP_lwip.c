@@ -198,6 +198,11 @@ int HAL_UDP_CreateBind(const char *host, unsigned short port)
             continue;
         }
 
+        int iOptval = 1;
+        if (setsockopt(fd, SOL_SOCKET, SO_BROADCAST | SO_REUSEADDR, &iOptval, sizeof(int)) < 0) {
+            Log_e("setsockopt failed", strerror(errno));
+        }
+
         Log_d("establish udp connection with server(host=%d port=%d)", ((struct sockaddr_in *)cur->ai_addr)->sin_addr,
               ((struct sockaddr_in *)cur->ai_addr)->sin_port);
 

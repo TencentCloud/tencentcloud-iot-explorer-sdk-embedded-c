@@ -167,6 +167,15 @@ Airkiss/Smartconfig/Simpleconfig 配网绑定时序图
 BLE Combo 配网绑定时序图
 ![BLE Combo 时序图](https://main.qcloudimg.com/raw/c38dd46f85d0a09869ecf10bd7f0e535.png)
 
+### 10. 广播设备 IPV4 地址适配
+```
+注：在 smartconfig/airkiss/simpleconfig 配网方式中，设备需要主动广播自身的 IP 地址给小程序，之后小程序才能通过 UDP 方式单播配网 token 给设备进行绑定流程。
+适配文件：platform/wifi_config/adapter/HAL_WIFI_api.c
+函数：HAL_Wifi_GetLocalIP 用于配网成功连接到 AP 后，获取设备从 AP 分配到的 IP 地址。
+函数：HAL_Wifi_GetAP_SSID 用于配网成功连接到 AP 后，获取已连接 AP 的 SSID，并返回 SSID 长度。
+函数：HAL_Wifi_GetAP_PWD 用于配网成功连接到 AP 后，获取已连接 AP 的 SSID 对应的密码，并返回密码长度。
+```
+
 ## 4. 编译 SDK 运行示例程序
 
 ### 1. 编译 SDK

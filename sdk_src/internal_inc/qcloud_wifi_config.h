@@ -137,6 +137,36 @@ int HAL_Wifi_StaConnect(const char *ssid, const char *psw, uint8_t channel);
  */
 bool HAL_Wifi_IsConnected(void);
 
+/**
+ * @brief get curr device local ipv4 ip
+ *
+ * @param ipv4_buf, save ipv4 addr
+ * @param ipv4_buf_len, ipv4_buf max length
+ *
+ * @return QCLOUD_ERR_FAILURE when invalid ip, other return QCLOUD_RET_SUCCESS
+ */
+int HAL_Wifi_GetLocalIP(char *ipv4_buf, int ipv4_buf_len);
+
+/**
+ * @brief get curr connected ap ssid
+ *
+ * @param ssid_buf, save ssid
+ * @param ssid_buf_len, ssid_buf max length
+ *
+ * @return QCLOUD_ERR_FAILURE when invalid ssid or not connected ap, other return ssid length
+ */
+int HAL_Wifi_GetAP_SSID(char *ssid_buf, int ssid_buf_len);
+
+/**
+ * @brief get curr connected ap password of ssid
+ *
+ * @param pwd_buf, save password of ssid
+ * @param pwd_buf_len, pwd_buf max length
+ *
+ * @return QCLOUD_ERR_FAILURE when invalid password or not connected ap, other return password length
+ */
+int HAL_Wifi_GetAP_PWD(char *pwd_buf, int pwd_buf_len);
+
 typedef struct {
     const char *ssid;
     const char *psw;
