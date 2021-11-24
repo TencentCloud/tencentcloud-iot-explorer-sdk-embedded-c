@@ -26,10 +26,11 @@ extern "C" {
 #endif
 
 #include "config.h"
+#include "gitinfo.h"
 #include "platform.h"
 
 /* IoT C-SDK version info */
-#define QCLOUD_IOT_DEVICE_SDK_VERSION "3.1.9"
+#define QCLOUD_IOT_DEVICE_SDK_VERSION ("3.1.9-" GIT_COMMIT_ID)
 
 /**************** QCloud IoT C-SDK constants begin ************************/
 
@@ -96,20 +97,20 @@ typedef struct {
 } GatewayDeviceInfo;
 #endif
 
-#include "qcloud_iot_export_variables.h"
+#include "qcloud_iot_export_asr.h"
+#include "qcloud_iot_export_data_template.h"
+#include "qcloud_iot_export_device_bind.h"
+#include "qcloud_iot_export_dynreg.h"
 #include "qcloud_iot_export_error.h"
+#include "qcloud_iot_export_file_manage.h"
+#include "qcloud_iot_export_gateway.h"
+#include "qcloud_iot_export_kgmusic.h"
 #include "qcloud_iot_export_log.h"
 #include "qcloud_iot_export_mqtt.h"
-#include "qcloud_iot_export_data_template.h"
 #include "qcloud_iot_export_ota.h"
 #include "qcloud_iot_export_resource.h"
-#include "qcloud_iot_export_file_manage.h"
-#include "qcloud_iot_export_asr.h"
-#include "qcloud_iot_export_gateway.h"
-#include "qcloud_iot_export_dynreg.h"
 #include "qcloud_iot_export_system.h"
-#include "qcloud_iot_export_device_bind.h"
-#include "qcloud_iot_export_kgmusic.h"
+#include "qcloud_iot_export_variables.h"
 
 #ifdef __cplusplus
 }

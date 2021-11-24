@@ -1,5 +1,14 @@
 #! /bin/bash
 
+commit_id=`git log -1 | head -1 | cut -d' ' -f2`
+cat >./include/gitinfo.h<<EOF
+#ifndef __GIT_INFO_H_
+#define __GIT_INFO_H_
+#define GIT_COMMIT_ID "$commit_id"
+#endif
+EOF
+
+
 if [ "$#" -eq "0" ]; then
     rm -rf output
     rm -rf build
