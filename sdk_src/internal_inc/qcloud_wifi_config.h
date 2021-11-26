@@ -171,12 +171,12 @@ typedef struct {
     const char *ssid;
     const char *psw;
     uint8_t     ch;
-} eSoftApConfigParams;
+} WiFiConfigParams;
 
 /**
  * @brief Start softAP provision
  *
- * @param params See eSoftApConfigParams
+ * @param params See WiFiConfigParams
  * @event_cb wifi config event callback, success to bind device
  *
  * @return 0 when success, or err code for failure

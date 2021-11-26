@@ -306,8 +306,7 @@ int save_error_log(void)
 #if WIFI_ERR_LOG_POST
     int      rc      = QCLOUD_RET_SUCCESS;
     uint32_t log_cnt = (uint32_t)HAL_QueueItemWaitingCount(g_err_log_queue);
-    if ((log_cnt == 0) || (log_cnt > ERR_LOG_QUEUE_SIZE))
-    {
+    if ((log_cnt == 0) || (log_cnt > ERR_LOG_QUEUE_SIZE)) {
         return ERR_OS_QUEUE;
     }
 

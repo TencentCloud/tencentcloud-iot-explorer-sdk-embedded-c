@@ -479,7 +479,7 @@ static bool qcloud_wifi_config_proc()
     int   rc;
     Timer timer;
 #if WIFI_PROV_SOFT_AP_ENABLE
-    eSoftApConfigParams apConf = {"qcloud-softap", "12345678", 6};
+    WiFiConfigParams apConf    = {"qcloud-softap", "12345678", 6};
     rc                         = qiot_wifi_config_start(WIFI_CONFIG_TYPE_SOFT_AP, &apConf, _wifi_config_result_cb);
     countdown(&timer, 500);
     while ((rc == QCLOUD_RET_SUCCESS) && (false == wifi_config_result_success) && !expired(&timer)) {

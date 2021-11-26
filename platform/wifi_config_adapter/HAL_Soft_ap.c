@@ -104,7 +104,7 @@ int HAL_SoftApProvision_Start(void *params, WifiConfigEventCallBack event_cb)
     int ret = QCLOUD_RET_SUCCESS;
 #if WIFI_PROV_SOFT_AP_ENABLE
 
-    eSoftApConfigParams *apConfig = (eSoftApConfigParams *)params;
+    WiFiConfigParams *apConfig = (WiFiConfigParams *)params;
     (void)apConfig;
 
     set_soft_ap_config_result(WIFI_CONFIG_ING);
