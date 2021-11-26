@@ -111,6 +111,9 @@ typedef struct {
 #include "qcloud_iot_export_resource.h"
 #include "qcloud_iot_export_system.h"
 #include "qcloud_iot_export_variables.h"
+#include "qcloud_iot_export_device_bind.h"
+#include "qcloud_iot_export_kgmusic.h"
+#include "qcloud_iot_export_location.h"
 
 #ifdef __cplusplus
 }

@@ -104,6 +104,10 @@ $(call CompLib_Map, KGMUSIC_ENABLED, \
     $(SRC_DIR)/services/kgmusic \
 )
 
+$(call CompLib_Map, LOCATION_ENABLED, \
+    $(SRC_DIR)/services/location \
+)
+
 IOTSDK_SRC_FILES := \
 
 $(foreach v, \

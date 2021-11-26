@@ -43,20 +43,20 @@ extern "C" {
 #define KEY_ASR_TEXT      "res_text"
 #define ONE_PARA_STR_LEN  (25)
 
-#define ASR_RESPONSE_PROPERTY_KEY       "_sys_asr_response"
-#define ASR_SYS_PROPERTY_BUFFF_LEN		2048
-#define TOTAL_ASR_SYS_PROPERTY_COUNT 	1
+#define ASR_RESPONSE_PROPERTY_KEY    "_sys_asr_response"
+#define ASR_SYS_PROPERTY_BUFFF_LEN   2048
+#define TOTAL_ASR_SYS_PROPERTY_COUNT 1
 
 typedef struct _AsrHandle_ {
-    void *                        file_manage_handle;
+    void *                          file_manage_handle;
     OnAsrFileManageEventUsrCallback usrCb;
-    void *                        mutex;
-    List *                        asr_req_list;
+    void *                          mutex;
+    List *                          asr_req_list;
 } AsrHandle;
 
 typedef struct _AsrReq_ {
     eAsrType req_type;
-    int request_id;
+    int      request_id;
 
     Timer         timer;
     uint32_t      request_timeout_ms;
@@ -72,44 +72,44 @@ typedef struct _ASR_SYS_PROPERTY {
     TYPE_DEF_TEMPLATE_STRING m_asr_response[ASR_SYS_PROPERTY_BUFFF_LEN + 1];
 } ASR_SYS_PROPERTY;
 
-static   ASR_SYS_PROPERTY     sg_asr_property;
-static 	 sDataPoint    		  sg_asr_data[TOTAL_ASR_SYS_PROPERTY_COUNT];
-static   void         		  *sg_asr_client = NULL;
+static ASR_SYS_PROPERTY sg_asr_property;
+static sDataPoint       sg_asr_data[TOTAL_ASR_SYS_PROPERTY_COUNT];
+static void *           sg_asr_client = NULL;
 
 int _asr_result_notify(void *handle, char *asr_response);
 
 static void _init_asr_property()
 {
-    sg_asr_property.m_asr_response[0] = '\0';
-    sg_asr_data[0].data_property.data = sg_asr_property.m_asr_response;
+    sg_asr_property.m_asr_response[0]          = '\0';
+    sg_asr_data[0].data_property.data          = sg_asr_property.m_asr_response;
     sg_asr_data[0].data_property.data_buff_len = ASR_SYS_PROPERTY_BUFFF_LEN;
-    sg_asr_data[0].data_property.key  = ASR_RESPONSE_PROPERTY_KEY;
-    sg_asr_data[0].data_property.type = TYPE_TEMPLATE_STRING;
-    sg_asr_data[0].state = eNOCHANGE;
+    sg_asr_data[0].data_property.key           = ASR_RESPONSE_PROPERTY_KEY;
+    sg_asr_data[0].data_property.type          = TYPE_TEMPLATE_STRING;
+    sg_asr_data[0].state                       = eNOCHANGE;
 };
 
 static void _OnAsrControlMsgCallback(void *pTemplate_client, const char *pJsonValueBuffer, uint32_t valueLength,
                                      DeviceProperty *pProperty)
 {
-	if(!strcmp(pProperty->key, ASR_RESPONSE_PROPERTY_KEY)) {
-		LITE_string_strip_char((char *)pProperty->data, '\\');		
-		int rc = _asr_result_notify(sg_asr_client, (char *)pProperty->data);
-		if(QCLOUD_RET_SUCCESS != rc) {
-			Log_e("asr result notify fail, err:%d", rc);
-		}
-	}
+    if (!strcmp(pProperty->key, ASR_RESPONSE_PROPERTY_KEY)) {
+        LITE_string_strip_char((char *)pProperty->data, '\\');
+        int rc = _asr_result_notify(sg_asr_client, (char *)pProperty->data);
+        if (QCLOUD_RET_SUCCESS != rc) {
+            Log_e("asr result notify fail, err:%d", rc);
+        }
+    }
 }
 
 static int _register_asr_property(void *pTemplate_client)
 {
     int i, rc;
-	
-	_init_asr_property();
+
+    _init_asr_property();
     for (i = 0; i < TOTAL_ASR_SYS_PROPERTY_COUNT; i++) {
         rc = IOT_Template_Register_Property(pTemplate_client, &sg_asr_data[i].data_property, _OnAsrControlMsgCallback);
         if (rc != QCLOUD_RET_SUCCESS) {
             return rc;
-        } 
+        }
     }
 
     return QCLOUD_RET_SUCCESS;
@@ -477,11 +477,11 @@ int _asr_result_notify(void *handle, char *asr_response)
         goto exit;
     }
     AsrReq *req = _get_req_node_by_asr_token(asr_handle, asr_token);
-	if(!req){
+    if (!req) {
         Log_e("asr_token: %s not found", asr_token);
         rc = QCLOUD_ERR_FAILURE;
-		goto exit;
-	}
+        goto exit;
+    }
 
     rc = atoi(str_result);
     if (QCLOUD_RET_SUCCESS == rc) {
@@ -625,12 +625,12 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTempl
 {
     AsrHandle *asr_handle = NULL;
     int        rc         = QCLOUD_RET_SUCCESS;
-	
-	rc = _register_asr_property(pTemplate_client);
-	if(QCLOUD_RET_SUCCESS != rc){
-		Log_e("register asr system property fail,rc:%d",rc);
-		goto exit;
-	}
+
+    rc = _register_asr_property(pTemplate_client);
+    if (QCLOUD_RET_SUCCESS != rc) {
+        Log_e("register asr system property fail,rc:%d", rc);
+        goto exit;
+    }
 
     asr_handle = HAL_Malloc(sizeof(AsrHandle));
     if (!asr_handle) {
@@ -642,7 +642,7 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTempl
     // init file_manage client handle
     asr_handle->file_manage_handle =
         IOT_FileManage_Init(product_id, device_name, IOT_Template_Get_MQTT_Client(pTemplate_client),
-                          _asr_file_manage_event_usr_cb, asr_handle);
+                            _asr_file_manage_event_usr_cb, asr_handle);
     if (!asr_handle->file_manage_handle) {
         Log_e("init file_manage client failed");
         rc = QCLOUD_ERR_FAILURE;
@@ -664,13 +664,12 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTempl
         rc = QCLOUD_ERR_FAILURE;
     }
     asr_handle->usrCb = usr_cb;
-	sg_asr_client = asr_handle;
+    sg_asr_client     = asr_handle;
 
 exit:
 
     if (rc != QCLOUD_RET_SUCCESS) {
         if (asr_handle) {
-            HAL_Free(asr_handle);
             if (asr_handle->file_manage_handle) {
                 IOT_FileManage_Destroy(asr_handle->file_manage_handle);
             }
@@ -680,6 +679,7 @@ exit:
             if (asr_handle->asr_req_list) {
                 list_destroy(asr_handle->asr_req_list);
             }
+            HAL_Free(asr_handle);
         }
         asr_handle = NULL;
     }
@@ -735,9 +735,9 @@ int IOT_Asr_RecordFile_Request(void *handle, const char *file_name, RecordAsrCon
     char time_str[TIME_FORMAT_STR_LEN] = {0};
     HAL_Snprintf(time_str, TIME_FORMAT_STR_LEN, "%d", HAL_Timer_current_sec());
     conf->request_timeout_ms = (conf->request_timeout_ms > 0) ? conf->request_timeout_ms : DEFAULT_REQ_TIMEOUT_MS;
-	char *type = (req->req_type == eASR_FILE)?FILE_MANAGE_TYPE_AUDIO:FILE_MANAGE_TYPE_VOICE;
-    req->request_id =
-        IOT_FileManage_Post_Request(asr_handle->file_manage_handle, conf->request_timeout_ms, file_name, time_str, type);
+    char *type               = (req->req_type == eASR_FILE) ? FILE_MANAGE_TYPE_AUDIO : FILE_MANAGE_TYPE_VOICE;
+    req->request_id = IOT_FileManage_Post_Request(asr_handle->file_manage_handle, conf->request_timeout_ms, file_name,
+                                                  time_str, type);
     if (req->request_id < 0) {
         Log_e("%s file_manage post request fail", STRING_PTR_PRINT_SANITY_CHECK(file_name));
         HAL_Free(req);
@@ -805,10 +805,10 @@ int IOT_Asr_Realtime_Request(void *handle, char *audio_buff, uint32_t audio_data
     HAL_Snprintf(req->realtime_conf.file_name, VOICE_ID_LEN + VERSION_LEN, "./%s-%s.dat", voice_id, version);
     // save audio data to file
     void *fp = HAL_FileOpen(req->realtime_conf.file_name, "wb");
-	if(!fp){
-		Log_e("create file %s fail", req->realtime_conf.file_name);
-		goto exit;
-	}
+    if (!fp) {
+        Log_e("create file %s fail", req->realtime_conf.file_name);
+        goto exit;
+    }
 
     if (audio_data_len != HAL_FileWrite(audio_buff, 1, audio_data_len, fp)) {
         Log_e("write data buff to %s fail", req->realtime_conf.file_name);
@@ -817,12 +817,12 @@ int IOT_Asr_Realtime_Request(void *handle, char *audio_buff, uint32_t audio_data
         rc = QCLOUD_ERR_FAILURE;
         goto exit;
     }
-   
+
     HAL_FileClose(fp);
 
     conf->request_timeout_ms = (conf->request_timeout_ms > 0) ? conf->request_timeout_ms : DEFAULT_REQ_TIMEOUT_MS;
     req->request_id          = IOT_FileManage_Post_Request(asr_handle->file_manage_handle, conf->request_timeout_ms,
-                                                req->realtime_conf.file_name, version, FILE_MANAGE_TYPE_VOICE);
+                                                  req->realtime_conf.file_name, version, FILE_MANAGE_TYPE_VOICE);
     if (req->request_id < 0) {
         Log_e("%s file_manage post request fail", req->realtime_conf.file_name);
         HAL_FileRemove(req->realtime_conf.file_name);
