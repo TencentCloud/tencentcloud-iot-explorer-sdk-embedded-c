@@ -37,7 +37,7 @@
 static int _parse_action_input(DeviceAction *pAction, char *pInput)
 {
     int             i;
-    char *          temp;
+    char           *temp;
     DeviceProperty *pActionInput = pAction->pInput;
 
     // check and copy
@@ -59,13 +59,32 @@ static int _parse_action_input(DeviceAction *pAction, char *pInput)
             }
             switch (pActionInput[i].type) {
                 case JINT32:
-                    ret = sscanf(temp, "%" SCNi32, (int32_t *)pActionInput[i].data);
+                    ret = LITE_get_int32(pActionInput[i].data, temp);
                     break;
                 case JFLOAT:
-                    ret = sscanf(temp, "%f", (float *)pActionInput[i].data);
+                    ret = LITE_get_float(pActionInput[i].data, temp);
                     break;
                 case JUINT32:
-                    ret = sscanf(temp, "%" SCNu32, (int32_t *)pActionInput[i].data);
+                    ret = LITE_get_uint32(pActionInput[i].data, temp);
+                    break;
+                case JBOOL:
+                    ret = LITE_get_boolean(pActionInput[i].data, temp);
+                    break;
+                case JINT16:
+                    ret = LITE_get_int16(pActionInput[i].data, temp);
+                    break;
+                case JINT8:
+                    ret = LITE_get_int8(pActionInput[i].data, temp);
+                    break;
+                case JUINT16:
+                    ret = LITE_get_uint16(pActionInput[i].data, temp);
+                    break;
+                case JUINT8:
+                    ret = LITE_get_uint8(pActionInput[i].data, temp);
+                    break;
+                case JSTRING:
+                    Log_d("property data_buff_len %d", pActionInput[i].data_buff_len);
+                    ret = LITE_get_string(pActionInput[i].data, temp, pActionInput[i].data_buff_len);
                     break;
                 default:
                     ret = QCLOUD_ERR_MQTT_UNKNOWN;
@@ -90,7 +109,7 @@ static void _handle_action(Qcloud_IoT_Template *pTemplate, List *list, const cha
 
     if (list->len) {
         ListIterator *iter;
-        ListNode *    node = NULL;
+        ListNode     *node = NULL;
 
         if (NULL == (iter = list_iterator_new(list, LIST_TAIL))) {
             HAL_MutexUnlock(pTemplate->mutex);
