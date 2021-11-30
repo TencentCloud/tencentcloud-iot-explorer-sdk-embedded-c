@@ -20,7 +20,7 @@
 #include "qcloud_wifi_config.h"
 #include "qcloud_wifi_config_internal.h"
 
-extern eWifiConfigState sg_wifiConfitState;
+extern eWifiConfigState sg_wifiConfigState;
 
 static int sg_bind_reply_code = -1;
 
@@ -375,13 +375,13 @@ static int _mqtt_send_token(void)
     sg_bind_reply_code = app_data.reply_code;
 
     // mqtt connection
-    sg_wifiConfitState                       = WIFI_CONFIG_STATE_CONNECT_MQTT;
+    sg_wifiConfigState                       = WIFI_CONFIG_STATE_CONNECT_MQTT;
     sg_publish_token_info.pairTime.mqttStart = HAL_GetTimeMs();
     void *client                             = _setup_mqtt_connect(&dev_info, &app_data);
     if (client == NULL) {
         ret = IOT_MQTT_GetErrCode();
         Log_e("Cloud Device Construct Failed: %d", ret);
-        sg_wifiConfitState = WIFI_CONFIG_STATE_CONNECT_MQTT_FAIL;
+        sg_wifiConfigState = WIFI_CONFIG_STATE_CONNECT_MQTT_FAIL;
         push_error_log(ERR_MQTT_CONNECT, ret);
         return ret;
     }
@@ -391,7 +391,7 @@ static int _mqtt_send_token(void)
     if (ret < 0) {
         Log_w("Client Subscribe Topic Failed: %d", ret);
     }
-    sg_wifiConfitState = WIFI_CONFIG_STATE_REPORT_TOKEN;
+    sg_wifiConfigState = WIFI_CONFIG_STATE_REPORT_TOKEN;
     // publish token msg and wait for reply
     int retry_cnt = 2;
     do {
@@ -401,11 +401,11 @@ static int _mqtt_send_token(void)
 
     if (ret) {
         push_error_log(ERR_TOKEN_SEND, ret);
-        sg_wifiConfitState = WIFI_CONFIG_STATE_REPORT_TOKEN_FAIL;
+        sg_wifiConfigState = WIFI_CONFIG_STATE_REPORT_TOKEN_FAIL;
     }
 
     IOT_MQTT_Destroy(&client);
-    sg_wifiConfitState = WIFI_CONFIG_STATE_REPORT_TOKEN_SUCCESS;
+    sg_wifiConfigState = WIFI_CONFIG_STATE_REPORT_TOKEN_SUCCESS;
     // sleep 5 seconds to avoid frequent MQTT connection
     if (ret == 0)
         HAL_SleepMs(5000);

@@ -23,7 +23,7 @@
 
 static bool sg_comm_task_run = false;
 
-eWifiConfigState            sg_wifiConfitState = WIFI_CONFIG_STATE_CONNECT_AP;
+eWifiConfigState            sg_wifiConfigState = WIFI_CONFIG_STATE_CONNECT_AP;
 extern publish_token_info_t sg_publish_token_info;
 
 static int _app_reply_dev_info(comm_peer_t *peer, eWiFiConfigCmd cmd)
@@ -131,7 +131,6 @@ udp_resend:
         goto udp_resend;
     }
 
-    HAL_Printf("Report dev info: %s", json_str);
     HAL_Free(json_str);
     return 0;
 }
@@ -453,7 +452,7 @@ static void _qiot_comm_service_task(void *pvParameters)
     // send some data to wechat app
     while (sg_comm_task_run && --server_count) {
         HAL_SleepMs(500);
-        _app_reply_wifi_config_state(server_socket, sg_wifiConfitState);
+        _app_reply_wifi_config_state(server_socket, sg_wifiConfigState);
     }
 end_of_task:
     if (server_socket != -1) {
