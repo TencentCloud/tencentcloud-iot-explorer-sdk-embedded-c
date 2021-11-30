@@ -30,7 +30,7 @@ extern "C" {
 #include "platform.h"
 
 /* IoT C-SDK version info */
-#define QCLOUD_IOT_DEVICE_SDK_VERSION ("3.1.9-" GIT_COMMIT_ID)
+#define QCLOUD_IOT_DEVICE_SDK_VERSION ("3.2.0-" GIT_COMMIT_ID)
 
 /**************** QCloud IoT C-SDK constants begin ************************/
 
