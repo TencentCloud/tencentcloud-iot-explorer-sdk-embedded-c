@@ -22,16 +22,18 @@ extern "C" {
 #include <stdbool.h>
 #include "qcloud_wifi_config.h"
 
-#define SOFTAP_BOARDING_VERSION "2.0"
+#define SOFTAP_BOARDING_VERSION "3.0"
 
-#define APP_SERVER_BROADCAST_PORT 18266
+#define APP_SERVER_BROADCAST_PORT (18266)
 #define APP_SERVER_PORT           (8266)
+#define APP_CLIENT_PORT           (8267)
 #define LOG_SERVER_PORT           (9876)
 #define SOFT_AP_BLINK_TIME_MS     (300)
 
-#define WIFI_CONFIG_BLINK_TIME_MS (200)
-#define WIFI_CONFIG_WAIT_TIME_MS  (300 * 1000) /*300 seconds*/
-#define WIFI_CONFIG_HALF_TIME_MS  (50 * 1000)  /*50 seconds*/
+#define WIFI_CONFIG_BLINK_TIME_MS            (200)
+#define WIFI_CONFIG_WAIT_STA_CONNECT_TIME_MS (20000)
+#define WIFI_CONFIG_WAIT_TIME_MS             (300 * 1000) /*300 seconds*/
+#define WIFI_CONFIG_HALF_TIME_MS             (50 * 1000)  /*50 seconds*/
 
 #define SELECT_WAIT_TIME_SECONDS (3)   /*seconds*/
 #define WAIT_CNT_5MIN_SECONDS    (300) /*5 minutes*/
@@ -41,23 +43,36 @@ extern "C" {
 #define COMM_SERVER_TASK_PRIO        1
 
 #define MAX_TOKEN_LENGTH              32
+#define MAX_TYPE_LENGTH               16
 #define MAX_TVS_CLIENT_ID_LENGTH      512
 #define MAX_TVS_AUTH_RESP_INFO_LENGTH 128
 
 /* unified socket type for TCP/UDP */
 typedef struct {
     int            socket_id;
-    char *         peer_addr;
+    char          *peer_addr;
     unsigned short port;
 } comm_peer_t;
 
 typedef enum {
-    CMD_TOKEN_ONLY     = 0, /* Token only for smartconfig  */
-    CMD_SSID_PW_TOKEN  = 1, /* SSID/PW/TOKEN for softAP */
-    CMD_DEVICE_REPLY   = 2, /* device reply */
-    CMD_LOG_QUERY      = 3, /* app query log */
-    CMD_AUTHINFO_QUERY = 4, /* query auth info */
-    CMD_AUTHINFO_REPLY = 5, /* reply auth info */
+    WIFI_CONFIG_STATE_CONNECT_AP           = 0,  // When the ssid&password is obtained, try to connect to it
+    WIFI_CONFIG_STATE_CONNECT_MQTT         = 1,  // Try to connect to the MQTT server
+    WIFI_CONFIG_STATE_CONNECT_MQTT_FAIL    = 2,  // Try to connect to the MQTT server fail
+    WIFI_CONFIG_STATE_REPORT_TOKEN         = 3,  // Try to connect report token
+    WIFI_CONFIG_STATE_REPORT_TOKEN_FAIL    = 4,
+    WIFI_CONFIG_STATE_REPORT_TOKEN_SUCCESS = 5
+
+} eWifiConfigState;
+
+typedef enum {
+    CMD_TOKEN_ONLY               = 0, /* Token only for smartconfig  */
+    CMD_SSID_PW_TOKEN            = 1, /* SSID/PW/TOKEN for softAP */
+    CMD_DEVICE_REPLY             = 2, /* device reply */
+    CMD_LOG_QUERY                = 3, /* app query log */
+    CMD_AUTHINFO_QUERY           = 4, /* query auth info */
+    CMD_AUTHINFO_REPLY           = 5, /* reply auth info */
+    CMD_RESPOSE_TOKEN            = 6, /* response token from router */
+    CMD_REPORT_WIFI_CONFIG_STATE = 7, /* when wifi connected ap, report state to wechat app */
 } eWiFiConfigCmd;
 
 typedef enum {
@@ -105,6 +120,21 @@ typedef enum {
     CUR_ERR = 0, /* current connect error */
     PRE_ERR = 1, /* previous connect error */
 } eErrRecordType;
+
+typedef struct {
+    char token_str[MAX_TOKEN_LENGTH + 4];
+    bool token_received;
+    struct {
+        char     type[MAX_TYPE_LENGTH + 1];
+        uint32_t start;
+        uint32_t getSSID;
+        uint32_t wifiConnected;
+        uint32_t getToken;
+        uint32_t mqttStart;
+        uint32_t mqttConnected;
+        uint32_t tokenPublish;
+    } pairTime;
+} publish_token_info_t;
 
 int  qiot_comm_service_start(void);
 void qiot_comm_service_stop(void);

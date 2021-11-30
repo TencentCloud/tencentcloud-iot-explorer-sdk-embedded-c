@@ -20,9 +20,11 @@
 #include "qcloud_wifi_config.h"
 #include "qcloud_wifi_config_internal.h"
 
-static bool sg_token_received                  = false;
-static char sg_token_str[MAX_TOKEN_LENGTH + 4] = {0};
-static int  sg_bind_reply_code                 = -1;
+extern eWifiConfigState sg_wifiConfigState;
+
+static int sg_bind_reply_code = -1;
+
+publish_token_info_t sg_publish_token_info;
 
 typedef struct {
     bool sub_ready;
@@ -181,7 +183,7 @@ static int _subscribe_topic_wait_result(void *client, DeviceInfo *dev_info, Toke
 }
 
 // publish MQTT msg
-static int _publish_token_msg(void *client, DeviceInfo *dev_info, char *token_str)
+static int _publish_token_msg(void *client, DeviceInfo *dev_info, publish_token_info_t *info)
 {
     char topic_name[128] = {0};
 
@@ -195,11 +197,16 @@ static int _publish_token_msg(void *client, DeviceInfo *dev_info, char *token_st
     PublishParams pub_params = DEFAULT_PUB_PARAMS;
     pub_params.qos           = QOS1;
 
-    char topic_content[256] = {0};
-
-    size = HAL_Snprintf(topic_content, sizeof(topic_content),
-                        "{\"method\":\"app_bind_token\",\"clientToken\":\"%s-%u\",\"params\": {\"token\":\"%s\"}}",
-                        dev_info->device_name, HAL_GetTimeMs(), token_str);
+    char topic_content[512]     = {0};
+    info->pairTime.tokenPublish = HAL_GetTimeMs();
+    size                        = HAL_Snprintf(
+                               topic_content, sizeof(topic_content),
+                               "{\"method\":\"app_bind_token\",\"clientToken\":\"%s-%u\",\"params\": "
+                                                      "{\"token\":\"%s\",\"pairTime\":{\"type\":\"%s\",\"start\":%ld,\"getSSID\":%ld,\"wifiConnected\":%ld,"
+                                                      "\"getToken\":%ld,\"mqttStart\":%ld,\"mqttConnected\":%ld,\"tokenPublish\":%ld}}}",
+                               dev_info->device_name, HAL_GetTimeMs(), info->token_str, info->pairTime.type, info->pairTime.start,
+                               info->pairTime.getSSID, info->pairTime.wifiConnected, info->pairTime.getToken, info->pairTime.mqttStart,
+                               info->pairTime.mqttConnected, info->pairTime.tokenPublish);
     if (size < 0 || size > sizeof(topic_content) - 1) {
         Log_e("payload content length not enough! content size:%d  buf size:%d", size, (int)sizeof(topic_content));
         return QCLOUD_ERR_MALLOC;
@@ -218,20 +225,19 @@ static int _send_token_wait_reply(void *client, DeviceInfo *dev_info, TokenHandl
     int wait_cnt = 20;
 
     // for smartconfig, we need to wait for the token data from app
-    while (!sg_token_received && (wait_cnt-- > 0)) {
+    while (!sg_publish_token_info.token_received && (wait_cnt-- > 0)) {
         IOT_MQTT_Yield(client, 1000);
         Log_i("wait for token data...");
     }
 
-    if (!sg_token_received) {
+    if (!sg_publish_token_info.token_received) {
         Log_e("Wait for token data timeout");
         return QCLOUD_ERR_INVAL;
     }
 
     wait_cnt = 3;
 publish_token:
-    app_data->reply_ready = false;
-    ret                   = _publish_token_msg(client, dev_info, sg_token_str);
+    ret = _publish_token_msg(client, dev_info, &sg_publish_token_info);
     if (ret < 0 && (wait_cnt-- > 0)) {
         Log_e("Client publish token failed: %d", ret);
         if (IOT_MQTT_IsConnected(client)) {
@@ -369,20 +375,23 @@ static int _mqtt_send_token(void)
     sg_bind_reply_code = app_data.reply_code;
 
     // mqtt connection
-    void *client = _setup_mqtt_connect(&dev_info, &app_data);
+    sg_wifiConfigState                       = WIFI_CONFIG_STATE_CONNECT_MQTT;
+    sg_publish_token_info.pairTime.mqttStart = HAL_GetTimeMs();
+    void *client                             = _setup_mqtt_connect(&dev_info, &app_data);
     if (client == NULL) {
         ret = IOT_MQTT_GetErrCode();
         Log_e("Cloud Device Construct Failed: %d", ret);
+        sg_wifiConfigState = WIFI_CONFIG_STATE_CONNECT_MQTT_FAIL;
         push_error_log(ERR_MQTT_CONNECT, ret);
         return ret;
     }
-
+    sg_publish_token_info.pairTime.mqttConnected = HAL_GetTimeMs();
     // subscribe token reply topic
     ret = _subscribe_topic_wait_result(client, &dev_info, &app_data);
     if (ret < 0) {
         Log_w("Client Subscribe Topic Failed: %d", ret);
     }
-
+    sg_wifiConfigState = WIFI_CONFIG_STATE_REPORT_TOKEN;
     // publish token msg and wait for reply
     int retry_cnt = 2;
     do {
@@ -390,11 +399,13 @@ static int _mqtt_send_token(void)
         IOT_MQTT_Yield(client, 1000);
     } while (ret && retry_cnt--);
 
-    if (ret)
+    if (ret) {
         push_error_log(ERR_TOKEN_SEND, ret);
+        sg_wifiConfigState = WIFI_CONFIG_STATE_REPORT_TOKEN_FAIL;
+    }
 
     IOT_MQTT_Destroy(&client);
-
+    sg_wifiConfigState = WIFI_CONFIG_STATE_REPORT_TOKEN_SUCCESS;
     // sleep 5 seconds to avoid frequent MQTT connection
     if (ret == 0)
         HAL_SleepMs(5000);
@@ -421,8 +432,9 @@ int qiot_device_bind(void)
 
 void qiot_device_bind_set_token(const char *token)
 {
-    sg_token_received = true;
-    strncpy(sg_token_str, token, MAX_TOKEN_LENGTH);
+    sg_publish_token_info.token_received    = true;
+    sg_publish_token_info.pairTime.getToken = HAL_GetTimeMs();
+    strncpy(sg_publish_token_info.token_str, token, MAX_TOKEN_LENGTH);
 }
 
 bool qiot_device_bind_get_cloud_reply_code(int *bind_reply_code)

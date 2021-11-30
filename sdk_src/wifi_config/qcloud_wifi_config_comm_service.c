@@ -23,7 +23,10 @@
 
 static bool sg_comm_task_run = false;
 
-static int _app_reply_dev_info(comm_peer_t *peer)
+eWifiConfigState            sg_wifiConfigState = WIFI_CONFIG_STATE_CONNECT_AP;
+extern publish_token_info_t sg_publish_token_info;
+
+static int _app_reply_dev_info(comm_peer_t *peer, eWiFiConfigCmd cmd)
 {
     int         ret;
     DeviceInfo  devinfo;
@@ -41,7 +44,7 @@ static int _app_reply_dev_info(comm_peer_t *peer)
     }
 
     cJSON *reply_json = cJSON_CreateObject();
-    cJSON_AddNumberToObject(reply_json, "cmdType", (int)CMD_DEVICE_REPLY);
+    cJSON_AddNumberToObject(reply_json, "cmdType", (int)cmd);
     cJSON_AddStringToObject(reply_json, "productId", devinfo.product_id);
     cJSON_AddStringToObject(reply_json, "deviceName", devinfo.device_name);
     cJSON_AddStringToObject(reply_json, "protoVersion", SOFTAP_BOARDING_VERSION);
@@ -75,6 +78,59 @@ udp_resend:
     }
 
     HAL_Printf("Report dev info: %s", json_str);
+    HAL_Free(json_str);
+    return 0;
+}
+
+static int _app_reply_wifi_config_state(int client_fd, eWifiConfigState state)
+{
+    int         ret;
+    DeviceInfo  devinfo;
+    cJSON_Hooks memoryHook;
+
+    memoryHook.malloc_fn = (void *(*)(size_t))HAL_Malloc;
+    memoryHook.free_fn   = (void (*)(void *))HAL_Free;
+    cJSON_InitHooks(&memoryHook);
+
+    ret = HAL_GetDevInfo(&devinfo);
+    if (ret) {
+        Log_e("load dev info failed: %d", ret);
+        return -1;
+    }
+
+    cJSON *reply_json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(reply_json, "cmdType", (int)CMD_REPORT_WIFI_CONFIG_STATE);
+    cJSON_AddStringToObject(reply_json, "productId", devinfo.product_id);
+    cJSON_AddStringToObject(reply_json, "deviceName", devinfo.device_name);
+    cJSON_AddStringToObject(reply_json, "protoVersion", SOFTAP_BOARDING_VERSION);
+    cJSON_AddNumberToObject(reply_json, "wifiConfigState", (int)state);
+    char *json_str = cJSON_Print(reply_json);
+    if (!json_str) {
+        Log_e("cJSON_PrintPreallocated failed!");
+        cJSON_Delete(reply_json);
+        return -1;
+    }
+    /* append msg delimiter */
+    //    strcat(json_str, "\r\n");
+    cJSON_Delete(reply_json);
+    HAL_Printf("Report dev info(%d): %s", strlen(json_str), json_str);
+
+    int udp_resend_cnt = 3;
+udp_resend:
+    ret = HAL_UDP_WriteTo(client_fd, (unsigned char *)json_str, strlen(json_str), "255.255.255.255", APP_SERVER_PORT);
+    if (ret < 0) {
+        HAL_Free(json_str);
+        Log_e("send error: %s", HAL_UDP_GetErrnoStr());
+        push_error_log(ERR_SOCKET_SEND, HAL_UDP_GetErrno());
+        return -1;
+    }
+    /* UDP packet could be lost, send it again */
+    /* NOT necessary for TCP */
+    if (--udp_resend_cnt) {
+        HAL_SleepMs(1000);
+        goto udp_resend;
+    }
+
     HAL_Free(json_str);
     return 0;
 }
@@ -230,12 +286,26 @@ static int _app_handle_recv_data(comm_peer_t *peer, char *pdata, int len)
             cJSON *token_json = cJSON_GetObjectItem(root, "token");
             if (token_json) {
                 // set device bind token
+
                 qiot_device_bind_set_token(token_json->valuestring);
-                ret = _app_reply_dev_info(peer);
+                ret = _app_reply_dev_info(peer, CMD_DEVICE_REPLY);
 
                 // sleep a while before exit
                 HAL_SleepMs(1000);
-
+#if (WIFI_PROV_SMART_CONFIG_ENABLE)
+                if (ret == QCLOUD_RET_SUCCESS) {
+                    set_smart_config_state(WIFI_CONFIG_SUCCESS);
+                } else {
+                    set_smart_config_state(WIFI_CONFIG_FAIL);
+                }
+#endif
+#if (WIFI_PROV_AIRKISS_CONFIG_ENABLE)
+                if (ret == QCLOUD_RET_SUCCESS) {
+                    set_airkiss_config_state(WIFI_CONFIG_SUCCESS);
+                } else {
+                    set_airkiss_config_state(WIFI_CONFIG_FAIL);
+                }
+#endif
                 /* 0: need to wait for next cmd
                  * 1: Everything OK and we've finished the job */
                 return (ret == 0);
@@ -255,11 +325,11 @@ static int _app_handle_recv_data(comm_peer_t *peer, char *pdata, int len)
 
             if (ssid_json && psw_json && token_json) {
                 // parse token and connect to ap
+                sg_publish_token_info.pairTime.getSSID = HAL_GetTimeMs();
                 qiot_device_bind_set_token(token_json->valuestring);
-                _app_reply_dev_info(peer);
+                _app_reply_dev_info(peer, CMD_DEVICE_REPLY);
                 // sleep a while before changing to STA mode
                 HAL_SleepMs(3000);
-
                 Log_i("STA to connect SSID:%s PASSWORD:%s", ssid_json->valuestring, psw_json->valuestring);
                 PUSH_LOG("SSID:%s|PSW:%s|TOKEN:%s", ssid_json->valuestring, psw_json->valuestring,
                          token_json->valuestring);
@@ -332,7 +402,7 @@ static void _qiot_comm_service_task(void *pvParameters)
     }
 
     Log_i("UDP server socket listening...");
-
+    sg_publish_token_info.pairTime.start = HAL_GetTimeMs();
     while (sg_comm_task_run && --server_count) {
         ret =
             HAL_UDP_ReadTimeoutPeerInfo(server_socket, (unsigned char *)rx_buffer, sizeof(rx_buffer) - 1,
@@ -379,9 +449,14 @@ static void _qiot_comm_service_task(void *pvParameters)
         }
     }
 
+    // send some data to wechat app
+    while (sg_comm_task_run && --server_count) {
+        HAL_SleepMs(500);
+        _app_reply_wifi_config_state(server_socket, sg_wifiConfigState);
+    }
 end_of_task:
     if (server_socket != -1) {
-        Log_w("Shutting down UDP server socket");
+        Log_w("Shutting down UDP server socket:%d", server_socket);
         HAL_UDP_Close(server_socket);
     }
 

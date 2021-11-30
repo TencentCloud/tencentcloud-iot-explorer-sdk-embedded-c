@@ -23,6 +23,8 @@
 #include "qcloud_wifi_config.h"
 #include "qcloud_wifi_config_internal.h"
 
+extern publish_token_info_t sg_publish_token_info;
+
 static char sg_ssid[MAX_SSID_LEN + 1];
 static char sg_psk[MAX_PSK_LEN + 1];
 
@@ -86,6 +88,27 @@ int qiot_wifi_config_start(eWiFiConfigType type, void *params, WifiConfigResultC
     if (type < WIFI_CONFIG_TYPE_SOFT_AP || type > WIFI_CONFIG_TYPE_BT_COMBO) {
         Log_e("Unknown wifi config type!");
         return ERR_UNKNOWN_WIFI_CONFIG_TYPE;
+    } else {
+        switch (type) {
+            case WIFI_CONFIG_TYPE_SOFT_AP:
+                strncpy(sg_publish_token_info.pairTime.type, "SoftAP", MAX_TYPE_LENGTH);
+                break;
+            case WIFI_CONFIG_TYPE_AIRKISS:
+                strncpy(sg_publish_token_info.pairTime.type, "AirKiss", MAX_TYPE_LENGTH);
+                break;
+            case WIFI_CONFIG_TYPE_SMART_CONFIG:
+                strncpy(sg_publish_token_info.pairTime.type, "SmartConfig", MAX_TYPE_LENGTH);
+                break;
+            case WIFI_CONFIG_TYPE_SIMPLE_CONFIG:
+                strncpy(sg_publish_token_info.pairTime.type, "SimpleConfig", MAX_TYPE_LENGTH);
+                break;
+            case WIFI_CONFIG_TYPE_BT_COMBO:
+                strncpy(sg_publish_token_info.pairTime.type, "BTCombo", MAX_TYPE_LENGTH);
+                break;
+            default:
+                strncpy(sg_publish_token_info.pairTime.type, "Unknow", MAX_TYPE_LENGTH);
+                break;
+        }
     }
 
     if (init_dev_log_queue()) {
