@@ -21,8 +21,8 @@
 #include "lite-utils.h"
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
-#include "utils_timer.h"
 #include "utils_getopt.h"
+#include "utils_timer.h"
 
 #ifdef AUTH_MODE_CERT
 static char sg_cert_file[PATH_MAX + 1];  // full path of device cert file
@@ -648,8 +648,8 @@ static int _on_recv_array_msg(DeviceProperty *p_prop)
         }
     } else if (!strcmp(key, "recent_status")) {
         sg_DataTemplate[7].state = eCHANGED;
-        res = LITE_dt_parse_obj_array(sg_recent_status_array, MAX_SAMPLE_ARRAY_SIZE, sizeof(recent_status_t),
-                                      p_prop->data, _parse_rs_obj);
+        res = LITE_dt_parse_obj_array(sg_recent_status_array, MAX_SAMPLE_ARRAY_SIZE * sizeof(recent_status_t),
+                                      sizeof(recent_status_t), p_prop->data, _parse_rs_obj);
         if (res > 0) {
             sg_recent_status_array_size = res;
             _refresh_recent_status();
