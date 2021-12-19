@@ -357,12 +357,12 @@ int IOT_OTA_Destroy(void *handle)
 }
 
 /*support continuous transmission of breakpoints*/
-int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size)
+int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t file_size, uint32_t segment_size)
 {
     OTA_Struct_t *h_ota = (OTA_Struct_t *)handle;
     int           Ret;
 
-    Log_d("to download FW from offset: %u, size: %u", offset, size);
+    Log_d("to download FW from offset: %u, size: %u", offset, file_size);
     h_ota->size_fetched = offset;
 
     // reset md5 for new download
@@ -376,7 +376,7 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size)
 
     // reinit ofc
     qcloud_ofc_deinit(h_ota->ch_fetch);
-    h_ota->ch_fetch = ofc_Init(h_ota->purl, offset, size);
+    h_ota->ch_fetch = ofc_Init(h_ota->purl, offset, file_size, segment_size);
     if (NULL == h_ota->ch_fetch) {
         Log_e("Initialize fetch module failed");
         return QCLOUD_ERR_FAILURE;

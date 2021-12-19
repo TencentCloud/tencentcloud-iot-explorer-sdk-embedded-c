@@ -27,7 +27,7 @@ extern "C" {
 
 #include <stdint.h>
 
-void *ofc_Init(const char *url, uint32_t offset, uint32_t size);
+void *ofc_Init(const char *url, uint32_t offset, uint32_t file_size, uint32_t segment_size);
 
 int32_t qcloud_ofc_connect(void *handle);
 

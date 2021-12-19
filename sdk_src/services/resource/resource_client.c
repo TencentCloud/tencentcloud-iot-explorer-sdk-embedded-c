@@ -861,12 +861,12 @@ int IOT_Resource_IsDownloadFinish(void *handle)
 }
 
 /*support continuous transmission of breakpoints*/
-int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t size)
+int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t resource_size, uint32_t segment_size)
 {
     QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
     int                        ret;
 
-    Log_d("to download FW from offset: %u, size: %u", offset, size);
+    Log_d("to download FW from offset: %u, size: %u", offset, resource_size);
     resource_handle->download.size_prepared = offset;
 
     // reset md5 for new download
@@ -880,7 +880,7 @@ int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t size)
 
     // reinit ofc
     qcloud_ofc_deinit(resource_handle->download.channel);
-    resource_handle->download.channel = ofc_Init(resource_handle->download.resource_url, offset, size);
+    resource_handle->download.channel = ofc_Init(resource_handle->download.resource_url, offset, resource_size, segment_size);
     if (NULL == resource_handle->download.channel) {
         Log_e("Initialize fetch module failed");
         return QCLOUD_ERR_FAILURE;

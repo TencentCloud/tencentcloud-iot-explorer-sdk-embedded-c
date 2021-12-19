@@ -895,7 +895,7 @@ int IOT_FileManage_ResetClientMD5(void *handle)
 }
 
 /* download */
-int IOT_FileManage_StartDownload(void *handle, uint32_t offset, uint32_t size)
+int IOT_FileManage_StartDownload(void *handle, uint32_t offset, uint32_t file_size, uint32_t segment_size)
 {
     POINTER_SANITY_CHECK(handle, QCLOUD_ERR_INVAL);
 
@@ -903,7 +903,7 @@ int IOT_FileManage_StartDownload(void *handle, uint32_t offset, uint32_t size)
 
     int ret;
 
-    Log_d("to download FW from offset: %u, size: %u", offset, size);
+    Log_d("to download FW from offset: %u, size: %u", offset, file_size);
     pHandle->size_fetched = offset;
 
     if (offset == 0) {
@@ -915,7 +915,7 @@ int IOT_FileManage_StartDownload(void *handle, uint32_t offset, uint32_t size)
     }
 
     qcloud_url_download_deinit(pHandle->ch_fetch);
-    pHandle->ch_fetch = qcloud_url_download_init(pHandle->url, offset, size);
+    pHandle->ch_fetch = qcloud_url_download_init(pHandle->url, offset, file_size, segment_size);
     if (!pHandle->ch_fetch) {
         Log_e("Initialize fetch module failed");
         return QCLOUD_ERR_FAILURE;

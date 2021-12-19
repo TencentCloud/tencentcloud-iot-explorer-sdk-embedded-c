@@ -36,6 +36,9 @@
 #define FW_FILE_PATH_MAX_LEN  128
 #define OTA_BUF_LEN           5000
 #define FW_INFO_FILE_DATA_LEN 128
+#define OTA_HTTP_MAX_FETCHED_SIZE (50 * 1024)
+
+#define MAX_OTA_RETRY_CNT 5
 
 typedef struct OTAContextData {
     void *ota_handle;
@@ -55,7 +58,7 @@ typedef struct OTAContextData {
     // to make sure report is acked
     bool report_pub_ack;
     int  report_packet_id;
-
+    uint32_t ota_fail_cnt;
 } OTAContextData;
 
 static DeviceInfo sg_devInfo;
@@ -379,14 +382,17 @@ bool process_ota(OTAContextData *ota_ctx)
 {
     bool  download_finished     = false;
     bool  upgrade_fetch_success = true;
-    char  buf_ota[OTA_BUF_LEN];
-    int   rc;
-    void *h_ota = ota_ctx->ota_handle;
+    char  buf_ota[OTA_BUF_LEN]  = {0};
+    int   rc                    = 0;
+    void *h_ota                 = ota_ctx->ota_handle;
+    int packet_id               = 0;
+    int local_offset = 0;
 
     /* Must report version first */
     if (0 > IOT_OTA_ReportVersion(h_ota, _get_local_fw_running_version())) {
         Log_e("report OTA version failed");
-        return false;
+        upgrade_fetch_success = false;
+        goto end_of_ota;
     }
 
     do {
@@ -401,18 +407,22 @@ bool process_ota(OTAContextData *ota_ctx)
 
             HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.bin", ota_ctx->remote_version);
             HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", ota_ctx->remote_version);
-
+begin_of_ota:
             /* check if pre-downloading finished or not */
             /* if local FW downloaded size (ota_ctx->downloaded_size) is not zero, it
              * will do resuming download */
-            _update_fw_downloaded_size(ota_ctx);
+            local_offset = _update_fw_downloaded_size(ota_ctx);
+            if (ota_ctx->fw_file_size == local_offset) {  // have already downloaded
+                upgrade_fetch_success = true;
+                goto end_of_download;
+            }
 
             /*set offset and start http connect*/
-            rc = IOT_OTA_StartDownload(h_ota, ota_ctx->downloaded_size, ota_ctx->fw_file_size);
+            rc = IOT_OTA_StartDownload(h_ota, ota_ctx->downloaded_size, ota_ctx->fw_file_size, OTA_HTTP_MAX_FETCHED_SIZE);
             if (QCLOUD_RET_SUCCESS != rc) {
                 Log_e("OTA download start err,rc:%d", rc);
                 upgrade_fetch_success = false;
-                break;
+                goto end_of_ota;
             }
 
             // download and save the fw
@@ -423,12 +433,12 @@ bool process_ota(OTAContextData *ota_ctx)
                     if (rc) {
                         Log_e("write data to file failed");
                         upgrade_fetch_success = false;
-                        break;
+                        goto end_of_ota;
                     }
-                } else if (len < 0) {
+                } else if (len <= 0) {
                     Log_e("download fail rc=%d", len);
                     upgrade_fetch_success = false;
-                    break;
+                    goto end_of_ota;
                 }
 
                 /* get OTA information and update local info */
@@ -442,12 +452,14 @@ bool process_ota(OTAContextData *ota_ctx)
                 rc = IOT_MQTT_Yield(ota_ctx->mqtt_client, 100);
                 if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
                     Log_e("MQTT error: %d", rc);
-                    return false;
+                    upgrade_fetch_success = false;
+                    goto end_of_ota;
                 }
 
             } while (!IOT_OTA_IsFetchFinish(h_ota));
 
             /* Must check MD5 match or not */
+            end_of_download:
             if (upgrade_fetch_success) {
                 // download is finished, delete the fw info file
                 _delete_fw_info_file(ota_ctx->fw_info_file_path);
@@ -457,6 +469,7 @@ bool process_ota(OTAContextData *ota_ctx)
                 if (0 == firmware_valid) {
                     Log_e("The firmware is invalid");
                     upgrade_fetch_success = false;
+                    goto end_of_ota;
                 } else {
                     Log_i("The firmware is valid");
                     upgrade_fetch_success = true;
@@ -473,12 +486,27 @@ bool process_ota(OTAContextData *ota_ctx)
 
     // do some post-download stuff for your need
 
-    // report result
-    int packet_id;
-    if (upgrade_fetch_success)
+end_of_ota:
+    if (!upgrade_fetch_success) {
+        // retry again
+        if (IOT_MQTT_IsConnected(ota_ctx->mqtt_client)) {
+            ota_ctx->ota_fail_cnt++;
+            if (ota_ctx->ota_fail_cnt <= MAX_OTA_RETRY_CNT) {
+                upgrade_fetch_success = true;
+                Log_e("OTA failed, retry %drd time!", ota_ctx->ota_fail_cnt);
+                HAL_SleepMs(1000);
+                goto begin_of_ota;
+            } else {
+                ota_ctx->ota_fail_cnt = 0;
+                Log_e("Ota %d times already, report download fail!", MAX_OTA_RETRY_CNT);
+                packet_id = IOT_OTA_ReportUpgradeFail(h_ota, NULL);
+            }
+        }
+    } else if (upgrade_fetch_success) {
         packet_id = IOT_OTA_ReportUpgradeSuccess(h_ota, NULL);
-    else
-        packet_id = IOT_OTA_ReportUpgradeFail(h_ota, NULL);
+        ota_ctx->ota_fail_cnt = 0;
+    }
+
     _wait_for_pub_ack(ota_ctx, packet_id);
 
     return upgrade_fetch_success;
