@@ -1,4 +1,35 @@
-[toc]
+- [设备端相关文档](#设备端相关文档)
+- [编译问题](#编译问题)
+  - [如何将`C SDK`编译到其他目标平台？](#如何将c-sdk编译到其他目标平台)
+  - [编译报错 `error Only C99 allowed`](#编译报错-error-only-c99-allowed)
+  - [编译后不能在目标设备上运行](#编译后不能在目标设备上运行)
+- [设备接入问题](#设备接入问题)
+  - [使用`MQTT.fx`连接物联网开发平台失败？](#使用mqttfx连接物联网开发平台失败)
+  - [设备连接物联网开发平台失败？](#设备连接物联网开发平台失败)
+  - [动态注册失败？](#动态注册失败)
+  - [`Topic`订阅失败是什么原因？](#topic订阅失败是什么原因)
+  - [设备日志中的错误码都表示什么含义？](#设备日志中的错误码都表示什么含义)
+  - [`C SDK`是否支持自定义透传数据？](#c-sdk是否支持自定义透传数据)
+  - [如何在控制台查看设备上报信息？](#如何在控制台查看设备上报信息)
+  - [数据模版解析失败？](#数据模版解析失败)
+  - [控制台如何判断设备在线？](#控制台如何判断设备在线)
+  - [如何修改设备端接入域名？](#如何修改设备端接入域名)
+  - [如何从物联网开发平台获取`UTC`时间？](#如何从物联网开发平台获取utc时间)
+  - [如何实现设备断开连接后的持续重连?](#如何实现设备断开连接后的持续重连)
+- [配网问题](#配网问题)
+  - [设备端支持哪些配网方式？](#设备端支持哪些配网方式)
+  - [蓝牙配网时,设备已经联网成功,但是小程序显示配网失败？](#蓝牙配网时设备已经联网成功但是小程序显示配网失败)
+  - [Smartconfig配网时,一直提示失败？](#smartconfig配网时一直提示失败)
+  - [Soft AP配网时,手机无法连接设备创建热点？](#soft-ap配网时手机无法连接设备创建热点)
+  - [向后台发送token的时候,收到的`bind_device`消息作用是什么？](#向后台发送token的时候收到的bind_device消息作用是什么)
+  - [设备端配网示例程序](#设备端配网示例程序)
+- [AT模组问题](#at模组问题)
+  - [使用`AT`模组,设备无法连接物联网开发平台？](#使用at模组设备无法连接物联网开发平台)
+  - [如何升级`AT`模组？](#如何升级at模组)
+  - [AT模组配网时,如何使用动态注册功能？](#at模组配网时如何使用动态注册功能)
+- [其他问题](#其他问题)
+  - [使用ESP8266 + C SDK开发时,会出现挂死现象?](#使用esp8266--c-sdk开发时会出现挂死现象)
+
 
 ## 设备端相关文档
 1.  [SDK快速入门](https://cloud.tencent.com/document/product/1081/34732) : 物联网开发平台的用户，可以通过快速入门的 Demo 示例加快对开发平台的了解。
@@ -74,13 +105,13 @@
 ## 配网问题
 ### 设备端支持哪些配网方式？
   * 设备端支持[softAP](https://cloud.tencent.com/document/product/1081/48404)、[SmartConfig](https://cloud.tencent.com/document/product/1081/48405)、[AirKiss](https://cloud.tencent.com/document/product/1081/48406)、[simpleConfig](https://cloud.tencent.com/document/product/1081/48407)、[LLSync蓝牙配网](https://cloud.tencent.com/document/product/1081/63493)、[blufi蓝牙配网](https://cloud.tencent.com/document/product/1081/48408)等多种配网方式。
-### 蓝牙配网时，设备已经联网成功，但是小程序显示配网失败？
+### 蓝牙配网时,设备已经联网成功,但是小程序显示配网失败？
   * 通常是设备端最后一个蓝牙包没有发送结束设备就关闭了蓝牙，请等待最后一个蓝牙包发送成功后再关闭蓝牙。
-### Smartconfig配网时，一直提示失败？
+### Smartconfig配网时,一直提示失败？
   * 请分析设备端日志，检查是否收到完整的目标路由器的`SSID`和`Password`。`Smartconfig`、`Airkiss`等配网方式的基本原理都是路由器持续转发手机的`UDP`包，如果当前WiFi网络环境复杂，很有可能会收不完整的`SSID`和`Password`，可以尝试更换位置或路由器后重试。
-### Soft AP配网时，手机无法连接设备创建热点？
+### Soft AP配网时,手机无法连接设备创建热点？
   * 为了防止腾讯连连小程序连接到其他设备开启的热点导致配网失败。腾讯连连小程序和控制台对设备热点名称做了一些规则限制，设备端必须按照这些规则创建热点，腾讯连连小程序才可以正常连接。请在`交互开发->配网引导->首选配网方式->设备热点连接引导页`进行设置。
-### 向后台发送token的时候，收到的`bind_device`消息作用是什么？
+### 向后台发送token的时候,收到的`bind_device`消息作用是什么？
 ![bind_device](https://qcloudimg.tencent-cloud.cn/raw/0cd5063145e13ef1c6910aaaf801d607.png)
   * 腾讯连连小程序和设备绑定成功后，物联网开发平台会向设备发送`app_bind_token_reply`消息告知用户设备绑定成功。
   * 为兼容旧版本，物联网开发平台会追加发送一条`bind device`消息，该消息现在可以忽略。
@@ -88,15 +119,15 @@
   * [ESP32](https://github.com/espressif/esp-qcloud/tree/master/src/provisioning)和[ESP8266](https://github.com/tencentyun/qcloud-iot-esp-wifi/tree/master/qcloud-iot-esp8266-demo)上均有实现配网功能。
  
 ## AT模组问题
-### 使用`AT`模组，设备无法连接物联网开发平台？
+### 使用`AT`模组,设备无法连接物联网开发平台？
   * 检查设备信息是否设置正确，请参考[腾讯云AT指令集](https://docs.espressif.com/projects/esp-at/zh_CN/latest/Customized_AT_Commands_and_Firmware/Tencent_Cloud_IoT_AT/Tencent_Cloud_IoT_AT_Command_Set.html)使用`AT`指令。
 ### 如何升级`AT`模组？
   * 物联网开发平台支持`MCU`和`AT`模组升级，可以通过平台下发消息中的`fw_type`字段进行区分。`mcu`表示`MCU`固件升级，`moudule`表示模组固件升级。
-### AT模组配网时，如何使用动态注册功能？
+### AT模组配网时,如何使用动态注册功能？
 * 使用AT指令配网时，也可以使用动态注册功能。使用流程是先通过`AT+TCPRDINFOSET=<tls_mode>,<product_ID>,<product_secret>,<devic<br>e_name>`,设置产品ID、产品密钥和设备名称，然后开启配网指令。在ESP8266上的使用示例如下：
 ![](https://qcloudimg.tencent-cloud.cn/raw/9485fea2b68ebc0fcf4d52fc53e71282.jpg)
 ## 其他问题
-###  使用ESP8266 + C SDK开发时，会出现挂死现象?
+###  使用ESP8266 + C SDK开发时,会出现挂死现象?
 `ESP8266`中`bool`类型占用一个字节，但是`true`和`false`占用4个字节，导致踩内存错误。请将`qcloud_iot_export_data_template.h`中的`bool`类型定义为`int`。
 ```c
 typedef int TYPE_DEF_TEMPLATE_BOOL;

@@ -863,7 +863,6 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     if (rc != QCLOUD_RET_SUCCESS) {
         IOT_MQTT_Destroy(&(pTemplate->mqtt));
         IOT_Template_Destroy(pTemplate);
-        HAL_Free(pTemplate);
         goto End;
     }
 
