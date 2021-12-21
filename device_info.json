@@ -1,10 +1,10 @@
 {
     "auth_mode": "KEY",
-    "productId": "PRODUCT_ID",
+    "productId": "92TX2UKPCB",
     "productSecret": "YOUR_PRODUCT_SECRET",
-    "deviceName": "YOUR_DEV_NAME",
+    "deviceName": "lytest",
     "key_deviceinfo": {
-        "deviceSecret": "YOUR_IOT_PSK"
+        "deviceSecret": "NpyzXj17EOAiIhvS78KKbw==K"
     },
     "cert_deviceinfo": {
         "devCertFile": "YOUR_DEVICE_CERT_FILE_NAME",
