@@ -418,7 +418,7 @@ bool process_resource_download(void *ctx)
     ResourceContextData *resource_ctx    = (ResourceContextData *)ctx;
     void *               resource_handle = resource_ctx->resource_handle;
     int                  packetid = 0;
-    int local_offset = 0;
+    int                  local_offset = 0;
 
     packetid = IOT_Resource_GetDownloadTask(resource_handle);
     _wait_for_download_pub_ack(resource_ctx, packetid);

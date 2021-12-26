@@ -834,6 +834,7 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     rc = iot_device_info_set(&pTemplate->device_info, pParams->product_id, pParams->device_name);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("failed to set device info: %d", rc);
+        HAL_Free(pTemplate);
         goto End;
     }
 

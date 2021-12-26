@@ -338,6 +338,14 @@ int IOT_MQTT_GetErrCode(void);
  * @return pointer to the device Info
  */
 DeviceInfo *IOT_MQTT_GetDeviceInfo(void *pClient);
+
+/**
+ * @brief Active triggering of mqtt reconnection
+ *
+ * @param pClient       handle to MQTT client
+ * @return error code of last IOT_MQTT_Construct operation
+ */
+int IOT_MQTT_Reconnect(void *pClient);
 #ifdef __cplusplus
 }
 #endif

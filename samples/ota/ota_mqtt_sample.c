@@ -398,7 +398,7 @@ bool process_ota(OTAContextData *ota_ctx)
         IOT_MQTT_Yield(ota_ctx->mqtt_client, 200);
 
         Log_i("wait for ota upgrade command...");
-
+begin_of_ota:
         // recv the upgrade cmd
         if (IOT_OTA_IsFetching(h_ota)) {
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_FILE_SIZE, &ota_ctx->fw_file_size, 4);
@@ -406,7 +406,6 @@ bool process_ota(OTAContextData *ota_ctx)
 
             HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.bin", ota_ctx->remote_version);
             HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", ota_ctx->remote_version);
-begin_of_ota:
             /* check if pre-downloading finished or not */
             /* if local FW downloaded size (ota_ctx->downloaded_size) is not zero, it
              * will do resuming download */

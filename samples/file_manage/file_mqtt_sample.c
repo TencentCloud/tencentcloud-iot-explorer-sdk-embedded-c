@@ -655,7 +655,7 @@ bool process_file_manage(FileManageContextData *fm_ctx)
         IOT_MQTT_Yield(fm_ctx->mqtt_client, 200);
 
         Log_i("wait for file_manage command...");
-
+begin_of_file_manage:
         // recv the upgrade cmd
         if (IOT_FileManage_IsFetching(fm_handle)) {
             IOT_FileManage_Ioctl(fm_handle, IOT_FILE_CMD_FILE_NAME, fm_ctx->file_manage_name,
@@ -669,7 +669,6 @@ bool process_file_manage(FileManageContextData *fm_ctx)
             HAL_Snprintf(fm_ctx->local_file_path, FILE_MANAGE_PATH_MAX_LEN, "./%s", fm_ctx->file_manage_name);
             HAL_Snprintf(fm_ctx->local_info_file_path, FILE_MANAGE_PATH_MAX_LEN, "./%s_info.json",
                          fm_ctx->file_manage_name);
-begin_of_file_manage:
             /* check if pre-downloading finished or not */
             /* if local file_manage downloaded size (fm_ctx->downloaded_size) is not zero, it
              * will do resuming download */

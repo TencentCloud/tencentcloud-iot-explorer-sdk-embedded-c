@@ -184,8 +184,8 @@ int IOT_MQTT_Destroy(void **pClient)
     HAL_MutexDestroy(mqtt_client->lock_list_sub);
     HAL_MutexDestroy(mqtt_client->lock_list_pub);
 
-    list_destroy(mqtt_client->list_pub_wait_ack);
-    list_destroy(mqtt_client->list_sub_wait_ack);
+    qcloud_list_destroy(mqtt_client->list_pub_wait_ack);
+    qcloud_list_destroy(mqtt_client->list_sub_wait_ack);
     HAL_Free(mqtt_client->options.client_id);
 
     HAL_Free(*pClient);
@@ -262,6 +262,17 @@ bool IOT_MQTT_IsConnected(void *pClient)
     IOT_FUNC_EXIT_RC(get_client_conn_state(mqtt_client) == 1)
 }
 
+int IOT_MQTT_Reconnect(void *pClient)
+{
+    IOT_FUNC_ENTRY;
+
+    POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
+
+    Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
+
+    return qcloud_iot_mqtt_reconnect(mqtt_client);
+}
+
 #ifdef MULTITHREAD_ENABLED
 static void _mqtt_yield_thread(void *ptr)
 {
@@ -269,6 +280,7 @@ static void _mqtt_yield_thread(void *ptr)
     Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)ptr;
 
     Log_d("start mqtt_yield_thread...");
+    mqtt_client->yield_thread_exit = false;
     while (mqtt_client->yield_thread_running) {
         rc = qcloud_iot_mqtt_yield(mqtt_client, 200);
 
@@ -297,6 +309,7 @@ static void _mqtt_yield_thread(void *ptr)
 
     mqtt_client->yield_thread_running   = false;
     mqtt_client->yield_thread_exit_code = rc;
+    mqtt_client->yield_thread_exit      = true;
 
 #ifdef LOG_UPLOAD
     IOT_Log_Upload(true);
@@ -328,10 +341,15 @@ int IOT_MQTT_StartLoop(void *pClient)
 void IOT_MQTT_StopLoop(void *pClient)
 {
     POINTER_SANITY_CHECK_RTN(pClient);
+    int cnt = 0;
 
     Qcloud_IoT_Client *mqtt_client    = (Qcloud_IoT_Client *)pClient;
     mqtt_client->yield_thread_running = false;
-    HAL_SleepMs(1000);
+    do {
+        HAL_SleepMs(100);
+        cnt++;
+    } while ((!mqtt_client->yield_thread_exit) && (cnt < 180));
+
     return;
 }
 
@@ -413,13 +431,13 @@ int qcloud_iot_mqtt_init(Qcloud_IoT_Client *pClient, MQTTInitParams *pParams)
         goto error;
     }
 
-    if ((pClient->list_pub_wait_ack = list_new()) == NULL) {
+    if ((pClient->list_pub_wait_ack = qcloud_list_new()) == NULL) {
         Log_e("create pub wait list failed.");
         goto error;
     }
     pClient->list_pub_wait_ack->free = HAL_Free;
 
-    if ((pClient->list_sub_wait_ack = list_new()) == NULL) {
+    if ((pClient->list_sub_wait_ack = qcloud_list_new()) == NULL) {
         Log_e("create sub wait list failed.");
         goto error;
     }
@@ -519,8 +537,8 @@ int qcloud_iot_mqtt_fini(Qcloud_IoT_Client *mqtt_client)
     HAL_MutexDestroy(mqtt_client->lock_list_sub);
     HAL_MutexDestroy(mqtt_client->lock_list_pub);
 
-    list_destroy(mqtt_client->list_pub_wait_ack);
-    list_destroy(mqtt_client->list_sub_wait_ack);
+    qcloud_list_destroy(mqtt_client->list_pub_wait_ack);
+    qcloud_list_destroy(mqtt_client->list_sub_wait_ack);
 
     Log_i("release mqtt client resources");
 

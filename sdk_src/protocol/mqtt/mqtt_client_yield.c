@@ -304,16 +304,16 @@ int qcloud_iot_mqtt_pub_info_proc(Qcloud_IoT_Client *pClient)
         ListNode *    node      = NULL;
         ListNode *    temp_node = NULL;
 
-        if (NULL == (iter = list_iterator_new(pClient->list_pub_wait_ack, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(pClient->list_pub_wait_ack, LIST_TAIL))) {
             Log_e("new list failed");
             break;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
 
             if (NULL != temp_node) {
-                list_remove(pClient->list_pub_wait_ack, temp_node);
+                qcloud_list_remove(pClient->list_pub_wait_ack, temp_node);
                 temp_node = NULL;
             }
 
@@ -360,7 +360,7 @@ int qcloud_iot_mqtt_pub_info_proc(Qcloud_IoT_Client *pClient)
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
 
     } while (0);
 
@@ -396,17 +396,17 @@ int qcloud_iot_mqtt_sub_info_proc(Qcloud_IoT_Client *pClient)
         uint16_t      packet_id = 0;
         MessageTypes  msg_type;
 
-        if (NULL == (iter = list_iterator_new(pClient->list_sub_wait_ack, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(pClient->list_sub_wait_ack, LIST_TAIL))) {
             Log_e("new list failed");
             HAL_MutexUnlock(pClient->lock_list_sub);
             IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
 
             if (NULL != temp_node) {
-                list_remove(pClient->list_sub_wait_ack, temp_node);
+                qcloud_list_remove(pClient->list_sub_wait_ack, temp_node);
                 temp_node = NULL;
             }
 
@@ -469,11 +469,50 @@ int qcloud_iot_mqtt_sub_info_proc(Qcloud_IoT_Client *pClient)
             temp_node = node;
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
 
     } while (0);
 
     HAL_MutexUnlock(pClient->lock_list_sub);
+
+    IOT_FUNC_EXIT_RC(rc);
+}
+
+/**
+ * @brief mqtt forced recnnect to server
+ *
+ * @param pClient reference to MQTTClient
+ *
+ */
+int qcloud_iot_mqtt_reconnect(Qcloud_IoT_Client *pClient)
+{
+    IOT_FUNC_ENTRY;
+    int     rc = QCLOUD_RET_SUCCESS;
+
+    POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
+
+    if (!get_client_conn_state(pClient) && pClient->options.auto_connect_enable == 1) {
+        IOT_FUNC_EXIT_RC(QCLOUD_ERR_MQTT_RECONNECTING);
+    }
+
+    rc = _handle_disconnect(pClient);
+
+    pClient->current_reconnect_wait_interval = _get_random_interval();
+    countdown_ms(&(pClient->reconnect_delay_timer), pClient->current_reconnect_wait_interval);
+
+    while (1) {
+        if (!get_client_conn_state(pClient)) {
+            if (pClient->current_reconnect_wait_interval > MAX_RECONNECT_WAIT_INTERVAL) {
+                rc = QCLOUD_ERR_MQTT_RECONNECT_TIMEOUT;
+                break;
+            }
+            rc = _handle_reconnect(pClient);
+            continue;
+        } else {
+            rc = QCLOUD_RET_MQTT_RECONNECTED;
+            break;
+        }
+    }
 
     IOT_FUNC_EXIT_RC(rc);
 }

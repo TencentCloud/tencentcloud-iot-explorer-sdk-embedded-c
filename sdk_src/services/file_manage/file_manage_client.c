@@ -476,7 +476,7 @@ static int _add_resouce_info_to_post_list(void *handle, FilePostInfo *info)
         Log_e("run list_node_new is error!");
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
-    list_rpush(pHandle->file_wait_post_list, node);
+    qcloud_list_rpush(pHandle->file_wait_post_list, node);
     HAL_MutexUnlock(pHandle->mutex);
 
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
@@ -493,20 +493,20 @@ static FilePostInfo *_get_file_manage_info_by_request_id(void *handle, int reque
         ListIterator *iter;
         ListNode *    node = NULL;
 
-        if (NULL == (iter = list_iterator_new(pHandle->file_wait_post_list, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(pHandle->file_wait_post_list, LIST_TAIL))) {
             HAL_MutexUnlock(pHandle->mutex);
             return NULL;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
 
             if (NULL == node->val) {
                 Log_e("node's value is invalid!");
-                list_remove(pHandle->file_wait_post_list, node);
+                qcloud_list_remove(pHandle->file_wait_post_list, node);
                 continue;
             }
             info = (FilePostInfo *)node->val;
@@ -515,13 +515,13 @@ static FilePostInfo *_get_file_manage_info_by_request_id(void *handle, int reque
                 break;
             } else {
                 if (expired(&info->post_timer)) {
-                    list_remove(pHandle->file_wait_post_list, node);
+                    qcloud_list_remove(pHandle->file_wait_post_list, node);
                 }
                 info = NULL;
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(pHandle->mutex);
 
@@ -742,7 +742,7 @@ static void _file_manage_msg_callback(void *handle, const char *msg, uint32_t ms
             HAL_Free(info->file_name);
             HAL_Free(info->file_version);
             HAL_MutexLock(pHandle->mutex);
-            list_remove(pHandle->file_wait_post_list, list_find(pHandle->file_wait_post_list, info));
+            qcloud_list_remove(pHandle->file_wait_post_list, qcloud_list_find(pHandle->file_wait_post_list, info));
             HAL_MutexUnlock(pHandle->mutex);
         } else {
             Log_e("request_id %s not found", request_id);
@@ -801,7 +801,7 @@ void *IOT_FileManage_Init(const char *product_id, const char *device_name, void 
     handle->state               = IOT_FILE_STATE_INITTED;
     handle->usr_context         = usr_context;
     handle->request_id          = 0;
-    handle->file_wait_post_list = list_new();
+    handle->file_wait_post_list = qcloud_list_new();
     if (handle->file_wait_post_list) {
         handle->file_wait_post_list->free = HAL_Free;
     } else {
@@ -825,7 +825,7 @@ exit:
         }
 
         if (handle->file_wait_post_list) {
-            list_destroy(handle->file_wait_post_list);
+            qcloud_list_destroy(handle->file_wait_post_list);
         }
 
         if (handle->mutex) {
@@ -858,7 +858,7 @@ int IOT_FileManage_Destroy(void *handle)
     qcloud_url_download_deinit(pHandle->ch_fetch);
     utils_md5_delete(pHandle->md5);
     if (pHandle->file_wait_post_list) {
-        list_destroy(pHandle->file_wait_post_list);
+        qcloud_list_destroy(pHandle->file_wait_post_list);
     }
 
     if (pHandle) {

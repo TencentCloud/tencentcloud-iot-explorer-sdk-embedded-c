@@ -75,6 +75,7 @@ typedef enum {
     QCLOUD_ERR_BUF_TOO_SHORT                              = -119,  // MQTT recv buffer not enough
     QCLOUD_ERR_MQTT_QOS_NOT_SUPPORT                       = -120,  // MQTT QoS level not supported
     QCLOUD_ERR_MQTT_UNSUB_FAIL                            = -121,  // MQTT unsubscribe failed
+    QCLOUD_ERR_MQTT_RECONNECTING                          = -122,  // MQTT reconnecting
 
     QCLOUD_ERR_JSON_PARSE            = -132,  // JSON parsing error
     QCLOUD_ERR_JSON_BUFFER_TRUNCATED = -133,  // JSON buffer truncated

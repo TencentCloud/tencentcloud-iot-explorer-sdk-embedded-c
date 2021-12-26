@@ -318,7 +318,7 @@ static int _add_request_to_asr_req_list(AsrHandle *pAsrClient, AsrReq *request)
         Log_e("run list_node_new is error!");
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
-    list_rpush(pAsrClient->asr_req_list, node);
+    qcloud_list_rpush(pAsrClient->asr_req_list, node);
     HAL_MutexUnlock(pAsrClient->mutex);
 
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
@@ -333,20 +333,20 @@ static AsrReq *_get_req_node_by_request_id(AsrHandle *pAsrClient, uint32_t reque
         ListIterator *iter;
         ListNode *    node = NULL;
 
-        if (NULL == (iter = list_iterator_new(pAsrClient->asr_req_list, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(pAsrClient->asr_req_list, LIST_TAIL))) {
             HAL_MutexUnlock(pAsrClient->mutex);
             return NULL;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
 
             if (NULL == node->val) {
                 Log_e("node's value is invalid!");
-                list_remove(pAsrClient->asr_req_list, node);
+                qcloud_list_remove(pAsrClient->asr_req_list, node);
                 continue;
             }
             req = (AsrReq *)node->val;
@@ -355,13 +355,13 @@ static AsrReq *_get_req_node_by_request_id(AsrHandle *pAsrClient, uint32_t reque
             } else {
                 if (expired(&req->timer)) {
                     Log_e("%d timeout removed from list", req->request_id);
-                    list_remove(pAsrClient->asr_req_list, node);
+                    qcloud_list_remove(pAsrClient->asr_req_list, node);
                 }
                 req = NULL;
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(pAsrClient->mutex);
 
@@ -377,20 +377,20 @@ static AsrReq *_get_req_node_by_asr_token(AsrHandle *pAsrClient, const char *asr
         ListIterator *iter;
         ListNode *    node = NULL;
 
-        if (NULL == (iter = list_iterator_new(pAsrClient->asr_req_list, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(pAsrClient->asr_req_list, LIST_TAIL))) {
             HAL_MutexUnlock(pAsrClient->mutex);
             return NULL;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
 
             if (NULL == node->val) {
                 Log_e("node's value is invalid!");
-                list_remove(pAsrClient->asr_req_list, node);
+                qcloud_list_remove(pAsrClient->asr_req_list, node);
                 continue;
             }
             req = (AsrReq *)node->val;
@@ -401,13 +401,13 @@ static AsrReq *_get_req_node_by_asr_token(AsrHandle *pAsrClient, const char *asr
             } else {
                 if (expired(&req->timer)) {
                     Log_e("%d timeout removed from list", req->request_id);
-                    list_remove(pAsrClient->asr_req_list, node);
+                    qcloud_list_remove(pAsrClient->asr_req_list, node);
                 }
                 req = NULL;
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(pAsrClient->mutex);
 
@@ -423,20 +423,20 @@ static void _del_timeout_req_node(AsrHandle *pAsrClient)
         ListIterator *iter;
         ListNode *    node = NULL;
 
-        if (NULL == (iter = list_iterator_new(pAsrClient->asr_req_list, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(pAsrClient->asr_req_list, LIST_TAIL))) {
             HAL_MutexUnlock(pAsrClient->mutex);
             return;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
 
             if (NULL == node->val) {
                 Log_e("node's value is invalid!");
-                list_remove(pAsrClient->asr_req_list, node);
+                qcloud_list_remove(pAsrClient->asr_req_list, node);
                 continue;
             }
             req = (AsrReq *)node->val;
@@ -446,11 +446,11 @@ static void _del_timeout_req_node(AsrHandle *pAsrClient)
                     Log_d("remove file %s", req->realtime_conf.file_name);
                     HAL_FileRemove(req->realtime_conf.file_name);
                 }
-                list_remove(pAsrClient->asr_req_list, node);
+                qcloud_list_remove(pAsrClient->asr_req_list, node);
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(pAsrClient->mutex);
 }
@@ -509,7 +509,7 @@ int _asr_result_notify(void *handle, char *asr_response)
                 HAL_Free(req->asr_token);
             }
             HAL_MutexLock(asr_handle->mutex);
-            list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
+            qcloud_list_remove(asr_handle->asr_req_list, qcloud_list_find(asr_handle->asr_req_list, req));
             HAL_MutexUnlock(asr_handle->mutex);
         }
     } else {
@@ -518,7 +518,7 @@ int _asr_result_notify(void *handle, char *asr_response)
             HAL_Free(req->asr_token);
         }
         HAL_MutexLock(asr_handle->mutex);
-        list_remove(asr_handle->asr_req_list, list_find(asr_handle->asr_req_list, req));
+        qcloud_list_remove(asr_handle->asr_req_list, qcloud_list_find(asr_handle->asr_req_list, req));
         HAL_MutexUnlock(asr_handle->mutex);
     }
 
@@ -656,7 +656,7 @@ void *IOT_Asr_Init(const char *product_id, const char *device_name, void *pTempl
         goto exit;
     }
 
-    asr_handle->asr_req_list = list_new();
+    asr_handle->asr_req_list = qcloud_list_new();
     if (asr_handle->asr_req_list) {
         asr_handle->asr_req_list->free = HAL_Free;
     } else {
@@ -677,7 +677,7 @@ exit:
                 HAL_MutexDestroy(asr_handle->mutex);
             }
             if (asr_handle->asr_req_list) {
-                list_destroy(asr_handle->asr_req_list);
+                qcloud_list_destroy(asr_handle->asr_req_list);
             }
             HAL_Free(asr_handle);
         }
@@ -700,7 +700,7 @@ int IOT_Asr_Destroy(void *handle)
         HAL_MutexDestroy(asr_handle->mutex);
     }
     if (asr_handle->asr_req_list) {
-        list_destroy(asr_handle->asr_req_list);
+        qcloud_list_destroy(asr_handle->asr_req_list);
     }
 
     return rc;

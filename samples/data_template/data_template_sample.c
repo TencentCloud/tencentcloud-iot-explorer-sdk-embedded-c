@@ -99,7 +99,6 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
     for (i = 0; i < pAction->input_num; i++) {
         if (JSTRING == pActionInput[i].type) {
             Log_d("Input:[%s], data:[%s]", pActionInput[i].key, pActionInput[i].data);
-            HAL_Free(pActionInput[i].data);
         } else {
             if (JINT32 == pActionInput[i].type) {
                 Log_d("Input:[%s], data:[%d]", pActionInput[i].key, *((int *)pActionInput[i].data));

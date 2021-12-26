@@ -51,13 +51,13 @@ static void _traverse_event_list(Qcloud_IoT_Template *pTemplate, List *list, con
         ListIterator *iter;
         ListNode *    node = NULL;
 
-        if (NULL == (iter = list_iterator_new(list, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(list, LIST_TAIL))) {
             HAL_MutexUnlock(pTemplate->mutex);
             IOT_FUNC_EXIT;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
@@ -72,7 +72,7 @@ static void _traverse_event_list(Qcloud_IoT_Template *pTemplate, List *list, con
             if (eDEAL_EXPIRED == eDealType) {
                 if (expired(&pReply->timer)) {
                     Log_e("eventToken[%s] timeout", pReply->client_token);
-                    list_remove(list, node);
+                    qcloud_list_remove(list, node);
                     node = NULL;
                 }
             }
@@ -82,13 +82,13 @@ static void _traverse_event_list(Qcloud_IoT_Template *pTemplate, List *list, con
                 if (NULL != pReply->callback) {
                     pReply->callback(pTemplate, message);
                     Log_d("eventToken[%s] released", pReply->client_token);
-                    list_remove(list, node);
+                    qcloud_list_remove(list, node);
                     node = NULL;
                 }
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(pTemplate->mutex);
 
@@ -173,7 +173,7 @@ static sEventReply *_create_event_add_to_list(Qcloud_IoT_Template *pTemplate, On
         IOT_FUNC_EXIT_RC(NULL);
     }
 
-    list_rpush(pTemplate->inner_data.event_list, node);
+    qcloud_list_rpush(pTemplate->inner_data.event_list, node);
 
     HAL_MutexUnlock(pTemplate->mutex);
 
