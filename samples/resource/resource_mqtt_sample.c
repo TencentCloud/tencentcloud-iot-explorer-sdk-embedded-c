@@ -427,7 +427,7 @@ bool process_resource_download(void *ctx)
         IOT_MQTT_Yield(resource_ctx->mqtt_client, 200);
 
         Log_i("wait for resource download command...");
-
+begin_of_resource:
         // recv the upgrade cmd
         if (IOT_Resource_IsStartDownload(resource_handle)) {
 
@@ -443,7 +443,6 @@ bool process_resource_download(void *ctx)
                          STRING_PTR_PRINT_SANITY_CHECK(resource_ctx->resource_name));
             HAL_Snprintf(resource_ctx->resource_info_file_path, RESOURCE_PATH_MAX_LEN, "./download_%s.json",
                          STRING_PTR_PRINT_SANITY_CHECK(device_info->client_id));
-begin_of_resource:
             /* check if pre-downloading finished or not */
             /* if local resource downloaded size (resource_ctx->downloaded_size) is not zero, it will do resuming
              * download */

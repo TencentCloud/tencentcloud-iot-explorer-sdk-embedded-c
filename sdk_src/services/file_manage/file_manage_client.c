@@ -929,7 +929,6 @@ int IOT_FileManage_StartDownload(void *handle, uint32_t offset, uint32_t file_si
 
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("Connect fetch module failed");
-        pHandle->state = IOT_FILE_STATE_DISCONNECTED;
     }
 
     return ret;
@@ -987,7 +986,6 @@ int IOT_FileManage_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_
 
     ret = qcloud_url_download_fetch(pHandle->ch_fetch, buf, buf_len, timeout_s);
     if (ret < 0) {
-        pHandle->state = IOT_FILE_STATE_FETCHED;
         pHandle->err   = IOT_FILE_ERR_FETCH_FAILED;
         if (ret == QCLOUD_ERR_HTTP_AUTH) {  // OTA auth failed
             pHandle->report_rc = _file_manage_report_upgrade_result(pHandle, pHandle->version, IOT_FILE_TYPE_AUTH_FAIL);

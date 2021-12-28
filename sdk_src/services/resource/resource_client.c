@@ -889,7 +889,6 @@ int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t resource_
     ret = qcloud_ofc_connect(resource_handle->download.channel);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("Connect fetch module failed");
-        resource_handle->download.state = QCLOUD_RESOURCE_STATE_DISCONNECTED_E;
     }
 
     return ret;
@@ -912,7 +911,6 @@ int IOT_Resource_DownloadYield(void *handle, char *buf, uint32_t buf_len, uint32
 
     ret = qcloud_ofc_fetch(resource_handle->download.channel, buf, buf_len, timeout_s);
     if (ret < 0) {
-        resource_handle->download.state = QCLOUD_RESOURCE_STATE_END_E;
         resource_handle->download.err   = QCLOUD_RESOURCE_ERRCODE_FETCH_FAILED_E;
 
         if (ret == IOT_OTA_ERR_FETCH_AUTH_FAIL) {  // OTA auth failed

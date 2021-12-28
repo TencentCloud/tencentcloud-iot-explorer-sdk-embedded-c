@@ -167,7 +167,6 @@ int32_t qcloud_url_download_fetch(void *handle, char *buf, uint32_t bufLen, uint
             Log_e("send request failed");
             IOT_FUNC_EXIT_RC(IOT_OTA_ERR_FETCH_TIMEOUT);
         }
-        HAL_SleepMs(1000);
     }
 
     IOT_FUNC_EXIT_RC(recv_len);
