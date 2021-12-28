@@ -385,7 +385,6 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t file_size, uin
     Ret = qcloud_ofc_connect(h_ota->ch_fetch);
     if (QCLOUD_RET_SUCCESS != Ret) {
         Log_e("Connect fetch module failed");
-        h_ota->state = IOT_OTAS_DISCONNECTED;
     }
 
     return Ret;
@@ -558,7 +557,6 @@ int IOT_OTA_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeo
 
     ret = qcloud_ofc_fetch(h_ota->ch_fetch, buf, buf_len, timeout_ms);
     if (ret < 0) {
-        h_ota->state = IOT_OTAS_FETCHED;
         h_ota->err   = IOT_OTA_ERR_FETCH_FAILED;
 
         if (ret == IOT_OTA_ERR_FETCH_AUTH_FAIL) {  // OTA auth failed
