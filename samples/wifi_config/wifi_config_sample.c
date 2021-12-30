@@ -463,6 +463,8 @@ static void _wifi_config_result_cb(eWiFiConfigResult event, void *usr_data)
         case RESULT_WIFI_CONFIG_TIMEOUT:
             Log_e("wifi config timeout!");
             wifi_config_result_success = false;
+            break;
+
         case RESULT_WIFI_CONFIG_FAILED:
             Log_e("wifi config failed!");
             qiot_wifi_config_send_log();
