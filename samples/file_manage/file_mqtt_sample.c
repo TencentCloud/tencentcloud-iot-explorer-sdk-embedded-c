@@ -692,13 +692,17 @@ begin_of_file_manage:
                 if (len > 0) {
                     rc = _save_file_manage_data_to_file(fm_ctx->local_file_path, fm_ctx->downloaded_size, buf_file, len);
                     if (rc) {
-                        Log_e("write data to file failed");
+                        Log_e("write data to file failed rc=%d", rc);
                         upgrade_fetch_success = false;
+                        fm_ctx->file_manage_fail_cnt = MAX_FILE_RETRY_CNT;
                         goto end_of_file_manage;
                     }
                 } else if (len <= 0) {
                     Log_e("download fail rc=%d", len);
                     upgrade_fetch_success = false;
+                    if (len == QCLOUD_ERR_HTTP_AUTH || len == QCLOUD_ERR_HTTP_NOT_FOUND) {
+                        fm_ctx->file_manage_fail_cnt = MAX_FILE_RETRY_CNT;
+                    }
                     goto end_of_file_manage;
                 }
 

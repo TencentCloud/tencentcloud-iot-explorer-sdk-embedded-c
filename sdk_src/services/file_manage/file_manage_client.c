@@ -994,11 +994,8 @@ int IOT_FileManage_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_
             pHandle->report_rc =
                 _file_manage_report_upgrade_result(pHandle, pHandle->version, IOT_FILE_TYPE_FILE_NOT_EXIST);
             pHandle->err = IOT_FILE_ERR_FETCH_NOT_EXIST;
-        } else if (ret == QCLOUD_ERR_HTTP_TIMEOUT) {  // fetch timeout
-            pHandle->report_rc =
-                _file_manage_report_upgrade_result(pHandle, pHandle->version, IOT_FILE_TYPE_DOWNLOAD_TIMEOUT);
-            pHandle->err = IOT_FILE_ERR_FETCH_TIMEOUT;
         }
+
         return ret;
     } else if (0 == pHandle->size_fetched) {
         /* force report status in the first */

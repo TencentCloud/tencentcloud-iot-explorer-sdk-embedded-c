@@ -468,13 +468,17 @@ begin_of_resource:
                     rc = _save_resource_data_to_file(resource_ctx->resource_file_path,
                                                      resource_ctx->resource_downloaded_size, buf_download, len);
                     if (rc) {
-                        Log_e("write data to file failed");
+                        Log_e("write data to file failed rc:%d", rc);
                         download_fetch_success = false;
+                        resource_ctx->resource_fail_cnt = MAX_RESOURCE_RETRY_CNT;
                         goto end_of_resource;
                     }
                 } else if (len <= 0) {
                     Log_e("download fail rc=%d", len);
                     download_fetch_success = false;
+                    if (len == IOT_OTA_ERR_FETCH_AUTH_FAIL || len == IOT_OTA_ERR_FETCH_NOT_EXIST) {
+                        resource_ctx->resource_fail_cnt = MAX_RESOURCE_RETRY_CNT;
+                    }
                     goto end_of_resource;
                 }
 

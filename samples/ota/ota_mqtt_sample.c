@@ -429,13 +429,17 @@ begin_of_ota:
                 if (len > 0) {
                     rc = _save_fw_data_to_file(ota_ctx->fw_file_path, ota_ctx->downloaded_size, buf_ota, len);
                     if (rc) {
-                        Log_e("write data to file failed");
+                        Log_e("write data to file failed rc=%d", rc);
                         upgrade_fetch_success = false;
+                        ota_ctx->ota_fail_cnt = MAX_OTA_RETRY_CNT;
                         goto end_of_ota;
                     }
                 } else if (len <= 0) {
                     Log_e("download fail rc=%d", len);
                     upgrade_fetch_success = false;
+                    if (len == IOT_OTA_ERR_FETCH_AUTH_FAIL || len == IOT_OTA_ERR_FETCH_NOT_EXIST) {
+                        ota_ctx->ota_fail_cnt = MAX_OTA_RETRY_CNT;
+                    }
                     goto end_of_ota;
                 }
 
@@ -496,7 +500,7 @@ end_of_ota:
                 goto begin_of_ota;
             } else {
                 ota_ctx->ota_fail_cnt = 0;
-                Log_e("Ota %d times already, report download fail!", MAX_OTA_RETRY_CNT);
+                Log_e("report download fail!");
                 packet_id = IOT_OTA_ReportUpgradeFail(h_ota, NULL);
             }
         }

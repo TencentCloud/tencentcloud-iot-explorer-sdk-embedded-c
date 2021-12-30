@@ -565,9 +565,6 @@ int IOT_OTA_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeo
         } else if (ret == IOT_OTA_ERR_FETCH_NOT_EXIST) {  // fetch not existed
             IOT_OTA_ReportUpgradeResult(h_ota, h_ota->version, IOT_OTAR_FILE_NOT_EXIST);
             h_ota->err = ret;
-        } else if (ret == IOT_OTA_ERR_FETCH_TIMEOUT) {  // fetch timeout
-            IOT_OTA_ReportUpgradeResult(h_ota, h_ota->version, IOT_OTAR_DOWNLOAD_TIMEOUT);
-            h_ota->err = ret;
         }
 
         return ret;

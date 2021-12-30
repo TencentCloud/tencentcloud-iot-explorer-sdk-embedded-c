@@ -923,11 +923,6 @@ int IOT_Resource_DownloadYield(void *handle, char *buf, uint32_t buf_len, uint32
             _qcloud_iot_resource_report_download_result(resource_handle, resource_handle->download.resource_name,
                                                         QCLOUD_RESOURCE_RESULTCODE_FILE_NOTEXIST_E);
             resource_handle->download.err = ret;
-        } else if (ret == IOT_OTA_ERR_FETCH_TIMEOUT) {  // fetch timeout
-            Log_e("recv buf %s", buf);
-            _qcloud_iot_resource_report_download_result(resource_handle, resource_handle->download.resource_name,
-                                                        QCLOUD_RESOURCE_RESULTCODE_TIMEOUT_E);
-            resource_handle->download.err = ret;
         }
 
         return ret;
