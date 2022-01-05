@@ -1,7 +1,6 @@
 # Basic Settings
 SHELL           := /bin/bash
 TOP_DIR         ?= $(CURDIR)
-SUBDIRS         := directory-not-exist-actually
 
 # Settings of input directory
 SCRIPT_DIR      := $(TOP_DIR)/tools/build_scripts
@@ -20,13 +19,13 @@ SAMPLE_DIR		:= $(TOP_DIR)/samples
 # Test directory
 TESTS_DIR		:= $(TOP_DIR)/sdk-tests
 
-include make.settings
+include $(TOP_DIR)/make.settings
 include $(SCRIPT_DIR)/parse_make_settings.mk
 
 # Settings of output directory
 TEMP_DIR   		:= $(TOP_DIR)/tmp
 DIST_DIR        := $(TOP_DIR)/output
-FINAL_DIR       := $(DIST_DIR)/$(BUILD_TYPE)
+FINAL_DIR       ?= $(DIST_DIR)/$(BUILD_TYPE)
 
 # Makefile echo
 ifeq ($(DEBUG_MAKEFILE),n)
@@ -188,7 +187,7 @@ $(call CompInc_Map, AT_TCP_ENABLED, \
 	 $(PLATFORM_DIR)/at_device/$(PLATFORM_AT_DEV) \
 )
 
-CFLAGS += -Werror -Wall -fPIC -Wno-error=sign-compare -Wno-error=format -Os ${IOTSDK_INCLUDE_FILES}  -std=gnu99 -pthread -DFORCE_SSL_VERIFY
+CFLAGS += -Werror -Wall -fPIC -Wno-error=sign-compare -Wno-error=format -Os ${IOTSDK_INCLUDE_FILES}  -std=gnu99 -pthread -DFORCE_SSL_VERIFY -ffunction-sections -fdata-sections
 
 #CFLAGS += -DMQTT_RMDUP_MSG_ENABLED
 

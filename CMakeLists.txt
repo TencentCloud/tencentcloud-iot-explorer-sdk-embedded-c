@@ -103,7 +103,7 @@ set(FEATURE_AT_DEBUG OFF)
 
 # 设置CMAKE使用编译工具及编译选项
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -ffunction-sections -fdata-sections")
 
 if ((NOT COMPILE_TOOLS STREQUAL "gcc") AND (NOT COMPILE_TOOLS STREQUAL "MSVC"))
 	#用户自定义

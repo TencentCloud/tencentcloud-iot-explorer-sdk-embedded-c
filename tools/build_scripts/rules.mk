@@ -6,6 +6,9 @@ iot_platform_objects = $(patsubst %.c,%.o, $(IOTPLATFORM_SRC_FILES))
 all: config mbedtls cJSON ${COMP_LIB} ${PLATFORM_LIB} final-out samples tests 
 	$(call Compile_Result)
 
+all_lib: config mbedtls cJSON ${COMP_LIB} ${PLATFORM_LIB} final-out  
+	$(call Compile_Result)
+
 ${COMP_LIB}: ${iot_sdk_objects}
 	$(call Brief_Log,"AR")
 	$(TOP_Q) \
@@ -64,8 +67,8 @@ ${iot_platform_objects}:%.o:%.c
 	$(call Brief_Log,"CC")
 	$(TOP_Q) \
 	$(PLATFORM_CC) $(CFLAGS) -c $^ -o $@
-	
-final-out :
+
+final-out-lib:
 	$(TOP_Q) \
 	mkdir -p ${FINAL_DIR}  ${DIST_DIR}  ${FINAL_DIR}/lib \
 			 ${FINAL_DIR}/include  ${FINAL_DIR}/bin
@@ -77,12 +80,6 @@ final-out :
 	$(TOP_Q) \
 	cp -rf $(TOP_DIR)/include $(FINAL_DIR)/
 
-	$(TOP_Q) \
-	cp -rf $(TOP_DIR)/certs $(FINAL_DIR)/bin/
-	
-	$(TOP_Q) \
-	cp -rf $(TOP_DIR)/device_info.json $(FINAL_DIR)/bin/
-
 ifneq (,$(filter -DWIFI_CONFIG_ENABLED,$(CFLAGS)))	
 	$(TOP_Q) \
 	cp -rf $(TEMP_DIR)/libcjson.a $(FINAL_DIR)/lib/
@@ -92,6 +89,14 @@ ifeq (,$(filter -DAUTH_WITH_NOTLS,$(CFLAGS)))
 	$(TOP_Q) \
 	mv ${TEMP_DIR}/*.a ${FINAL_DIR}/lib/
 endif
+
+
+final-out : final-out-lib
+	$(TOP_Q) \
+	cp -rf $(TOP_DIR)/certs $(FINAL_DIR)/bin/
+	
+	$(TOP_Q) \
+	cp -rf $(TOP_DIR)/device_info.json $(FINAL_DIR)/bin/
 
 #ifeq (,$(filter -DASR_ENABLED,$(CFLAGS)))
 	$(TOP_Q) \
