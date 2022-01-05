@@ -419,6 +419,7 @@ bool process_resource_download(void *ctx)
     void *               resource_handle = resource_ctx->resource_handle;
     int                  packetid = 0;
     int                  local_offset = 0;
+    int                  last_downloaded_size = 0;
 
     packetid = IOT_Resource_GetDownloadTask(resource_handle);
     _wait_for_download_pub_ack(resource_ctx, packetid);
@@ -533,10 +534,13 @@ end_of_resource:
     } else {
         if (IOT_MQTT_IsConnected(resource_ctx->mqtt_client)) {
             // try again
-            resource_ctx->resource_fail_cnt++;
+            if ((resource_ctx->resource_downloaded_size - last_downloaded_size) != RESOURCE_HTTP_MAX_FETCHED_SIZE) {
+                resource_ctx->resource_fail_cnt++;
+            }
             if (resource_ctx->resource_fail_cnt <= MAX_RESOURCE_RETRY_CNT) {
                 Log_e("resource download failed, retry %drd time!", resource_ctx->resource_fail_cnt);
                 download_fetch_success = true;
+                last_downloaded_size = resource_ctx->resource_downloaded_size;
                 HAL_SleepMs(1000);
                 goto begin_of_resource;
             } else {

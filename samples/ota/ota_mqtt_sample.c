@@ -385,7 +385,8 @@ bool process_ota(OTAContextData *ota_ctx)
     int   rc                    = 0;
     void *h_ota                 = ota_ctx->ota_handle;
     int packet_id               = 0;
-    int local_offset = 0;
+    int local_offset            = 0;
+    int last_downloaded_size    = 0;
 
     /* Must report version first */
     if (0 > IOT_OTA_ReportVersion(h_ota, _get_local_fw_running_version())) {
@@ -398,6 +399,7 @@ bool process_ota(OTAContextData *ota_ctx)
         IOT_MQTT_Yield(ota_ctx->mqtt_client, 200);
 
         Log_i("wait for ota upgrade command...");
+
 begin_of_ota:
         // recv the upgrade cmd
         if (IOT_OTA_IsFetching(h_ota)) {
@@ -406,6 +408,7 @@ begin_of_ota:
 
             HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.bin", ota_ctx->remote_version);
             HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", ota_ctx->remote_version);
+
             /* check if pre-downloading finished or not */
             /* if local FW downloaded size (ota_ctx->downloaded_size) is not zero, it
              * will do resuming download */
@@ -492,9 +495,12 @@ end_of_ota:
     if (!upgrade_fetch_success) {
         // retry again
         if (IOT_MQTT_IsConnected(ota_ctx->mqtt_client)) {
-            ota_ctx->ota_fail_cnt++;
+            if ((ota_ctx->downloaded_size - last_downloaded_size) != OTA_HTTP_MAX_FETCHED_SIZE) {
+                ota_ctx->ota_fail_cnt++;
+            }
             if (ota_ctx->ota_fail_cnt <= MAX_OTA_RETRY_CNT) {
                 upgrade_fetch_success = true;
+                last_downloaded_size = ota_ctx->downloaded_size;
                 Log_e("OTA failed, retry %drd time!", ota_ctx->ota_fail_cnt);
                 HAL_SleepMs(1000);
                 goto begin_of_ota;

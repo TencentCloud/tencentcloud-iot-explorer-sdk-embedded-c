@@ -125,9 +125,13 @@ int32_t qcloud_url_download_connect(void *handle, int https_enabled)
         ca_crt = iot_https_ca_get();
     }
 
-    ofc_set_request_range(pHandle);
+    int rc = ofc_set_request_range(pHandle);
+    if (QCLOUD_RET_SUCCESS != rc) {
+        Log_e("remain size is 0.");
+        IOT_FUNC_EXIT_RC(rc);
+    }
 
-    int32_t rc = qcloud_http_client_common(&pHandle->http, pHandle->url, port, ca_crt, HTTP_GET, &pHandle->http_data);
+    rc = qcloud_http_client_common(&pHandle->http, pHandle->url, port, ca_crt, HTTP_GET, &pHandle->http_data);
 
     IOT_FUNC_EXIT_RC(rc);
 }
@@ -155,7 +159,11 @@ int32_t qcloud_url_download_fetch(void *handle, char *buf, uint32_t bufLen, uint
     uint32_t recv_len = pHandle->http_data.response_content_len - pHandle->http_data.retrieve_len - diff;
     pHandle->http_seg_info.fetched_size += recv_len;
     if (pHandle->http_seg_info.fetched_size == pHandle->http_seg_info.fetch_size) {
-        ofc_set_request_range(pHandle);
+        rc = ofc_set_request_range(pHandle);
+        if (QCLOUD_RET_SUCCESS != rc) {
+            Log_e("recv finish.");
+            IOT_FUNC_EXIT_RC(recv_len);
+        }
         #ifdef OTA_USE_HTTPS
         if (strstr(pHandle->url, "https")) {
             port   = 443;
@@ -164,8 +172,7 @@ int32_t qcloud_url_download_fetch(void *handle, char *buf, uint32_t bufLen, uint
         #endif
         rc = qcloud_http_client_common(&pHandle->http, pHandle->url, port, ca_crt, HTTP_GET, &pHandle->http_data);
         if (QCLOUD_RET_SUCCESS != rc) {
-            Log_e("send request failed");
-            IOT_FUNC_EXIT_RC(IOT_OTA_ERR_FETCH_TIMEOUT);
+            Log_e("send request failed:%d", rc);
         }
     }
 

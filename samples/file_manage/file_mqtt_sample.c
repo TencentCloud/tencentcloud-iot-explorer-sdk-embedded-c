@@ -636,13 +636,14 @@ static int _report_version(FileManageContextData *fm_ctx)
 // main file_manage cycle
 bool process_file_manage(FileManageContextData *fm_ctx)
 {
-    bool  download_finished     = false;
-    bool  upgrade_fetch_success = true;
-    char  buf_file[FILE_BUF_LEN];
-    int   rc;
-    int packet_id = 0;
-    void *fm_handle = fm_ctx->file_manage_handle;
-    int local_offset = 0;
+    bool  download_finished      = false;
+    bool  upgrade_fetch_success  = true;
+    char  buf_file[FILE_BUF_LEN] = {0};
+    int   rc                     = 0;
+    int packet_id                = 0;
+    void *fm_handle              = fm_ctx->file_manage_handle;
+    int local_offset             = 0;
+    int last_downloaded_size     = 0;
 
     /* Must report version first */
     if (QCLOUD_RET_SUCCESS != _report_version(fm_ctx)) {
@@ -759,10 +760,13 @@ end_of_file_manage:
         fm_ctx->file_manage_fail_cnt = 0;
     } else {
         if (IOT_MQTT_IsConnected(fm_ctx->mqtt_client)) {
-            fm_ctx->file_manage_fail_cnt++;
+            if ((fm_ctx->downloaded_size - last_downloaded_size) != FILE_HTTP_MAX_FETCHED_SIZE) {
+                fm_ctx->file_manage_fail_cnt++;
+            }
             // retry again
             if (fm_ctx->file_manage_fail_cnt <= MAX_FILE_RETRY_CNT) {
                 upgrade_fetch_success = true;
+                last_downloaded_size = fm_ctx->downloaded_size;
                 Log_e("file manage failed, retry %drd time!", fm_ctx->file_manage_fail_cnt);
                 HAL_SleepMs(1000);
                 goto begin_of_file_manage;
