@@ -802,13 +802,13 @@ static int _mask_pubInfo_from(Qcloud_IoT_Client *c, uint16_t msgId)
         ListNode *        node      = NULL;
         QcloudIotPubInfo *repubInfo = NULL;
 
-        if (NULL == (iter = list_iterator_new(c->list_pub_wait_ack, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(c->list_pub_wait_ack, LIST_TAIL))) {
             HAL_MutexUnlock(c->lock_list_pub);
             return QCLOUD_RET_SUCCESS;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
 
             if (NULL == node) {
                 break;
@@ -825,7 +825,7 @@ static int _mask_pubInfo_from(Qcloud_IoT_Client *c, uint16_t msgId)
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(c->lock_list_pub);
 
@@ -852,13 +852,13 @@ static int _mask_sub_info_from(Qcloud_IoT_Client *c, unsigned int msgId, SubTopi
         ListNode *        node     = NULL;
         QcloudIotSubInfo *sub_info = NULL;
 
-        if (NULL == (iter = list_iterator_new(c->list_sub_wait_ack, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(c->list_sub_wait_ack, LIST_TAIL))) {
             HAL_MutexUnlock(c->lock_list_sub);
             IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
@@ -875,7 +875,7 @@ static int _mask_sub_info_from(Qcloud_IoT_Client *c, unsigned int msgId, SubTopi
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(c->lock_list_sub);
 
@@ -1385,7 +1385,7 @@ int push_sub_info_to(Qcloud_IoT_Client *c, int len, unsigned short msgId, Messag
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
 
-    list_rpush(c->list_sub_wait_ack, *node);
+    qcloud_list_rpush(c->list_sub_wait_ack, *node);
 
     HAL_MutexUnlock(c->lock_list_sub);
 

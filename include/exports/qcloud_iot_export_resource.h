@@ -120,11 +120,12 @@ int IOT_Resource_DeInit(void *handle);
  *
  * @param handle: resource handle
  * @param offset: offset of resource downloaded
- * @param size: size of resource
+ * @param resource_size: size of resource
+ * @param segment_size: resource size for a single fetch from the cloud
  *
  * @return QCLOUD_RET_SUCCESS when success, or err code for failure
  */
-int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t size);
+int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t resource_size, uint32_t segment_size);
 
 /**
  * @brief Setup HTTP connection send http put request and prepare resource upload

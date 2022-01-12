@@ -64,32 +64,32 @@ typedef struct {
 ListNode *list_node_new(void *val);
 
 /* create list */
-List *list_new(void);
+List *qcloud_list_new(void);
 
-ListNode *list_rpush(List *self, ListNode *node);
+ListNode *qcloud_list_rpush(List *self, ListNode *node);
 
-ListNode *list_lpush(List *self, ListNode *node);
+ListNode *qcloud_list_lpush(List *self, ListNode *node);
 
-ListNode *list_find(List *self, void *val);
+ListNode *qcloud_list_find(List *self, void *val);
 
-ListNode *list_at(List *self, int index);
+ListNode *qcloud_list_at(List *self, int index);
 
-ListNode *list_rpop(List *self);
+ListNode *qcloud_list_rpop(List *self);
 
-ListNode *list_lpop(List *self);
+ListNode *qcloud_list_lpop(List *self);
 
-void list_remove(List *self, ListNode *node);
+void qcloud_list_remove(List *self, ListNode *node);
 
-void list_destroy(List *self);
+void qcloud_list_destroy(List *self);
 
 /* create iterator */
-ListIterator *list_iterator_new(List *list, ListDirection direction);
+ListIterator *qcloud_list_iterator_new(List *list, ListDirection direction);
 
-ListIterator *list_iterator_new_from_node(ListNode *node, ListDirection direction);
+ListIterator *qcloud_list_iterator_new_from_node(ListNode *node, ListDirection direction);
 
-ListNode *list_iterator_next(ListIterator *self);
+ListNode *qcloud_list_iterator_next(ListIterator *self);
 
-void list_iterator_destroy(ListIterator *self);
+void qcloud_list_iterator_destroy(ListIterator *self);
 
 #ifdef __cplusplus
 }

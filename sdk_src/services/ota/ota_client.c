@@ -357,12 +357,12 @@ int IOT_OTA_Destroy(void *handle)
 }
 
 /*support continuous transmission of breakpoints*/
-int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size)
+int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t file_size, uint32_t segment_size)
 {
     OTA_Struct_t *h_ota = (OTA_Struct_t *)handle;
     int           Ret;
 
-    Log_d("to download FW from offset: %u, size: %u", offset, size);
+    Log_d("to download FW from offset: %u, size: %u", offset, file_size);
     h_ota->size_fetched = offset;
 
     // reset md5 for new download
@@ -376,7 +376,7 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size)
 
     // reinit ofc
     qcloud_ofc_deinit(h_ota->ch_fetch);
-    h_ota->ch_fetch = ofc_Init(h_ota->purl, offset, size);
+    h_ota->ch_fetch = ofc_Init(h_ota->purl, offset, file_size, segment_size);
     if (NULL == h_ota->ch_fetch) {
         Log_e("Initialize fetch module failed");
         return QCLOUD_ERR_FAILURE;
@@ -385,7 +385,6 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size)
     Ret = qcloud_ofc_connect(h_ota->ch_fetch);
     if (QCLOUD_RET_SUCCESS != Ret) {
         Log_e("Connect fetch module failed");
-        h_ota->state = IOT_OTAS_DISCONNECTED;
     }
 
     return Ret;
@@ -558,7 +557,6 @@ int IOT_OTA_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeo
 
     ret = qcloud_ofc_fetch(h_ota->ch_fetch, buf, buf_len, timeout_ms);
     if (ret < 0) {
-        h_ota->state = IOT_OTAS_FETCHED;
         h_ota->err   = IOT_OTA_ERR_FETCH_FAILED;
 
         if (ret == IOT_OTA_ERR_FETCH_AUTH_FAIL) {  // OTA auth failed
@@ -566,9 +564,6 @@ int IOT_OTA_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeo
             h_ota->err = ret;
         } else if (ret == IOT_OTA_ERR_FETCH_NOT_EXIST) {  // fetch not existed
             IOT_OTA_ReportUpgradeResult(h_ota, h_ota->version, IOT_OTAR_FILE_NOT_EXIST);
-            h_ota->err = ret;
-        } else if (ret == IOT_OTA_ERR_FETCH_TIMEOUT) {  // fetch timeout
-            IOT_OTA_ReportUpgradeResult(h_ota, h_ota->version, IOT_OTAR_DOWNLOAD_TIMEOUT);
             h_ota->err = ret;
         }
 

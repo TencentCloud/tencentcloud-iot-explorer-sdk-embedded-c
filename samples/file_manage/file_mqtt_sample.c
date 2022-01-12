@@ -39,6 +39,10 @@
 
 #define MAX_FILE_LIST_ONE_LINE_LEN (256)
 
+#define FILE_HTTP_MAX_FETCHED_SIZE (50 * 1024)
+
+#define MAX_FILE_RETRY_CNT 3
+
 // NOTE: this is according to memory of system left for file and QCLOUD_IOT_MQTT_TX_BUF_LEN.
 // when publish message should no longer than QCLOUD_IOT_MQTT_TX_BUF_LEN.
 // always keep RESOURCE_MAX_NUM * RESOURCE_INFO_LEN_MAX  < min(QCLOUD_IOT_MQTT_TX_BUF_LEN, system memory)
@@ -71,6 +75,7 @@ typedef struct {
     char     file_manage_type[FILE_MANAGE_TYPE_STR_LEN_MAX + 1];
     uint32_t file_size;
     uint32_t downloaded_size;
+    uint32_t file_manage_fail_cnt;
 } FileManageContextData;
 
 static void _event_handler(void *pClient, void *handle_context, MQTTEventMsg *msg)
@@ -631,23 +636,27 @@ static int _report_version(FileManageContextData *fm_ctx)
 // main file_manage cycle
 bool process_file_manage(FileManageContextData *fm_ctx)
 {
-    bool  download_finished     = false;
-    bool  upgrade_fetch_success = true;
-    char  buf_file[FILE_BUF_LEN];
-    int   rc;
-    void *fm_handle = fm_ctx->file_manage_handle;
+    bool  download_finished      = false;
+    bool  upgrade_fetch_success  = true;
+    char  buf_file[FILE_BUF_LEN] = {0};
+    int   rc                     = 0;
+    int packet_id                = 0;
+    void *fm_handle              = fm_ctx->file_manage_handle;
+    int local_offset             = 0;
+    int last_downloaded_size     = 0;
 
     /* Must report version first */
     if (QCLOUD_RET_SUCCESS != _report_version(fm_ctx)) {
         Log_e("report file_manage version failed");
-        return false;
+        upgrade_fetch_success = false;
+        goto end_of_file_manage;
     }
 
     do {
         IOT_MQTT_Yield(fm_ctx->mqtt_client, 200);
 
         Log_i("wait for file_manage command...");
-
+begin_of_file_manage:
         // recv the upgrade cmd
         if (IOT_FileManage_IsFetching(fm_handle)) {
             IOT_FileManage_Ioctl(fm_handle, IOT_FILE_CMD_FILE_NAME, fm_ctx->file_manage_name,
@@ -661,22 +670,21 @@ bool process_file_manage(FileManageContextData *fm_ctx)
             HAL_Snprintf(fm_ctx->local_file_path, FILE_MANAGE_PATH_MAX_LEN, "./%s", fm_ctx->file_manage_name);
             HAL_Snprintf(fm_ctx->local_info_file_path, FILE_MANAGE_PATH_MAX_LEN, "./%s_info.json",
                          fm_ctx->file_manage_name);
-
             /* check if pre-downloading finished or not */
             /* if local file_manage downloaded size (fm_ctx->downloaded_size) is not zero, it
              * will do resuming download */
-            int local_offset = _update_file_manage_downloaded_size(fm_ctx);
+            local_offset = _update_file_manage_downloaded_size(fm_ctx);
             if (fm_ctx->file_size == local_offset) {  // have already downloaded
                 upgrade_fetch_success = true;
                 goto end_of_download;
             }
 
             /*set offset and start http connect*/
-            rc = IOT_FileManage_StartDownload(fm_handle, fm_ctx->downloaded_size, fm_ctx->file_size);
+            rc = IOT_FileManage_StartDownload(fm_handle, fm_ctx->downloaded_size, fm_ctx->file_size, FILE_HTTP_MAX_FETCHED_SIZE);
             if (QCLOUD_RET_SUCCESS != rc) {
                 Log_e("OTA download start err,rc:%d", rc);
                 upgrade_fetch_success = false;
-                break;
+                goto end_of_file_manage;
             }
 
             // download and save the file_manage
@@ -685,14 +693,18 @@ bool process_file_manage(FileManageContextData *fm_ctx)
                 if (len > 0) {
                     rc = _save_file_manage_data_to_file(fm_ctx->local_file_path, fm_ctx->downloaded_size, buf_file, len);
                     if (rc) {
-                        Log_e("write data to file failed");
+                        Log_e("write data to file failed rc=%d", rc);
                         upgrade_fetch_success = false;
-                        break;
+                        fm_ctx->file_manage_fail_cnt = MAX_FILE_RETRY_CNT;
+                        goto end_of_file_manage;
                     }
-                } else if (len < 0) {
+                } else if (len <= 0) {
                     Log_e("download fail rc=%d", len);
                     upgrade_fetch_success = false;
-                    break;
+                    if (len == QCLOUD_ERR_HTTP_AUTH || len == QCLOUD_ERR_HTTP_NOT_FOUND) {
+                        fm_ctx->file_manage_fail_cnt = MAX_FILE_RETRY_CNT;
+                    }
+                    goto end_of_file_manage;
                 }
 
                 /* get file_manage information and update local info */
@@ -706,11 +718,12 @@ bool process_file_manage(FileManageContextData *fm_ctx)
                 rc = IOT_MQTT_Yield(fm_ctx->mqtt_client, 100);
                 if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
                     Log_e("MQTT error: %d", rc);
-                    return false;
+                    upgrade_fetch_success = false;
+                    goto end_of_file_manage;
                 }
             } while (!IOT_OTA_IsFetchFinish(fm_handle));
 
-        end_of_download:
+            end_of_download:
             /* Must check MD5 match or not */
             if (upgrade_fetch_success) {
                 // download is finished, delete the file_manage info file
@@ -721,6 +734,7 @@ bool process_file_manage(FileManageContextData *fm_ctx)
                 if (0 == firmware_valid) {
                     Log_e("The firmware is invalid");
                     upgrade_fetch_success = false;
+                    goto end_of_file_manage;
                 } else {
                     Log_i("The firmware is valid");
                     _update_file_manage_list(fm_ctx->file_manage_list_file_path, fm_ctx->file_manage_name,
@@ -740,15 +754,33 @@ bool process_file_manage(FileManageContextData *fm_ctx)
     // do some post-download stuff for your need
     IOT_FileManage_ReportUpgradeBegin(fm_handle);
 
-    // report result
-    int packet_id;
+end_of_file_manage:
     if (upgrade_fetch_success) {
         packet_id = IOT_FileManage_ReportUpgradeSuccess(fm_handle, NULL);
+        fm_ctx->file_manage_fail_cnt = 0;
     } else {
-        packet_id = IOT_FileManage_ReportUpgradeFail(fm_handle, NULL);
+        if (IOT_MQTT_IsConnected(fm_ctx->mqtt_client)) {
+            if ((fm_ctx->downloaded_size - last_downloaded_size) != FILE_HTTP_MAX_FETCHED_SIZE) {
+                fm_ctx->file_manage_fail_cnt++;
+            }
+            // retry again
+            if (fm_ctx->file_manage_fail_cnt <= MAX_FILE_RETRY_CNT) {
+                upgrade_fetch_success = true;
+                last_downloaded_size = fm_ctx->downloaded_size;
+                Log_e("file manage failed, retry %drd time!", fm_ctx->file_manage_fail_cnt);
+                HAL_SleepMs(1000);
+                goto begin_of_file_manage;
+            } else {
+                //exit
+                fm_ctx->file_manage_fail_cnt = 0;
+                packet_id = IOT_FileManage_ReportUpgradeFail(fm_handle, NULL);
+            }
+        }
+        
     }
 
     _wait_for_pub_ack(fm_ctx, packet_id);
+
     return upgrade_fetch_success;
 }
 

@@ -30,7 +30,7 @@ extern "C" {
 /*
  * create list, return NULL if fail
  */
-List *list_new(void)
+List *qcloud_list_new(void)
 {
     List *self;
     self = (List *)HAL_Malloc(sizeof(List));
@@ -48,7 +48,7 @@ List *list_new(void)
 /*
  * destroy list
  */
-void list_destroy(List *self)
+void qcloud_list_destroy(List *self)
 {
     unsigned int len = self->len;
     ListNode *   next;
@@ -69,7 +69,7 @@ void list_destroy(List *self)
 /*
  * push the node to list tail, return NULL if node invalid
  */
-ListNode *list_rpush(List *self, ListNode *node)
+ListNode *qcloud_list_rpush(List *self, ListNode *node)
 {
     if (!node) {
         return NULL;
@@ -92,7 +92,7 @@ ListNode *list_rpush(List *self, ListNode *node)
 /*
  * pop the node from list tail, return NULL if list empty
  */
-ListNode *list_rpop(List *self)
+ListNode *qcloud_list_rpop(List *self)
 {
     ListNode *node = NULL;
     if (!self->len) {
@@ -114,7 +114,7 @@ ListNode *list_rpop(List *self)
 /*
  * pop the node from list headl, return NULL if list empty
  */
-ListNode *list_lpop(List *self)
+ListNode *qcloud_list_lpop(List *self)
 {
     ListNode *node = NULL;
     if (!self->len) {
@@ -136,7 +136,7 @@ ListNode *list_lpop(List *self)
 /*
  * push the node to list head, return NULL if node invalid
  */
-ListNode *list_lpush(List *self, ListNode *node)
+ListNode *qcloud_list_lpush(List *self, ListNode *node)
 {
     if (!node) {
         return NULL;
@@ -159,38 +159,38 @@ ListNode *list_lpush(List *self, ListNode *node)
 /*
  * find the node via node value, return NULL if not found
  */
-ListNode *list_find(List *self, void *val)
+ListNode *qcloud_list_find(List *self, void *val)
 {
     ListIterator *it;
     ListNode *    node;
 
-    if (NULL == (it = list_iterator_new(self, LIST_HEAD))) {
+    if (NULL == (it = qcloud_list_iterator_new(self, LIST_HEAD))) {
         return NULL;
     }
-    node = list_iterator_next(it);
+    node = qcloud_list_iterator_next(it);
     while (node) {
         if (self->match) {
             if (self->match(val, node->val)) {
-                list_iterator_destroy(it);
+                qcloud_list_iterator_destroy(it);
                 return node;
             }
         } else {
             if (val == node->val) {
-                list_iterator_destroy(it);
+                qcloud_list_iterator_destroy(it);
                 return node;
             }
         }
-        node = list_iterator_next(it);
+        node = qcloud_list_iterator_next(it);
     }
 
-    list_iterator_destroy(it);
+    qcloud_list_iterator_destroy(it);
     return NULL;
 }
 
 /*
  * find the node via list index, return NULL if not found
  */
-ListNode *list_at(List *self, int index)
+ListNode *qcloud_list_at(List *self, int index)
 {
     ListDirection direction = LIST_HEAD;
 
@@ -203,15 +203,15 @@ ListNode *list_at(List *self, int index)
         ListIterator *it;
         ListNode *    node;
 
-        if (NULL == (it = list_iterator_new(self, direction))) {
+        if (NULL == (it = qcloud_list_iterator_new(self, direction))) {
             return NULL;
         }
-        node = list_iterator_next(it);
+        node = qcloud_list_iterator_next(it);
 
         while (index--) {
-            node = list_iterator_next(it);
+            node = qcloud_list_iterator_next(it);
         }
-        list_iterator_destroy(it);
+        qcloud_list_iterator_destroy(it);
         return node;
     }
 
@@ -221,7 +221,7 @@ ListNode *list_at(List *self, int index)
 /*
  * delete the node in list and release the resource
  */
-void list_remove(List *self, ListNode *node)
+void qcloud_list_remove(List *self, ListNode *node)
 {
     node->prev ? (node->prev->next = node->next) : (self->head = node->next);
 
@@ -239,16 +239,16 @@ void list_remove(List *self, ListNode *node)
 /*
  * create a new ListIterator and set the ListDirection.
  */
-ListIterator *list_iterator_new(List *list, ListDirection direction)
+ListIterator *qcloud_list_iterator_new(List *list, ListDirection direction)
 {
     ListNode *node = direction == LIST_HEAD ? list->head : list->tail;
-    return list_iterator_new_from_node(node, direction);
+    return qcloud_list_iterator_new_from_node(node, direction);
 }
 
 /*
  * create a new ListIterator and set the ListDirection and node
  */
-ListIterator *list_iterator_new_from_node(ListNode *node, ListDirection direction)
+ListIterator *qcloud_list_iterator_new_from_node(ListNode *node, ListDirection direction)
 {
     ListIterator *self;
     self = HAL_Malloc(sizeof(ListIterator));
@@ -263,7 +263,7 @@ ListIterator *list_iterator_new_from_node(ListNode *node, ListDirection directio
 /*
  * return next node
  */
-ListNode *list_iterator_next(ListIterator *self)
+ListNode *qcloud_list_iterator_next(ListIterator *self)
 {
     ListNode *curr = self->next;
     if (curr) {
@@ -275,7 +275,7 @@ ListNode *list_iterator_next(ListIterator *self)
 /*
  * release the ListIterator
  */
-void list_iterator_destroy(ListIterator *self)
+void qcloud_list_iterator_destroy(ListIterator *self)
 {
     HAL_Free(self);
 }

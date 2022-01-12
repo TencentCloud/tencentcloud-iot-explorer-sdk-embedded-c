@@ -111,13 +111,13 @@ static void _handle_action(Qcloud_IoT_Template *pTemplate, List *list, const cha
         ListIterator *iter;
         ListNode     *node = NULL;
 
-        if (NULL == (iter = list_iterator_new(list, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(list, LIST_TAIL))) {
             HAL_MutexUnlock(pTemplate->mutex);
             IOT_FUNC_EXIT;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
@@ -137,7 +137,7 @@ static void _handle_action(Qcloud_IoT_Template *pTemplate, List *list, const cha
                 pActionHandle->callback(pTemplate, pClientToken, pActionHandle->action);
             }
         }
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(pTemplate->mutex);
     IOT_FUNC_EXIT;
@@ -209,7 +209,7 @@ EXIT:
 int IOT_Action_Init(void *c)
 {
     Qcloud_IoT_Template *pTemplate                           = (Qcloud_IoT_Template *)c;
-    static char          topic_name[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
+    char          topic_name[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
 
     int size = HAL_Snprintf(topic_name, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/action/%s/%s",
                             pTemplate->device_info.product_id, pTemplate->device_info.device_name);
@@ -246,7 +246,7 @@ static int _add_action_handle_to_template_list(Qcloud_IoT_Template *pTemplate, D
         Log_e("run list_node_new is error!");
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
-    list_rpush(pTemplate->inner_data.action_handle_list, node);
+    qcloud_list_rpush(pTemplate->inner_data.action_handle_list, node);
 
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
 }
@@ -255,7 +255,7 @@ static int _check_action_existence(Qcloud_IoT_Template *ptemplate, DeviceAction 
 {
     ListNode *node;
     HAL_MutexLock(ptemplate->mutex);
-    node = list_find(ptemplate->inner_data.action_handle_list, pAction);
+    node = qcloud_list_find(ptemplate->inner_data.action_handle_list, pAction);
     HAL_MutexUnlock(ptemplate->mutex);
     return (NULL != node);
 }
@@ -291,12 +291,12 @@ int IOT_Action_Remove(void *pTemplate, DeviceAction *pAction)
 
     ListNode *node;
     HAL_MutexLock(ptemplate->mutex);
-    node = list_find(ptemplate->inner_data.action_handle_list, pAction);
+    node = qcloud_list_find(ptemplate->inner_data.action_handle_list, pAction);
     if (NULL == node) {
         rc = QCLOUD_ERR_NOT_PROPERTY_EXIST;
         Log_e("Try to remove a non-existent action.");
     } else {
-        list_remove(ptemplate->inner_data.action_handle_list, node);
+        qcloud_list_remove(ptemplate->inner_data.action_handle_list, node);
     }
     HAL_MutexUnlock(ptemplate->mutex);
 

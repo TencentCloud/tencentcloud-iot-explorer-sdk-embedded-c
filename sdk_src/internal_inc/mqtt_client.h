@@ -233,6 +233,7 @@ typedef struct Client {
 #endif
 
 #ifdef MULTITHREAD_ENABLED
+    bool yield_thread_exit;
     bool yield_thread_running;
     int  yield_thread_exit_code;
 #endif
@@ -412,6 +413,14 @@ int qcloud_iot_mqtt_get_network_disconnected_count(Qcloud_IoT_Client *pClient);
  * @return QCLOUD_RET_SUCCESS for success, or err code for failure
  */
 int qcloud_iot_mqtt_reset_network_disconnected_count(Qcloud_IoT_Client *pClient);
+
+/**
+ * @brief Direct mqtt reconnection without waiting for a timeout
+ *
+ * @param pClient handle to MQTT client
+ * @return QCLOUD_RET_SUCCESS for success, or err code for failure
+ */
+int qcloud_iot_mqtt_reconnect(Qcloud_IoT_Client *pClient);
 
 /**
  * @brief Get next packet id

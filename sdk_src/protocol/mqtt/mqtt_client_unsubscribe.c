@@ -186,7 +186,7 @@ int qcloud_iot_mqtt_unsubscribe(Qcloud_IoT_Client *pClient, char *topicFilter)
     rc = send_mqtt_packet(pClient, len, &timer);
     if (QCLOUD_RET_SUCCESS != rc) {
         HAL_MutexLock(pClient->lock_list_sub);
-        list_remove(pClient->list_sub_wait_ack, node);
+        qcloud_list_remove(pClient->list_sub_wait_ack, node);
         HAL_MutexUnlock(pClient->lock_list_sub);
 
         HAL_MutexUnlock(pClient->lock_write_buf);

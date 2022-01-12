@@ -172,11 +172,12 @@ int IOT_FileManage_ResetClientMD5(void *handle);
  *
  * @param handle: file_manage module handle
  * @param offset: offset of file_manage downloaded
- * @param size: size of file_manage
+ * @param file_size: size of file_manage
+ * @param segment_size: file size for a single fetch from the cloud
  *
  * @return QCLOUD_RET_SUCCESS when success, or err code for failure
  */
-int IOT_FileManage_StartDownload(void *handle, uint32_t offset, uint32_t size);
+int IOT_FileManage_StartDownload(void *handle, uint32_t offset, uint32_t file_size, uint32_t segment_size);
 
 /**
  * @brief Check if file_manage is fetching/downloading

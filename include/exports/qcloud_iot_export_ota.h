@@ -129,11 +129,12 @@ int IOT_OTA_Destroy(void *handle);
  *
  * @param handle: OTA module handle
  * @param offset: offset of firmware downloaded
- * @param size: size of firmware
+ * @param file_size: size of firmware
+ * @param segment_size: firmware size for a single fetch from the cloud
  *
  * @return QCLOUD_RET_SUCCESS when success, or err code for failure
  */
-int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size);
+int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t file_size, uint32_t segment_size);
 
 /**
  * @brief Update MD5 of local firmware

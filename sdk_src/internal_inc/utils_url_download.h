@@ -27,7 +27,7 @@ extern "C" {
 
 #include <stdint.h>
 
-void *qcloud_url_download_init(const char *url, uint32_t offset, uint32_t size);
+void *qcloud_url_download_init(const char *url, uint32_t offset, uint32_t file_size, uint32_t segment_size);
 
 int32_t qcloud_url_download_connect(void *handle, int https_enabled);
 

@@ -28,6 +28,10 @@
 #define RESOURCE_BUF_LEN            5000
 #define RESOURCE_INFO_FILE_DATA_LEN 128
 
+#define RESOURCE_HTTP_MAX_FETCHED_SIZE (500 * 1024)
+
+#define MAX_RESOURCE_RETRY_CNT 3
+
 typedef struct ResourceContextData {
     void *   resource_handle;
     void *   mqtt_client;
@@ -48,6 +52,7 @@ typedef struct ResourceContextData {
     bool download_thread;
     bool upload_thread;
 #endif
+    uint32_t resource_fail_cnt;
 } ResourceContextData;
 
 static void _event_handler(void *pclient, void *handle_context, MQTTEventMsg *msg)
@@ -412,7 +417,9 @@ bool process_resource_download(void *ctx)
     int                  rc;
     ResourceContextData *resource_ctx    = (ResourceContextData *)ctx;
     void *               resource_handle = resource_ctx->resource_handle;
-    int                  packetid;
+    int                  packetid = 0;
+    int                  local_offset = 0;
+    int                  last_downloaded_size = 0;
 
     packetid = IOT_Resource_GetDownloadTask(resource_handle);
     _wait_for_download_pub_ack(resource_ctx, packetid);
@@ -421,9 +428,10 @@ bool process_resource_download(void *ctx)
         IOT_MQTT_Yield(resource_ctx->mqtt_client, 200);
 
         Log_i("wait for resource download command...");
-
+begin_of_resource:
         // recv the upgrade cmd
         if (IOT_Resource_IsStartDownload(resource_handle)) {
+
             IOT_Resource_DownloadIoctl(resource_handle, QCLOUD_IOT_RESOURCE_SIZE_E, &resource_ctx->resource_size,
                                               4);
             IOT_Resource_DownloadIoctl(resource_handle, QCLOUD_IOT_RESOURCE_NAME_E, resource_ctx->resource_name,
@@ -436,19 +444,22 @@ bool process_resource_download(void *ctx)
                          STRING_PTR_PRINT_SANITY_CHECK(resource_ctx->resource_name));
             HAL_Snprintf(resource_ctx->resource_info_file_path, RESOURCE_PATH_MAX_LEN, "./download_%s.json",
                          STRING_PTR_PRINT_SANITY_CHECK(device_info->client_id));
-
             /* check if pre-downloading finished or not */
             /* if local resource downloaded size (resource_ctx->downloaded_size) is not zero, it will do resuming
              * download */
-            _update_resource_downloaded_size(resource_ctx);
+            local_offset = _update_resource_downloaded_size(resource_ctx);
+            if (resource_ctx->resource_size == local_offset) {  // have already downloaded
+                download_fetch_success = true;
+                goto end_of_download;
+            }
 
             /*set offset and start http connect*/
             rc = IOT_Resource_StartDownload(resource_handle, resource_ctx->resource_downloaded_size,
-                                                   resource_ctx->resource_size);
+                                                   resource_ctx->resource_size, RESOURCE_HTTP_MAX_FETCHED_SIZE);
             if (QCLOUD_RET_SUCCESS != rc) {
                 Log_e("resource download start err,rc:%d", rc);
                 download_fetch_success = false;
-                break;
+                goto end_of_resource;
             }
 
             // download and save the fw
@@ -458,14 +469,18 @@ bool process_resource_download(void *ctx)
                     rc = _save_resource_data_to_file(resource_ctx->resource_file_path,
                                                      resource_ctx->resource_downloaded_size, buf_download, len);
                     if (rc) {
-                        Log_e("write data to file failed");
+                        Log_e("write data to file failed rc:%d", rc);
                         download_fetch_success = false;
-                        break;
+                        resource_ctx->resource_fail_cnt = MAX_RESOURCE_RETRY_CNT;
+                        goto end_of_resource;
                     }
-                } else if (len < 0) {
+                } else if (len <= 0) {
                     Log_e("download fail rc=%d", len);
                     download_fetch_success = false;
-                    break;
+                    if (len == IOT_OTA_ERR_FETCH_AUTH_FAIL || len == IOT_OTA_ERR_FETCH_NOT_EXIST) {
+                        resource_ctx->resource_fail_cnt = MAX_RESOURCE_RETRY_CNT;
+                    }
+                    goto end_of_resource;
                 }
 
                 /* get resource information and update local info */
@@ -480,11 +495,13 @@ bool process_resource_download(void *ctx)
                 rc = IOT_MQTT_Yield(resource_ctx->mqtt_client, 100);
                 if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
                     Log_e("MQTT error: %d", rc);
-                    return false;
+                    download_fetch_success = false;
+                    goto end_of_resource;
                 }
 
             } while (!IOT_Resource_IsDownloadFinish(resource_handle));
 
+            end_of_download:
             /* Must check MD5 match or not */
             if (download_fetch_success) {
                 // download is finished, delete the fw info file
@@ -495,6 +512,7 @@ bool process_resource_download(void *ctx)
                 if (0 == resource_valid) {
                     Log_e("The resource is invalid");
                     download_fetch_success = false;
+                    goto end_of_resource;
                 } else {
                     Log_i("The resource is valid");
                     download_fetch_success = true;
@@ -510,14 +528,31 @@ bool process_resource_download(void *ctx)
 
     // do some post-download stuff for your need
 
-    // report result
+end_of_resource:
     if (download_fetch_success) {
         packetid = IOT_Resource_ReportDownloadSuccess(resource_handle, resource_ctx->resource_name);
     } else {
-        packetid = IOT_Resource_ReportDownloadFail(resource_handle, resource_ctx->resource_name);
+        if (IOT_MQTT_IsConnected(resource_ctx->mqtt_client)) {
+            // try again
+            if ((resource_ctx->resource_downloaded_size - last_downloaded_size) != RESOURCE_HTTP_MAX_FETCHED_SIZE) {
+                resource_ctx->resource_fail_cnt++;
+            }
+            if (resource_ctx->resource_fail_cnt <= MAX_RESOURCE_RETRY_CNT) {
+                Log_e("resource download failed, retry %drd time!", resource_ctx->resource_fail_cnt);
+                download_fetch_success = true;
+                last_downloaded_size = resource_ctx->resource_downloaded_size;
+                HAL_SleepMs(1000);
+                goto begin_of_resource;
+            } else {
+                //exit
+                Log_e("Retried %d times already, report download fail!", MAX_RESOURCE_RETRY_CNT);
+                resource_ctx->resource_fail_cnt = 0;
+                packetid = IOT_Resource_ReportDownloadFail(resource_handle, resource_ctx->resource_name);
+            }
+        }
     }
-    _wait_for_download_pub_ack(resource_ctx, packetid);
 
+    _wait_for_download_pub_ack(resource_ctx, packetid);
     return download_fetch_success;
 }
 

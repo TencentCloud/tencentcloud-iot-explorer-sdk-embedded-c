@@ -53,7 +53,7 @@ static int _at_socket_ctx_free(at_socket_ctx_t *pCtx)
     pCtx->net_type = eNET_DEFAULT;
 
     if (pCtx->recvpkt_list) {
-        list_destroy(pCtx->recvpkt_list);
+        qcloud_list_destroy(pCtx->recvpkt_list);
         pCtx->recvpkt_list = NULL;
     }
 
@@ -81,7 +81,7 @@ static at_socket_ctx_t *_at_socket_ctx_alloc(void)
                 Log_e("create recv lock fail");
                 goto exit;
             }
-            at_socket_ctxs[i].recvpkt_list = list_new();
+            at_socket_ctxs[i].recvpkt_list = qcloud_list_new();
             if (NULL != at_socket_ctxs[i].recvpkt_list) {
                 at_socket_ctxs[i].recvpkt_list->free = HAL_Free;
             } else {
@@ -144,7 +144,7 @@ static int _at_recvpkt_put(List *rlist, const char *ptr, size_t length)
         return QCLOUD_ERR_FAILURE;
     }
 
-    list_rpush(rlist, node);
+    qcloud_list_rpush(rlist, node);
 
     return length;
 }
@@ -159,7 +159,7 @@ static int _at_recvpkt_get(List *pkt_list, char *buff, size_t len)
     POINTER_SANITY_CHECK(buff, QCLOUD_ERR_INVAL);
 
     if (pkt_list->len) {
-        iter = list_iterator_new(pkt_list, LIST_HEAD);
+        iter = qcloud_list_iterator_new(pkt_list, LIST_HEAD);
         if (NULL == iter) {
             Log_e("new listiterator fail");
             return QCLOUD_ERR_TCP_READ_FAIL;
@@ -167,7 +167,7 @@ static int _at_recvpkt_get(List *pkt_list, char *buff, size_t len)
 
         /*traverse recv pktlist*/
         do {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (!node) {
                 break;
             }
@@ -176,7 +176,7 @@ static int _at_recvpkt_get(List *pkt_list, char *buff, size_t len)
             pkt = (at_recv_pkt *)(node->val);
             if (!pkt) {
                 Log_e("pkt is invalid!");
-                list_remove(pkt_list, node);
+                qcloud_list_remove(pkt_list, node);
                 continue;
             }
 
@@ -192,11 +192,11 @@ static int _at_recvpkt_get(List *pkt_list, char *buff, size_t len)
 
                 /*delete pkt after read*/
                 HAL_Free(pkt->buff);
-                list_remove(pkt_list, node);
+                qcloud_list_remove(pkt_list, node);
             }
         } while (1);
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
 
     return readlen;

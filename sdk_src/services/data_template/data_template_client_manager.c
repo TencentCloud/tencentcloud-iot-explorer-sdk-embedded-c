@@ -101,7 +101,7 @@ static int _add_request_to_template_list(Qcloud_IoT_Template *pTemplate, const c
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
 
-    list_rpush(pTemplate->inner_data.reply_list, node);
+    qcloud_list_rpush(pTemplate->inner_data.reply_list, node);
 
     HAL_MutexUnlock(pTemplate->mutex);
 
@@ -207,13 +207,13 @@ static void _traverse_template_list(Qcloud_IoT_Template *pTemplate, List *list, 
         ListIterator *iter;
         ListNode *    node = NULL;
 
-        if (NULL == (iter = list_iterator_new(list, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(list, LIST_TAIL))) {
             HAL_MutexUnlock(pTemplate->mutex);
             IOT_FUNC_EXIT;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
@@ -226,7 +226,7 @@ static void _traverse_template_list(Qcloud_IoT_Template *pTemplate, List *list, 
             traverseHandle(pTemplate, &node, list, pClientToken, pType);
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
     HAL_MutexUnlock(pTemplate->mutex);
 
@@ -250,7 +250,7 @@ static void _handle_template_expired_reply_callback(Qcloud_IoT_Template *pTempla
             request->callback(pTemplate, request->method, ACK_TIMEOUT, sg_template_cloud_rcv_buf, request);
         }
 
-        list_remove(list, *node);
+        qcloud_list_remove(list, *node);
         *node = NULL;
     }
 
@@ -274,22 +274,22 @@ void qcloud_iot_template_reset(Qcloud_IoT_Template *pTemplate)
 
     _unsubscribe_template_downstream_topic(pTemplate);
     if (pTemplate->inner_data.property_handle_list) {
-        list_destroy(pTemplate->inner_data.property_handle_list);
+        qcloud_list_destroy(pTemplate->inner_data.property_handle_list);
         pTemplate->inner_data.property_handle_list = NULL;
     }
 
     if (pTemplate->inner_data.reply_list) {
-        list_destroy(pTemplate->inner_data.reply_list);
+        qcloud_list_destroy(pTemplate->inner_data.reply_list);
         pTemplate->inner_data.reply_list = NULL;
     }
 
     if (pTemplate->inner_data.event_list) {
-        list_destroy(pTemplate->inner_data.event_list);
+        qcloud_list_destroy(pTemplate->inner_data.event_list);
         pTemplate->inner_data.event_list = NULL;
     }
 
     if (NULL != pTemplate->inner_data.action_handle_list) {
-        list_destroy(pTemplate->inner_data.action_handle_list);
+        qcloud_list_destroy(pTemplate->inner_data.action_handle_list);
         pTemplate->inner_data.action_handle_list = NULL;
     }
 }
@@ -304,7 +304,7 @@ int qcloud_iot_template_init(Qcloud_IoT_Template *pTemplate)
     if (pTemplate->mutex == NULL)
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
 
-    pTemplate->inner_data.property_handle_list = list_new();
+    pTemplate->inner_data.property_handle_list = qcloud_list_new();
     if (pTemplate->inner_data.property_handle_list) {
         pTemplate->inner_data.property_handle_list->free = HAL_Free;
     } else {
@@ -312,7 +312,7 @@ int qcloud_iot_template_init(Qcloud_IoT_Template *pTemplate)
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
 
-    pTemplate->inner_data.reply_list = list_new();
+    pTemplate->inner_data.reply_list = qcloud_list_new();
     if (pTemplate->inner_data.reply_list) {
         pTemplate->inner_data.reply_list->free = HAL_Free;
     } else {
@@ -320,7 +320,7 @@ int qcloud_iot_template_init(Qcloud_IoT_Template *pTemplate)
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
 
-    pTemplate->inner_data.event_list = list_new();
+    pTemplate->inner_data.event_list = qcloud_list_new();
     if (pTemplate->inner_data.event_list) {
         pTemplate->inner_data.event_list->free = HAL_Free;
     } else {
@@ -328,7 +328,7 @@ int qcloud_iot_template_init(Qcloud_IoT_Template *pTemplate)
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
 
-    pTemplate->inner_data.action_handle_list = list_new();
+    pTemplate->inner_data.action_handle_list = qcloud_list_new();
     if (pTemplate->inner_data.action_handle_list) {
         pTemplate->inner_data.action_handle_list->free = HAL_Free;
     } else {
@@ -394,13 +394,13 @@ static void _handle_control(Qcloud_IoT_Template *pTemplate, char *control_str)
         ListNode *       node            = NULL;
         PropertyHandler *property_handle = NULL;
 
-        if (NULL == (iter = list_iterator_new(pTemplate->inner_data.property_handle_list, LIST_TAIL))) {
+        if (NULL == (iter = qcloud_list_iterator_new(pTemplate->inner_data.property_handle_list, LIST_TAIL))) {
             HAL_MutexUnlock(pTemplate->mutex);
             IOT_FUNC_EXIT;
         }
 
         for (;;) {
-            node = list_iterator_next(iter);
+            node = qcloud_list_iterator_next(iter);
             if (NULL == node) {
                 break;
             }
@@ -422,7 +422,7 @@ static void _handle_control(Qcloud_IoT_Template *pTemplate, char *control_str)
             }
         }
 
-        list_iterator_destroy(iter);
+        qcloud_list_iterator_destroy(iter);
     }
 
     IOT_FUNC_EXIT;
@@ -474,7 +474,7 @@ static void _handle_template_reply_callback(Qcloud_IoT_Template *pTemplate, List
             Log_e("parse template operation result code failed.");
         }
 
-        list_remove(list, *node);
+        qcloud_list_remove(list, *node);
         *node = NULL;
     }
 

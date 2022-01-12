@@ -99,7 +99,6 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
     for (i = 0; i < pAction->input_num; i++) {
         if (JSTRING == pActionInput[i].type) {
             Log_d("Input:[%s], data:[%s]", pActionInput[i].key, pActionInput[i].data);
-            HAL_Free(pActionInput[i].data);
         } else {
             if (JINT32 == pActionInput[i].type) {
                 Log_d("Input:[%s], data:[%d]", pActionInput[i].key, *((int *)pActionInput[i].data));
@@ -270,7 +269,6 @@ static int _register_data_template_property(void *pTemplate_client)
     for (i = 0; i < TOTAL_PROPERTY_COUNT; i++) {
         rc = IOT_Template_Register_Property(pTemplate_client, &sg_DataTemplate[i].data_property, OnControlMsgCallback);
         if (rc != QCLOUD_RET_SUCCESS) {
-            rc = IOT_Template_Destroy(pTemplate_client);
             Log_e("register device data template property failed, err: %d", rc);
             return rc;
         } else {

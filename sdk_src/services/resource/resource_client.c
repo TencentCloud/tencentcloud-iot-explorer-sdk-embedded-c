@@ -861,12 +861,12 @@ int IOT_Resource_IsDownloadFinish(void *handle)
 }
 
 /*support continuous transmission of breakpoints*/
-int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t size)
+int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t resource_size, uint32_t segment_size)
 {
     QCLOUD_RESOURCE_CONTEXT_T *resource_handle = (QCLOUD_RESOURCE_CONTEXT_T *)handle;
     int                        ret;
 
-    Log_d("to download FW from offset: %u, size: %u", offset, size);
+    Log_d("to download FW from offset: %u, size: %u", offset, resource_size);
     resource_handle->download.size_prepared = offset;
 
     // reset md5 for new download
@@ -880,7 +880,7 @@ int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t size)
 
     // reinit ofc
     qcloud_ofc_deinit(resource_handle->download.channel);
-    resource_handle->download.channel = ofc_Init(resource_handle->download.resource_url, offset, size);
+    resource_handle->download.channel = ofc_Init(resource_handle->download.resource_url, offset, resource_size, segment_size);
     if (NULL == resource_handle->download.channel) {
         Log_e("Initialize fetch module failed");
         return QCLOUD_ERR_FAILURE;
@@ -889,7 +889,6 @@ int IOT_Resource_StartDownload(void *handle, uint32_t offset, uint32_t size)
     ret = qcloud_ofc_connect(resource_handle->download.channel);
     if (QCLOUD_RET_SUCCESS != ret) {
         Log_e("Connect fetch module failed");
-        resource_handle->download.state = QCLOUD_RESOURCE_STATE_DISCONNECTED_E;
     }
 
     return ret;
@@ -912,7 +911,6 @@ int IOT_Resource_DownloadYield(void *handle, char *buf, uint32_t buf_len, uint32
 
     ret = qcloud_ofc_fetch(resource_handle->download.channel, buf, buf_len, timeout_s);
     if (ret < 0) {
-        resource_handle->download.state = QCLOUD_RESOURCE_STATE_END_E;
         resource_handle->download.err   = QCLOUD_RESOURCE_ERRCODE_FETCH_FAILED_E;
 
         if (ret == IOT_OTA_ERR_FETCH_AUTH_FAIL) {  // OTA auth failed
@@ -924,11 +922,6 @@ int IOT_Resource_DownloadYield(void *handle, char *buf, uint32_t buf_len, uint32
             Log_e("recv buf %s", buf);
             _qcloud_iot_resource_report_download_result(resource_handle, resource_handle->download.resource_name,
                                                         QCLOUD_RESOURCE_RESULTCODE_FILE_NOTEXIST_E);
-            resource_handle->download.err = ret;
-        } else if (ret == IOT_OTA_ERR_FETCH_TIMEOUT) {  // fetch timeout
-            Log_e("recv buf %s", buf);
-            _qcloud_iot_resource_report_download_result(resource_handle, resource_handle->download.resource_name,
-                                                        QCLOUD_RESOURCE_RESULTCODE_TIMEOUT_E);
             resource_handle->download.err = ret;
         }
 

@@ -122,7 +122,7 @@ static int _mask_push_pubInfo_to(Qcloud_IoT_Client *c, int len, unsigned short m
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
 
-    list_rpush(c->list_pub_wait_ack, *node);
+    qcloud_list_rpush(c->list_pub_wait_ack, *node);
 
     HAL_MutexUnlock(c->lock_list_pub);
 
@@ -372,7 +372,7 @@ int qcloud_iot_mqtt_publish(Qcloud_IoT_Client *pClient, char *topicName, Publish
     if (QCLOUD_RET_SUCCESS != rc) {
         if (pParams->qos > QOS0) {
             HAL_MutexLock(pClient->lock_list_pub);
-            list_remove(pClient->list_pub_wait_ack, node);
+            qcloud_list_remove(pClient->list_pub_wait_ack, node);
             HAL_MutexUnlock(pClient->lock_list_pub);
         }
 
