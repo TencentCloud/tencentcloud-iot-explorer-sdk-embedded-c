@@ -263,7 +263,7 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
     POINTER_SANITY_CHECK_RTN(context);
     uintptr_t            packet_id  = (uintptr_t)msg->msg;
     Qcloud_IoT_Template *pTemplate  = (Qcloud_IoT_Template *)context;
-    MQTTMessage *        topic_info = (MQTTMessage *)msg->msg;
+    MQTTMessage         *topic_info = (MQTTMessage *)msg->msg;
 
     if (!pTemplate || pclient != pTemplate->mqtt) {
         // Log_d("not template topic event");
@@ -299,6 +299,24 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
     if (pTemplate->event_handle.h_fp != NULL) {
         pTemplate->event_handle.h_fp(pTemplate, pTemplate->event_handle.context, msg);
     }
+}
+
+static int _template_check_subscribe(Qcloud_IoT_Template *pTemplate, int packet_id)
+{
+    pTemplate->inner_data.sync_status = packet_id;
+
+    while (packet_id == pTemplate->inner_data.sync_status) {
+        IOT_Template_Yield(pTemplate, 100);
+    }
+
+    if (0 == pTemplate->inner_data.sync_status) {
+        Log_i("Sync device data successfully");
+        pTemplate->inner_data.sync_status = 0;
+        return QCLOUD_RET_SUCCESS;
+    }
+
+    Log_e("Sync device data failed");
+    return QCLOUD_ERR_MQTT_SUB;
 }
 
 int IOT_Template_JSON_ConstructReportArray(void *pClient, char *jsonBuffer, size_t sizeOfBuffer, uint8_t count,
@@ -870,21 +888,11 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     rc = subscribe_template_downstream_topic(pTemplate);
     if (rc < 0) {
         Log_e("Subcribe $thing/down/property fail!");
-    } else {
-        if (!pMqttClient) {
-            pTemplate->inner_data.sync_status = rc;
-            while (rc == pTemplate->inner_data.sync_status) {
-                IOT_Template_Yield(pTemplate, 100);
-            }
+        goto End;
+    }
 
-            if (0 == pTemplate->inner_data.sync_status) {
-                Log_i("Sync device data successfully");
-            } else {
-                Log_e("Sync device data failed");
-            }
-        } else {
-            pTemplate->inner_data.sync_status = 0;
-        }
+    if (_template_check_subscribe(pTemplate, rc)) {
+        goto End;
     }
 
 #ifdef EVENT_POST_ENABLED
@@ -894,6 +902,10 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
         IOT_Template_Destroy(pTemplate);
         goto End;
     }
+
+    if (_template_check_subscribe(pTemplate, rc)) {
+        goto End;
+    }
 #endif
 
 #ifdef ACTION_ENABLED
@@ -901,6 +913,10 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     if (rc < 0) {
         Log_e("action init failed: %d", rc);
         IOT_Template_Destroy(pTemplate);
+        goto End;
+    }
+
+    if (_template_check_subscribe(pTemplate, rc)) {
         goto End;
     }
 #endif
