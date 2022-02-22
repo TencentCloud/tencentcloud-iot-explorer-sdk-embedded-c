@@ -147,7 +147,7 @@ uintptr_t HAL_TCP_CreatBind(const char *host, uint16_t port)
         }
 
         if (bind(fd, cur->ai_addr, cur->ai_addrlen) == 0) {
-            if(listen(fd, 5)== 0){
+            if (listen(fd, 5) == 0) {
                 ret = fd;
                 goto exit;
             }
@@ -171,7 +171,7 @@ exit:
     return (uintptr_t)ret;
 }
 
-uintptr_t HAL_TCP_Accept(int server_fd) 
+uintptr_t HAL_TCP_Accept(int server_fd)
 {
     struct sockaddr_in cli_addr;
     socklen_t          sz;
@@ -184,22 +184,20 @@ uintptr_t HAL_TCP_Accept(int server_fd)
 
 int HAL_TCP_Disconnect(uintptr_t fd)
 {
-    int rc;
+    int rc1, rc2;
 
     /* Shutdown both send and receive operations. */
-    rc = shutdown((int)fd, 2);
-    if (0 != rc) {
+    rc1 = shutdown((int)fd, 2);
+    if (0 != rc1) {
         Log_e("shutdown error: %s", STRING_PTR_PRINT_SANITY_CHECK(strerror(errno)));
-        return -1;
     }
 
-    rc = close((int)fd);
-    if (0 != rc) {
+    rc2 = close((int)fd);
+    if (0 != rc2) {
         Log_e("closesocket error: %s", STRING_PTR_PRINT_SANITY_CHECK(strerror(errno)));
-        return -1;
     }
 
-    return 0;
+    return rc1 | rc2;
 }
 
 int HAL_TCP_Write(uintptr_t fd, const unsigned char *buf, uint32_t len, uint32_t timeout_ms, size_t *written_len)
