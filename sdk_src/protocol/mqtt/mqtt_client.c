@@ -198,7 +198,7 @@ int IOT_MQTT_Destroy(void **pClient)
     return rc;
 }
 
-int IOT_MQTT_Yield(void *pClient, uint32_t timeout_ms)
+int IOT_MQTT_YieldWithoutLog(void *pClient, uint32_t timeout_ms)
 {
     Qcloud_IoT_Client *mqtt_client = (Qcloud_IoT_Client *)pClient;
 
@@ -210,8 +210,12 @@ int IOT_MQTT_Yield(void *pClient, uint32_t timeout_ms)
     }
 #endif
 
-    int rc = qcloud_iot_mqtt_yield(mqtt_client, timeout_ms);
+    return qcloud_iot_mqtt_yield(mqtt_client, timeout_ms);
+}
 
+int IOT_MQTT_Yield(void *pClient, uint32_t timeout_ms)
+{
+    int rc = IOT_MQTT_YieldWithoutLog(pClient, timeout_ms);
 #ifdef LOG_UPLOAD
     /* do instant log uploading if MQTT communication error */
     if (rc == QCLOUD_RET_SUCCESS)

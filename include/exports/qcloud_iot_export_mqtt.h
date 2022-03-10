@@ -52,7 +52,7 @@ typedef struct {
     const char *ptopic;     // MQTT topic
     size_t      topic_len;  // topic length
 
-    void * payload;      // MQTT msg payload
+    void  *payload;      // MQTT msg payload
     size_t payload_len;  // MQTT length of msg payload
 } MQTTMessage;
 
@@ -135,7 +135,7 @@ typedef struct {
     QoS               qos;                   // MQTT QoS level
     OnMessageHandler  on_message_handler;    // callback when message arrived
     OnSubEventHandler on_sub_event_handler;  // callback when event happened
-    void *            user_data;             // user context for callback
+    void             *user_data;             // user context for callback
 } SubscribeParams;
 
 /**
@@ -167,7 +167,7 @@ typedef void (*MQTTEventHandleFun)(void *pclient, void *context, MQTTEventMsg *m
 /* The structure of MQTT event handle */
 typedef struct {
     MQTTEventHandleFun h_fp;
-    void *             context;
+    void              *context;
 } MQTTEventHandler;
 
 /* The structure of MQTT init parameters */
@@ -230,6 +230,17 @@ void *IOT_MQTT_Construct(MQTTInitParams *pParams);
  * @return QCLOUD_RET_SUCCESS for success, or err code for failure
  */
 int IOT_MQTT_Destroy(void **pClient);
+
+/**
+ * @brief Check connection and keep alive state, read/handle MQTT message in synchronized way
+ *
+ * @param pClient    handle to MQTT client
+ * @param timeout_ms timeout value (unit: ms) for this operation
+ *
+ * @return QCLOUD_RET_SUCCESS when success, QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT
+ * when try reconnecing, or err code for failure
+ */
+int IOT_MQTT_YieldWithoutLog(void *pClient, uint32_t timeout_ms);
 
 /**
  * @brief Check connection and keep alive state, read/handle MQTT message in synchronized way
