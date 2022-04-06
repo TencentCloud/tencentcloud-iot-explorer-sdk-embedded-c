@@ -233,15 +233,14 @@ static int _http_client_send_header(HTTPClient *client, const char *url, HttpMet
     int           len;
     unsigned char send_buf[HTTP_CLIENT_SEND_BUF_SIZE] = {0};
     char          buf[HTTP_CLIENT_SEND_BUF_SIZE]      = {0};
-    char *        meth                                = (method == HTTP_GET)
-                     ? "GET"
-                     : (method == HTTP_POST)
-                           ? "POST"
-                           : (method == HTTP_PUT)
-                                 ? "PUT"
-                                 : (method == HTTP_DELETE) ? "DELETE" : (method == HTTP_HEAD) ? "HEAD" : "";
-    int rc;
-    int port;
+    char *        meth                                = (method == HTTP_GET)      ? "GET"
+                                                        : (method == HTTP_POST)   ? "POST"
+                                                        : (method == HTTP_PUT)    ? "PUT"
+                                                        : (method == HTTP_DELETE) ? "DELETE"
+                                                        : (method == HTTP_HEAD)   ? "HEAD"
+                                                                                  : "";
+    int           rc;
+    int           port;
 
     int res = _http_client_parse_url(url, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path));
     if (res != QCLOUD_RET_SUCCESS) {
@@ -283,8 +282,6 @@ static int _http_client_send_header(HTTPClient *client, const char *url, HttpMet
 
     _http_client_get_info(client, send_buf, &len, "\r\n", 0);
 
-    // Log_d("REQUEST:\n%s", send_buf);
-
     size_t written_len = 0;
     rc                 = client->network_stack.write(&client->network_stack, send_buf, len, 5000, &written_len);
     if (written_len > 0) {
@@ -303,7 +300,6 @@ static int _http_client_send_header(HTTPClient *client, const char *url, HttpMet
 static int _http_client_send_userdata(HTTPClient *client, HTTPClientData *client_data, uint32_t timeout_ms)
 {
     if (client_data->post_buf && client_data->post_buf_len) {
-        // Log_d("client_data->post_buf: %s", client_data->post_buf);
         {
             size_t written_len = 0;
             int    rc = client->network_stack.write(&client->network_stack, (unsigned char *)client_data->post_buf,
@@ -456,8 +452,8 @@ static int _http_client_retrieve_content(HTTPClient *client, char *data, int len
             if (readLen == 0) {
                 client_data->is_more = IOT_FALSE;
                 Log_d("no more (last chunk)");
+                break;  // Finish the parsing
             }
-
             if (n != 1) {
                 Log_e("Could not read chunk length");
                 return QCLOUD_ERR_HTTP_UNRESOLVED_DNS;
@@ -566,7 +562,6 @@ static int _http_client_response_parse(HTTPClient *client, char *data, int len, 
         return QCLOUD_ERR_HTTP_UNRESOLVED_DNS;
     }
 #endif
-
     client->response_code = atoi(data + 9);
 
     if ((client->response_code < 200) || (client->response_code >= 400)) {
@@ -607,7 +602,7 @@ static int _http_client_response_parse(HTTPClient *client, char *data, int len, 
         client_data->retrieve_len         = client_data->response_content_len;
     } else if (NULL != (tmp_ptr = strstr(data, "Transfer-Encoding"))) {
         int   len_chunk   = strlen("Chunked");
-        char *chunk_value = data + strlen("Transfer-Encoding: ");
+        char *chunk_value = tmp_ptr + strlen("Transfer-Encoding: ");
 
         if ((!memcmp(chunk_value, "Chunked", len_chunk)) || (!memcmp(chunk_value, "chunked", len_chunk))) {
             client_data->is_chunked           = IOT_TRUE;
@@ -685,7 +680,6 @@ static int _http_client_recv_response(HTTPClient *client, uint32_t timeout_ms, H
         buf[reclen] = '\0';
 
         if (reclen) {
-            // HAL_Printf("RESPONSE:\n%s", buf);
             rc = _http_client_response_parse(client, buf, reclen, left_ms(&timer), client_data);
         }
     }
