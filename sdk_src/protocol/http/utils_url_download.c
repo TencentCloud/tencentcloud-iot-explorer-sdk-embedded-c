@@ -87,7 +87,9 @@ int ofc_set_request_range(void *handle)
     int remain_size = h_odc->http_seg_info.total_size - h_odc->http_seg_info.offset;
     int fetch_size = 0;
 
-    NUMBERIC_SANITY_CHECK(remain_size, QCLOUD_ERR_INVAL);
+    if (remain_size <= 0) {
+        return QCLOUD_ERR_FAILURE;
+    }
 
     fetch_size = h_odc->http_seg_info.segment_size < remain_size ? h_odc->http_seg_info.segment_size : remain_size;
     memset(h_odc->http.header, 0, HTTP_HEAD_CONTENT_LEN);
@@ -161,7 +163,7 @@ int32_t qcloud_url_download_fetch(void *handle, char *buf, uint32_t bufLen, uint
     if (pHandle->http_seg_info.fetched_size == pHandle->http_seg_info.fetch_size) {
         rc = ofc_set_request_range(pHandle);
         if (QCLOUD_RET_SUCCESS != rc) {
-            Log_e("recv finish.");
+            Log_i("recv finish(%d/%d).", pHandle->http_seg_info.offset, pHandle->http_seg_info.total_size);
             IOT_FUNC_EXIT_RC(recv_len);
         }
         #ifdef OTA_USE_HTTPS
