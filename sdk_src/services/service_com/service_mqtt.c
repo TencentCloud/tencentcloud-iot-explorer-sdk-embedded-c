@@ -32,14 +32,14 @@ extern "C" {
 typedef struct {
     eServiceEvent            eventid;
     OnServiceMessageCallback callback;
-    void *                   context;
+    void                    *context;
 } Service_Event_Struct_t;
 
 static Service_Event_Struct_t sg_service_event_map[] = {
     {eSERVICE_RESOURCE, NULL, NULL},           {eSERVICE_FACE_AI, NULL, NULL},
     {eSERVICE_UNBIND_DEV, NULL, NULL},         {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL},
     {eSERVICE_GATEWAY_AUTOMATION, NULL, NULL}, {eSERVICE_KGMUSIC, NULL, NULL},
-    {eSERVICE_LOCATION, NULL, NULL},
+    {eSERVICE_LOCATION, NULL, NULL},           {eSERVICE_SCENE_HANDLES, NULL, NULL},
 };
 
 static char sg_service_pub_topic[MAX_SIZE_OF_CLOUD_TOPIC];
@@ -107,8 +107,11 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
                (!strcmp(method, METHOD_KGMUSIC_QUERY_PID_REPLY)) ||
                (!strcmp(method, METHOD_KGMUSIC_QUERY_SONGLIST_REPLY))) {
         return eSERVICE_KGMUSIC;
-    } else if (!strcmp(method, METHOD_ALEART_FENCE_EVENT) || !strcmp(method, METHOd_ALEART_FENCE_EVENT_REPLY)) {
+    } else if (!strcmp(method, METHOD_ALEART_FENCE_EVENT) || !strcmp(method, METHOD_ALEART_FENCE_EVENT_REPLY)) {
         return eSERVICE_LOCATION;
+    } else if (!strcmp(method, METHOD_SCENE_HANDLES) || !strcmp(method, METHOD_GATEWAY_RUN_SCENE) ||
+               !strcmp(method, METHOD_RELOAD_SCENE_HANDLES_REPLY) || !strcmp(method, METHOD_RELOAD_SCENE_HANDLES)) {
+        return eSERVICE_SCENE_HANDLES;
     }
     Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));
     return eSERVICE_DEFAULT;

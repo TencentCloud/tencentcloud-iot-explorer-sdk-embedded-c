@@ -58,7 +58,7 @@ typedef void (*GatewayEventHandleFun)(void *client, void *context, void *msg);
 /* The structure of gateway init param */
 typedef struct {
     MQTTInitParams        init_param;    /* MQTT params */
-    void *                event_context; /* the user context */
+    void                 *event_context; /* the user context */
     GatewayEventHandleFun event_handler; /* event handler for gateway user*/
 } GatewayInitParam;
 
@@ -299,6 +299,30 @@ int IOT_Gateway_Subdev_GetBindList(void *client, GatewayParam *param, SubdevBind
  * @return QCLOUD_RET_SUCCESS for success, or err code for failure
  */
 void IOT_Gateway_Subdev_DestoryBindList(SubdevBindList *subdev_bindlist);
+
+typedef struct {
+    int (*gateway_scene_handles_callback)(const char *payload, int payload_len);
+    int (*gateway_run_scene_callback)(char *scene_id);
+    int (*gateway_reload_scene_reply_callback)(const char *payload, int payload_len);
+    void *mqtt_client;
+} GatewaySceneCallbacks;
+
+/**
+ * @brief gateway scene init
+ *
+ * @param client Gateway client
+ * @param cbs  gateway scene callbacks
+ * @return int
+ */
+int IOT_Gateway_Scene_Init(void *client, GatewaySceneCallbacks *cbs);
+
+/**
+ * @brief sync gateway scene from cloud
+ *
+ * @param client Gateway client
+ * @return int
+ */
+int IOT_Gateway_Reload_Scene(void *client);
 
 #ifdef __cplusplus
 }

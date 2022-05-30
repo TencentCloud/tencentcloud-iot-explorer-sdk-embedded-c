@@ -27,15 +27,16 @@
 #include "qcloud_iot_import.h"
 #include "utils_getopt.h"
 
-#define FW_RUNNING_VERSION "1.0.0"
+#define FW_RUNNING_MCU_VERSION    "mcu_v1.0.0"
+#define FW_RUNNING_MODULE_VERSION "module_v1.0.0"
 
 #define KEY_VER  "version"
 #define KEY_SIZE "downloaded_size"
 
-#define FW_VERSION_MAX_LEN    32
-#define FW_FILE_PATH_MAX_LEN  128
-#define OTA_BUF_LEN           5000
-#define FW_INFO_FILE_DATA_LEN 128
+#define FW_VERSION_MAX_LEN        32
+#define FW_FILE_PATH_MAX_LEN      128
+#define OTA_BUF_LEN               5000
+#define FW_INFO_FILE_DATA_LEN     128
 #define OTA_HTTP_MAX_FETCHED_SIZE (50 * 1024)
 
 #define MAX_OTA_RETRY_CNT 5
@@ -47,8 +48,9 @@ typedef struct OTAContextData {
     char  fw_info_file_path[FW_FILE_PATH_MAX_LEN];
 
     // remote_version means version for the FW in the cloud and to be downloaded
-    char     remote_version[FW_VERSION_MAX_LEN];
-    uint32_t fw_file_size;
+    char          remote_version[FW_VERSION_MAX_LEN];
+    uint32_t      fw_file_size;
+    IOT_OTAFWType fw_type; /* fw type */
 
     // for resuming download
     /* local_version means downloading but not running */
@@ -56,8 +58,8 @@ typedef struct OTAContextData {
     int  downloaded_size;
 
     // to make sure report is acked
-    bool report_pub_ack;
-    int  report_packet_id;
+    bool     report_pub_ack;
+    int      report_packet_id;
     uint32_t ota_fail_cnt;
 } OTAContextData;
 
@@ -365,12 +367,16 @@ static int _save_fw_data_to_file(char *file_name, uint32_t offset, char *buf, in
     return 0;
 }
 
-static char *_get_local_fw_running_version()
+static char *_get_local_fw_running_version(IOT_OTAFWType type)
 {
     // asuming the version is inside the code and binary
     // you can also get from a meta file
-    Log_i("FW running version: %s", FW_RUNNING_VERSION);
-    return FW_RUNNING_VERSION;
+    if (type == IOT_OTA_FWTYPE_MCU) {
+        Log_i("FW running mcu version: %s", FW_RUNNING_MCU_VERSION);
+        return FW_RUNNING_MCU_VERSION;
+    }
+    Log_i("FW running module version: %s", FW_RUNNING_MODULE_VERSION);
+    return FW_RUNNING_MODULE_VERSION;
 }
 /**********************************************************************************
  * OTA file operations END
@@ -384,12 +390,17 @@ bool process_ota(OTAContextData *ota_ctx)
     char  buf_ota[OTA_BUF_LEN]  = {0};
     int   rc                    = 0;
     void *h_ota                 = ota_ctx->ota_handle;
-    int packet_id               = 0;
-    int local_offset            = 0;
-    int last_downloaded_size    = 0;
+    int   packet_id             = 0;
+    int   local_offset          = 0;
+    int   last_downloaded_size  = 0;
 
     /* Must report version first */
-    if (0 > IOT_OTA_ReportVersion(h_ota, _get_local_fw_running_version())) {
+    if (0 > IOT_OTA_ReportVersion(h_ota, IOT_OTA_FWTYPE_MCU, _get_local_fw_running_version(IOT_OTA_FWTYPE_MCU))) {
+        Log_e("report OTA version failed");
+        upgrade_fetch_success = false;
+        goto end_of_ota;
+    }
+    if (0 > IOT_OTA_ReportVersion(h_ota, IOT_OTA_FWTYPE_MODULE, _get_local_fw_running_version(IOT_OTA_FWTYPE_MODULE))) {
         Log_e("report OTA version failed");
         upgrade_fetch_success = false;
         goto end_of_ota;
@@ -400,11 +411,12 @@ bool process_ota(OTAContextData *ota_ctx)
 
         Log_i("wait for ota upgrade command...");
 
-begin_of_ota:
+    begin_of_ota:
         // recv the upgrade cmd
         if (IOT_OTA_IsFetching(h_ota)) {
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_FILE_SIZE, &ota_ctx->fw_file_size, 4);
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_VERSION, ota_ctx->remote_version, FW_VERSION_MAX_LEN);
+            IOT_OTA_Ioctl(h_ota, IOT_OTAG_FWTYPE, &ota_ctx->fw_type, 4);
 
             HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.bin", ota_ctx->remote_version);
             HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", ota_ctx->remote_version);
@@ -419,13 +431,15 @@ begin_of_ota:
             }
 
             /*set offset and start http connect*/
-            rc = IOT_OTA_StartDownload(h_ota, ota_ctx->downloaded_size, ota_ctx->fw_file_size, OTA_HTTP_MAX_FETCHED_SIZE);
+            rc = IOT_OTA_StartDownload(h_ota, ota_ctx->downloaded_size, ota_ctx->fw_file_size,
+                                       OTA_HTTP_MAX_FETCHED_SIZE);
             if (QCLOUD_RET_SUCCESS != rc) {
                 Log_e("OTA download start err,rc:%d", rc);
                 upgrade_fetch_success = false;
                 goto end_of_ota;
             }
-
+            Log_d("remote fw type : %d %s", ota_ctx->fw_type,
+                  ota_ctx->fw_type == IOT_OTA_FWTYPE_MCU ? IOT_OTA_FWTYPE_MCU_STR : IOT_OTA_FWTYPE_MODULE_STR);
             // download and save the fw
             do {
                 int len = IOT_OTA_FetchYield(h_ota, buf_ota, OTA_BUF_LEN, 1);
@@ -463,8 +477,8 @@ begin_of_ota:
 
             } while (!IOT_OTA_IsFetchFinish(h_ota));
 
-            /* Must check MD5 match or not */
-            end_of_download:
+        /* Must check MD5 match or not */
+        end_of_download:
             if (upgrade_fetch_success) {
                 // download is finished, delete the fw info file
                 _delete_fw_info_file(ota_ctx->fw_info_file_path);
@@ -486,7 +500,6 @@ begin_of_ota:
 
         if (!download_finished)
             HAL_SleepMs(1000);
-
     } while (!download_finished);
 
     // do some post-download stuff for your need
@@ -500,7 +513,7 @@ end_of_ota:
             }
             if (ota_ctx->ota_fail_cnt <= MAX_OTA_RETRY_CNT) {
                 upgrade_fetch_success = true;
-                last_downloaded_size = ota_ctx->downloaded_size;
+                last_downloaded_size  = ota_ctx->downloaded_size;
                 Log_e("OTA failed, retry %drd time!", ota_ctx->ota_fail_cnt);
                 HAL_SleepMs(1000);
                 goto begin_of_ota;
@@ -511,7 +524,7 @@ end_of_ota:
             }
         }
     } else if (upgrade_fetch_success) {
-        packet_id = IOT_OTA_ReportUpgradeSuccess(h_ota, NULL);
+        packet_id             = IOT_OTA_ReportUpgradeSuccess(h_ota, NULL);
         ota_ctx->ota_fail_cnt = 0;
     }
 
@@ -543,8 +556,8 @@ int main(int argc, char **argv)
 {
     int             rc;
     OTAContextData *ota_ctx     = NULL;
-    void *          mqtt_client = NULL;
-    void *          h_ota       = NULL;
+    void           *mqtt_client = NULL;
+    void           *h_ota       = NULL;
 
     IOT_Log_Set_Level(eLOG_DEBUG);
     // parse arguments for device info file

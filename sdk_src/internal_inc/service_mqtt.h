@@ -37,8 +37,11 @@ extern "C" {
 #define METHOD_KGMUSIC_QUERY_PID_REPLY      "kugou_query_pid_reply"
 #define METHOD_KGMUSIC_QUERY_SONGLIST_REPLY "kugou_user_command_reply"
 #define METHOD_ALEART_FENCE_EVENT           "alert_fence_event"
-#define METHOd_ALEART_FENCE_EVENT_REPLY     "alert_fence_event_reply"
-
+#define METHOD_ALEART_FENCE_EVENT_REPLY     "alert_fence_event_reply"
+#define METHOD_SCENE_HANDLES                "scene_handles"
+#define METHOD_GATEWAY_RUN_SCENE            "gateway_run_scene"
+#define METHOD_RELOAD_SCENE_HANDLES         "reload_scene_handles"
+#define METHOD_RELOAD_SCENE_HANDLES_REPLY   "reload_scene_handles_reply"
 
 typedef enum {
     eSERVICE_RESOURCE           = 0,
@@ -48,6 +51,7 @@ typedef enum {
     eSERVICE_GATEWAY_AUTOMATION = 4,
     eSERVICE_KGMUSIC            = 5,
     eSERVICE_LOCATION           = 6,
+    eSERVICE_SCENE_HANDLES      = 7,
     eSERVICE_DEFAULT            = 0xff
 } eServiceEvent;
 

@@ -193,13 +193,15 @@ int qcloud_otalib_get_report_version_result(const char *json)
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
 }
 
-int qcloud_otalib_get_params(const char *json, char **type, char **url, char **version, char *md5, uint32_t *fileSize)
+int qcloud_otalib_get_params(const char *json, char **type, char **url, char **version, char *md5, uint32_t *fileSize,
+                             IOT_OTAFWType *fw_type)
 {
 #define OTA_FILESIZE_STR_LEN (16)
 
     IOT_FUNC_ENTRY;
 
     char file_size_str[OTA_FILESIZE_STR_LEN + 1] = {0};
+    char fw_type_str[OTA_FILESIZE_STR_LEN + 1]   = {0};
 
     /* get type */
     if (0 != _qcloud_otalib_get_firmware_varlen_para(json, TYPE_FIELD, type)) {
@@ -231,21 +233,34 @@ int qcloud_otalib_get_params(const char *json, char **type, char **url, char **v
         IOT_FUNC_EXIT_RC(IOT_OTA_ERR_FAIL);
     }
 
+    /* get fw_type */
+    if (0 != _qcloud_otalib_get_firmware_fixlen_para(json, FW_TYPE, fw_type_str, OTA_FILESIZE_STR_LEN)) {
+        Log_e("get value of fw_type key failed");
+        IOT_FUNC_EXIT_RC(IOT_OTA_ERR_FAIL);
+    }
+
     file_size_str[OTA_FILESIZE_STR_LEN] = '\0';
     *fileSize                           = atoi(file_size_str);
+
+    if (strstr(fw_type_str, IOT_OTA_FWTYPE_MCU_STR)) {
+        *fw_type = IOT_OTA_FWTYPE_MCU;
+    } else {
+        *fw_type = IOT_OTA_FWTYPE_MODULE;
+    }
 
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
 
 #undef OTA_FILESIZE_STR_LEN
 }
 
-int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, const char *version)
+int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, IOT_OTAFWType type, const char *version)
 {
     IOT_FUNC_ENTRY;
 
     int ret;
-    ret = HAL_Snprintf(buf, bufLen, "{\"type\": \"report_version\", \"report\":{\"version\":\"%s\"}}",
-                       STRING_PTR_PRINT_SANITY_CHECK(version));
+    ret =
+        HAL_Snprintf(buf, bufLen, "{\"type\": \"report_version\", \"report\":{\"version\":\"%s\", \"fw_type\":\"%s\"}}",
+                     STRING_PTR_PRINT_SANITY_CHECK(version), type == IOT_OTA_FWTYPE_MCU ? IOT_OTA_FWTYPE_MCU_STR :IOT_OTA_FWTYPE_MODULE_STR);
 
     if (ret < 0) {
         Log_e("HAL_Snprintf failed");
@@ -255,8 +270,8 @@ int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, const char
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
 }
 
-int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const char *version, int progress,
-                                 IOT_OTAReportType reportType)
+int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const char *fw_type, const char *version,
+                                 int progress, IOT_OTAReportType reportType)
 {
     IOT_FUNC_ENTRY;
 
@@ -269,17 +284,18 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
                                "{\"type\": \"report_progress\", \"report\": "
                                "{\"progress\": {\"state\":\"downloading\", "
                                "\"percent\":\"0\", \"result_code\":\"0\", "
-                               "\"result_msg\":\"\"}, \"version\": \"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(version));
+                               "\"result_msg\":\"\"},\"fw_type\":\"%s\",\"version\": \"%s\"}}",
+                               STRING_PTR_PRINT_SANITY_CHECK(fw_type), STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
         /* report OTA download progress */
         case IOT_OTAR_DOWNLOADING:
-            ret = HAL_Snprintf(buf, bufLen,
-                               "{\"type\": \"report_progress\", \"report\": "
-                               "{\"progress\": {\"state\":\"downloading\", "
-                               "\"percent\":\"%d\", \"result_code\":\"0\", "
-                               "\"result_msg\":\"\"}, \"version\": \"%s\"}}",
-                               progress, STRING_PTR_PRINT_SANITY_CHECK(version));
+            ret =
+                HAL_Snprintf(buf, bufLen,
+                             "{\"type\": \"report_progress\", \"report\": "
+                             "{\"progress\": {\"state\":\"downloading\", "
+                             "\"percent\":\"%d\", \"result_code\":\"0\", "
+                             "\"result_msg\":\"\"}, \"fw_type\":\"%s\",\"version\": \"%s\"}}",
+                             progress, STRING_PTR_PRINT_SANITY_CHECK(fw_type), STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
         case IOT_OTAR_DOWNLOAD_TIMEOUT:
         case IOT_OTAR_FILE_NOT_EXIST:
@@ -289,9 +305,10 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
             ret = HAL_Snprintf(buf, bufLen,
                                "{\"type\": \"report_progress\", \"report\": "
                                "{\"progress\": {\"state\":\"fail\", "
-                               "\"result_code\":\"%d\", \"result_msg\":\"time_out\"}, "
+                               "\"result_code\":\"%d\", \"result_msg\":\"time_out\"},\"fw_type\":\"%s\", "
                                "\"version\": \"%s\"}}",
-                               reportType, STRING_PTR_PRINT_SANITY_CHECK(version));
+                               reportType, STRING_PTR_PRINT_SANITY_CHECK(fw_type),
+                               STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
         /* report OTA upgrade begin */
         case IOT_OTAR_UPGRADE_BEGIN:
@@ -299,8 +316,8 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
                                "{\"type\": \"report_progress\", "
                                "\"report\":{\"progress\":{\"state\":"
                                "\"burning\", \"result_code\":\"0\", "
-                               "\"result_msg\":\"\"}, \"version\":\"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(version));
+                               "\"result_msg\":\"\"},\"fw_type\":\"%s\", \"version\":\"%s\"}}",
+                               STRING_PTR_PRINT_SANITY_CHECK(fw_type), STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         /* report OTA upgrade finish */
@@ -309,8 +326,8 @@ int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const ch
                                "{\"type\": \"report_progress\", "
                                "\"report\":{\"progress\":{\"state\":"
                                "\"done\", \"result_code\":\"0\", "
-                               "\"result_msg\":\"\"}, \"version\":\"%s\"}}",
-                               STRING_PTR_PRINT_SANITY_CHECK(version));
+                               "\"result_msg\":\"\"},\"fw_type\":\"%s\", \"version\":\"%s\"}}",
+                               STRING_PTR_PRINT_SANITY_CHECK(fw_type), STRING_PTR_PRINT_SANITY_CHECK(version));
             break;
 
         default:

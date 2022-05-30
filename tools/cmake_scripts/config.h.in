@@ -3,6 +3,7 @@
 #cmakedefine AUTH_WITH_NOTLS
 #cmakedefine GATEWAY_ENABLED
 #cmakedefine GATEWAY_AUTOMATION_ENABLED
+#cmakedefine GATEWAY_SCENE_ENABLED
 #cmakedefine COAP_COMM_ENABLED
 #cmakedefine OTA_MQTT_CHANNEL
 #cmakedefine SYSTEM_COMM

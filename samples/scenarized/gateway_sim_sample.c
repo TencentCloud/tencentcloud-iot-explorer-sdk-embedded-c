@@ -433,12 +433,75 @@ static int _select_local(int max_fd, fd_set *rd_set, int gw_fd)
     return select(max_fd + 1, rd_set, NULL, NULL, &tv);
 }
 
+// --------------------------------------------------------------
+// gateway scene
+// --------------------------------------------------------------
+#ifdef GATEWAY_SCENE_ENABLED
+int _gateway_scene_handles_callback(const char *payload, int payload_len)
+{
+    int  rc             = QCLOUD_ERR_FAILURE;
+    char file_name[128] = {0};
+
+    char *scene_id = LITE_json_value_of("sceneId", (char *)payload);
+    if (scene_id) {
+        // save
+        HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
+        void *fp = HAL_FileOpen(file_name, "wb+");
+        if (!fp) {
+            Log_e("open file(%s) error. ", file_name);
+            goto _exit;
+        }
+        char *handles = LITE_json_value_of("params.handles", (char *)payload);
+        if (!handles) {
+            Log_e("can not find params.handles");
+            goto _exit;
+        }
+        HAL_FileWrite(handles, strlen(handles), 1, fp);
+        HAL_FileFlush(fp);
+        HAL_FileClose(fp);
+        HAL_Free(handles);
+        rc = QCLOUD_RET_SUCCESS;
+    }
+_exit:
+    HAL_Free(scene_id);
+    return rc;
+}
+
+int _gateway_run_scene_callback(char *scene_id)
+{
+    Log_d("\r\n scene_id : %s \r\n\r\n", scene_id);
+    char file_name[128] = {0};
+    HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
+    void *fp = HAL_FileOpen(file_name, "r");
+    if (!fp) {
+        Log_e("scene_id(%s) not exist", scene_id);
+        return -1;
+    }
+    char handles[512] = {0};
+    memset(handles, 0, sizeof(handles));
+    HAL_FileSeek(fp, 0, SEEK_SET);
+    HAL_FileRead(handles, 1, sizeof(handles), fp);
+    HAL_FileClose(fp);
+    Log_d("handles : %s\r\n", handles);
+    // do subdev control
+
+    return QCLOUD_RET_SUCCESS;
+}
+
+int _gateway_reload_scene_reply_callback(const char *payload, int payload_len)
+{
+    Log_d("\r\n%.*s\r\n\r\n", payload_len, payload);
+    // TODO : retry reload__scene_handles
+    return 0;
+}
+#endif
+
 /*Gateway should enable multithread*/
 int main(int argc, char **argv)
 {
     int                rc = QCLOUD_ERR_FAILURE;
     int                i;
-    void *             client = NULL;
+    void              *client = NULL;
     GatewayDeviceInfo *gw     = &sg_GWdevInfo;
     GatewayParam       param  = DEFAULT_GATEWAY_PARAMS;
 
@@ -462,6 +525,18 @@ int main(int argc, char **argv)
         Log_e("client constructed failed.");
         return QCLOUD_ERR_FAILURE;
     }
+
+#ifdef GATEWAY_SCENE_ENABLED
+    GatewaySceneCallbacks cbs;
+    cbs.gateway_scene_handles_callback      = _gateway_scene_handles_callback;
+    cbs.gateway_reload_scene_reply_callback = _gateway_reload_scene_reply_callback;
+    cbs.gateway_run_scene_callback          = _gateway_run_scene_callback;
+    rc                                      = IOT_Gateway_Scene_Init(client, &cbs);
+    if (!rc) {
+        IOT_Gateway_Reload_Scene(client);
+    }
+#endif
+
     param.product_id  = gw->gw_info.product_id;
     param.device_name = gw->gw_info.device_name;
 
