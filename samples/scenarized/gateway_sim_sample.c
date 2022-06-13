@@ -444,7 +444,7 @@ int _gateway_scene_handles_callback(const char *payload, int payload_len)
 
     char *scene_id = LITE_json_value_of("sceneId", (char *)payload);
     if (scene_id) {
-        // save
+        // todo : save
         HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
         void *fp = HAL_FileOpen(file_name, "wb+");
         if (!fp) {
@@ -483,15 +483,23 @@ int _gateway_run_scene_callback(char *scene_id)
     HAL_FileRead(handles, 1, sizeof(handles), fp);
     HAL_FileClose(fp);
     Log_d("handles : %s\r\n", handles);
-    // do subdev control
+    // todo : subdev control
 
     return QCLOUD_RET_SUCCESS;
+}
+
+int _gateway_delete_scene_callback(char *scene_id)
+{
+    Log_d("\r\n scene_id : %s \r\n\r\n", scene_id);
+    char file_name[128] = {0};
+    HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
+    return HAL_FileRemove(file_name);
 }
 
 int _gateway_reload_scene_reply_callback(const char *payload, int payload_len)
 {
     Log_d("\r\n%.*s\r\n\r\n", payload_len, payload);
-    // TODO : retry reload__scene_handles
+    // TODO : retry reload_scene_handles
     return 0;
 }
 #endif
@@ -531,6 +539,7 @@ int main(int argc, char **argv)
     cbs.gateway_scene_handles_callback      = _gateway_scene_handles_callback;
     cbs.gateway_reload_scene_reply_callback = _gateway_reload_scene_reply_callback;
     cbs.gateway_run_scene_callback          = _gateway_run_scene_callback;
+    cbs.gateway_delete_scene_callback       = _gateway_delete_scene_callback;
     rc                                      = IOT_Gateway_Scene_Init(client, &cbs);
     if (!rc) {
         IOT_Gateway_Reload_Scene(client);

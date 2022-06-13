@@ -809,6 +809,22 @@ static void _gateway_scene_callback(void *user_data, const char *payload, unsign
         if (gateway_scene_callbacks->gateway_reload_scene_reply_callback) {
             gateway_scene_callbacks->gateway_reload_scene_reply_callback(payload, payload_len);
         }
+    }else if(!strncmp(method, METHOD_GATEWAY_DELETE_SCENE, sizeof(METHOD_GATEWAY_DELETE_SCENE)-1)){
+        if (gateway_scene_callbacks->gateway_run_scene_callback) {
+            char *scene_id     = LITE_json_value_of("sceneId", (char *)payload);
+            char *client_token = LITE_json_value_of("clientToken", (char *)payload);
+
+            int code = gateway_scene_callbacks->gateway_delete_scene_callback(scene_id);
+
+            char reply[512] = {0};
+            HAL_Snprintf(reply, 512,
+                         "{\"method\":\"gateway_delete_scene_reply\",\"clientToken\":\"%s\", \"scene_id\":\"%s\", "
+                         "\"code\":%d, \"status\":\"%s\"}",
+                         client_token, scene_id, code, code ? "error" : "success");
+            qcloud_service_mqtt_post_msg(gateway_scene_callbacks->mqtt_client, reply, QOS0);
+            HAL_Free(scene_id);
+            HAL_Free(client_token);
+        }
     } else {
         Log_w("unknow method : %s", method);
     }

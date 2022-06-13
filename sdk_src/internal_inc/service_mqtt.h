@@ -40,6 +40,7 @@ extern "C" {
 #define METHOD_ALEART_FENCE_EVENT_REPLY     "alert_fence_event_reply"
 #define METHOD_SCENE_HANDLES                "scene_handles"
 #define METHOD_GATEWAY_RUN_SCENE            "gateway_run_scene"
+#define METHOD_GATEWAY_DELETE_SCENE         "gateway_delete_scene"
 #define METHOD_RELOAD_SCENE_HANDLES         "reload_scene_handles"
 #define METHOD_RELOAD_SCENE_HANDLES_REPLY   "reload_scene_handles_reply"
 

@@ -110,7 +110,8 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
     } else if (!strcmp(method, METHOD_ALEART_FENCE_EVENT) || !strcmp(method, METHOD_ALEART_FENCE_EVENT_REPLY)) {
         return eSERVICE_LOCATION;
     } else if (!strcmp(method, METHOD_SCENE_HANDLES) || !strcmp(method, METHOD_GATEWAY_RUN_SCENE) ||
-               !strcmp(method, METHOD_RELOAD_SCENE_HANDLES_REPLY) || !strcmp(method, METHOD_RELOAD_SCENE_HANDLES)) {
+               !strcmp(method, METHOD_RELOAD_SCENE_HANDLES_REPLY) || !strcmp(method, METHOD_RELOAD_SCENE_HANDLES) ||
+               !strcmp(method, METHOD_GATEWAY_DELETE_SCENE)) {
         return eSERVICE_SCENE_HANDLES;
     }
     Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));

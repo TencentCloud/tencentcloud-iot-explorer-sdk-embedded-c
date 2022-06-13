@@ -303,6 +303,7 @@ void IOT_Gateway_Subdev_DestoryBindList(SubdevBindList *subdev_bindlist);
 typedef struct {
     int (*gateway_scene_handles_callback)(const char *payload, int payload_len);
     int (*gateway_run_scene_callback)(char *scene_id);
+    int (*gateway_delete_scene_callback)(char *scene_id);
     int (*gateway_reload_scene_reply_callback)(const char *payload, int payload_len);
     void *mqtt_client;
 } GatewaySceneCallbacks;
