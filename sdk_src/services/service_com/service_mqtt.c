@@ -109,9 +109,10 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
         return eSERVICE_KGMUSIC;
     } else if (!strcmp(method, METHOD_ALEART_FENCE_EVENT) || !strcmp(method, METHOD_ALEART_FENCE_EVENT_REPLY)) {
         return eSERVICE_LOCATION;
-    } else if (!strcmp(method, METHOD_SCENE_HANDLES) || !strcmp(method, METHOD_GATEWAY_RUN_SCENE) ||
-               !strcmp(method, METHOD_RELOAD_SCENE_HANDLES_REPLY) || !strcmp(method, METHOD_RELOAD_SCENE_HANDLES) ||
-               !strcmp(method, METHOD_GATEWAY_DELETE_SCENE)) {
+    } else if (!strcmp(method, METHOD_GATEWAY_SCENE_HANDLES) || !strcmp(method, METHOD_GATEWAY_RUN_SCENE) ||
+               !strcmp(method, METHOD_GATEWAY_RELOAD_SCENE_HANDLES_REPLY) ||
+               !strcmp(method, METHOD_GATEWAY_RELOAD_SCENE_HANDLES) || !strcmp(method, METHOD_GATEWAY_DELETE_SCENE) ||
+               !strcmp(method, METHOD_GATEWAY_REPORT_INNER_SCENE_LIST_REPLY)) { 
         return eSERVICE_SCENE_HANDLES;
     }
     Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));

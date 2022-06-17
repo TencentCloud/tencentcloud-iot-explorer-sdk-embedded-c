@@ -442,7 +442,7 @@ int _gateway_scene_handles_callback(const char *payload, int payload_len)
     int  rc             = QCLOUD_ERR_FAILURE;
     char file_name[128] = {0};
 
-    char *scene_id = LITE_json_value_of("sceneId", (char *)payload);
+    char *scene_id = LITE_json_value_of("SceneId", (char *)payload);
     if (scene_id) {
         // todo : save
         HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
@@ -451,9 +451,9 @@ int _gateway_scene_handles_callback(const char *payload, int payload_len)
             Log_e("open file(%s) error. ", file_name);
             goto _exit;
         }
-        char *handles = LITE_json_value_of("params.handles", (char *)payload);
+        char *handles = LITE_json_value_of("Handles", (char *)payload);
         if (!handles) {
-            Log_e("can not find params.handles");
+            Log_e("can not find Handles");
             goto _exit;
         }
         HAL_FileWrite(handles, strlen(handles), 1, fp);
@@ -544,6 +544,18 @@ int main(int argc, char **argv)
     if (!rc) {
         IOT_Gateway_Reload_Scene(client);
     }
+
+    char                  inner_report_buf[4096];
+    GatewaySceneInnerList scene_inner_list[MAX_LENGTH_INNER_SCENE_LIST];
+    for (int i = 0; i < MAX_LENGTH_INNER_SCENE_LIST; i++) {
+        HAL_Snprintf(scene_inner_list[i].innerSceneId, MAX_LENGTH_INNER_SCENE_ID, "inner_scene_id_%d", i);
+        HAL_Snprintf(scene_inner_list[i].innerSceneName, MAX_LENGTH_INNER_SCENE_NAME, "inner_scene_name_%d", i);
+    }
+    rc = IOT_Gateway_Scene_Report_Inner_List_Sync(client, inner_report_buf, sizeof(inner_report_buf), scene_inner_list,
+                                                  MAX_LENGTH_INNER_SCENE_LIST, 10000);
+
+    Log_d("report inner list rc:%d.", rc);
+
 #endif
 
     param.product_id  = gw->gw_info.product_id;

@@ -325,6 +325,41 @@ int IOT_Gateway_Scene_Init(void *client, GatewaySceneCallbacks *cbs);
  */
 int IOT_Gateway_Reload_Scene(void *client);
 
+#define MAX_LENGTH_INNER_SCENE_ID   (64)
+#define MAX_LENGTH_INNER_SCENE_NAME (64)
+#define MAX_LENGTH_INNER_SCENE_LIST (20)
+
+typedef struct {
+    char innerSceneId[MAX_LENGTH_INNER_SCENE_ID];
+    char innerSceneName[MAX_LENGTH_INNER_SCENE_NAME];
+} GatewaySceneInnerList;
+
+/**
+ * @brief report local scene list
+ *
+ * @param client gateway client
+ * @param report_buf used store json
+ * @param report_len json buffer length
+ * @param list need report list
+ * @param list_count list port
+ * @return int >= 0 for success
+ */
+int IOT_Gateway_Scene_Report_Inner_List(void *client, char *report_buf, int report_len, GatewaySceneInnerList *list,
+                                        int list_count);
+/**
+ * @brief report local scene list
+ *
+ * @param client gateway client
+ * @param report_buf used store json
+ * @param report_len json buffer length
+ * @param list need report list
+ * @param list_count list port
+ * @param timeout_ms wait timeout
+ * @return int = 0 for success
+ */
+int IOT_Gateway_Scene_Report_Inner_List_Sync(void *client, char *report_buf, int report_len,
+                                             GatewaySceneInnerList *list, int list_count, int timeout_ms);
+
 #ifdef __cplusplus
 }
 #endif

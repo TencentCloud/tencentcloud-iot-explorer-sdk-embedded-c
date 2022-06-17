@@ -775,6 +775,7 @@ int IOT_Gateway_EnableLocalAutoMation(void *client, QCLOUD_IO_GATEWAY_AUTOMATION
 // ---------------------------------------------------------------------------
 // gateway scene
 //----------------------------------------------------------------------------
+static int sg_report_inner_list_reply_code = 0;
 
 static void _gateway_scene_callback(void *user_data, const char *payload, unsigned int payload_len)
 {
@@ -785,45 +786,67 @@ static void _gateway_scene_callback(void *user_data, const char *payload, unsign
     // Log_d("scene recv : %.*s", payload_len, payload);
 
     char *method = LITE_json_value_of("method", (char *)payload);
-    if (!strncmp(method, METHOD_SCENE_HANDLES, sizeof(METHOD_SCENE_HANDLES) - 1)) {
+    if (!strncmp(method, METHOD_GATEWAY_SCENE_HANDLES, sizeof(METHOD_GATEWAY_SCENE_HANDLES) - 1)) {
         if (gateway_scene_callbacks->gateway_scene_handles_callback) {
-            gateway_scene_callbacks->gateway_scene_handles_callback(payload, payload_len);
+            char *params = LITE_json_value_of("params", (char *)payload);
+            if (params) {
+                gateway_scene_callbacks->gateway_scene_handles_callback(params, strlen(params));
+                HAL_Free(params);
+            }
         }
     } else if (!strncmp(method, METHOD_GATEWAY_RUN_SCENE, sizeof(METHOD_GATEWAY_RUN_SCENE) - 1)) {
         if (gateway_scene_callbacks->gateway_run_scene_callback) {
-            char *scene_id     = LITE_json_value_of("sceneId", (char *)payload);
+            char *scene_id     = LITE_json_value_of("params.SceneId", (char *)payload);
             char *client_token = LITE_json_value_of("clientToken", (char *)payload);
-
-            int code = gateway_scene_callbacks->gateway_run_scene_callback(scene_id);
+            int   code         = -1;
+            if (scene_id) {
+                code = gateway_scene_callbacks->gateway_run_scene_callback(scene_id);
+            }
 
             char reply[512] = {0};
-            HAL_Snprintf(reply, 512,
-                         "{\"method\":\"gateway_run_scene_reply\",\"clientToken\":\"%s\", \"scene_id\":\"%s\", "
+            HAL_Snprintf(reply, sizeof(reply),
+                         "{\"method\":\"gateway_run_scene_reply\",\"clientToken\":\"%s\", \"sceneId\":\"%s\", "
                          "\"code\":%d, \"status\":\"%s\"}",
                          client_token, scene_id, code, code ? "error" : "success");
             qcloud_service_mqtt_post_msg(gateway_scene_callbacks->mqtt_client, reply, QOS0);
-            HAL_Free(scene_id);
             HAL_Free(client_token);
+            HAL_Free(scene_id);
         }
-    } else if (!strncmp(method, METHOD_RELOAD_SCENE_HANDLES_REPLY, sizeof(METHOD_RELOAD_SCENE_HANDLES_REPLY) - 1)) {
+    } else if (!strncmp(method, METHOD_GATEWAY_RELOAD_SCENE_HANDLES_REPLY,
+                        sizeof(METHOD_GATEWAY_RELOAD_SCENE_HANDLES_REPLY) - 1)) {
         if (gateway_scene_callbacks->gateway_reload_scene_reply_callback) {
-            gateway_scene_callbacks->gateway_reload_scene_reply_callback(payload, payload_len);
+            char *scene_result = LITE_json_value_of("sceneResult", (char *)payload);
+            if (scene_result) {
+                gateway_scene_callbacks->gateway_reload_scene_reply_callback(scene_result, strlen(scene_result));
+                HAL_Free(scene_result);
+            } else {
+                Log_e("can not find scene result . payload : %s", payload);
+            }
         }
-    }else if(!strncmp(method, METHOD_GATEWAY_DELETE_SCENE, sizeof(METHOD_GATEWAY_DELETE_SCENE)-1)){
+    } else if (!strncmp(method, METHOD_GATEWAY_DELETE_SCENE, sizeof(METHOD_GATEWAY_DELETE_SCENE) - 1)) {
         if (gateway_scene_callbacks->gateway_run_scene_callback) {
-            char *scene_id     = LITE_json_value_of("sceneId", (char *)payload);
+            char *scene_id     = LITE_json_value_of("params.SceneId", (char *)payload);
             char *client_token = LITE_json_value_of("clientToken", (char *)payload);
-
-            int code = gateway_scene_callbacks->gateway_delete_scene_callback(scene_id);
+            int   code         = -1;
+            if (scene_id) {
+                code = gateway_scene_callbacks->gateway_delete_scene_callback(scene_id);
+            }
 
             char reply[512] = {0};
             HAL_Snprintf(reply, 512,
-                         "{\"method\":\"gateway_delete_scene_reply\",\"clientToken\":\"%s\", \"scene_id\":\"%s\", "
+                         "{\"method\":\"gateway_delete_scene_reply\",\"clientToken\":\"%s\", \"sceneId\":\"%s\", "
                          "\"code\":%d, \"status\":\"%s\"}",
                          client_token, scene_id, code, code ? "error" : "success");
             qcloud_service_mqtt_post_msg(gateway_scene_callbacks->mqtt_client, reply, QOS0);
             HAL_Free(scene_id);
             HAL_Free(client_token);
+        }
+    } else if (!strncmp(method, METHOD_GATEWAY_REPORT_INNER_SCENE_LIST_REPLY,
+                        sizeof(METHOD_GATEWAY_REPORT_INNER_SCENE_LIST_REPLY) - 1)) {
+        char *code_str = LITE_json_value_of("code", (char *)payload);
+        if (code_str) {
+            sg_report_inner_list_reply_code = atoi(code_str);
+            HAL_Free(code_str);
         }
     } else {
         Log_w("unknow method : %s", method);
@@ -867,10 +890,59 @@ int IOT_Gateway_Reload_Scene(void *client)
 
     HAL_Snprintf(
         payload, sizeof(payload),
-        "{\"method\":\"%s\",\"clientToken\":\"reload-scene-handles-%s-%d\", \"params\":{\"product_id\":\"%s\", "
-        "\"device_name\":\"%s\",\"scene_id\":\"*\"}}",
-        METHOD_RELOAD_SCENE_HANDLES, mqtt->device_info.product_id, index++, mqtt->device_info.product_id,
-        mqtt->device_info.device_name);
+        "{\"method\":\"%s\",\"clientToken\":\"gateway-reload-scene-handles-%s-%d\", \"params\":{\"SceneId\":\"*\"}}",
+        METHOD_GATEWAY_RELOAD_SCENE_HANDLES, mqtt->device_info.product_id, index++);
 
     return qcloud_service_mqtt_post_msg(mqtt, payload, QOS0);
+}
+
+int IOT_Gateway_Scene_Report_Inner_List(void *client, char *report_buf, int report_len, GatewaySceneInnerList *list,
+                                        int list_count)
+{
+    static int index   = 0;
+    Gateway   *gateway = (Gateway *)client;
+    POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
+    Qcloud_IoT_Client *mqtt = (Qcloud_IoT_Client *)gateway->mqtt;
+    POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
+
+    int format_len = HAL_Snprintf(report_buf, report_len,
+                                  "{\"method\":\"%s\",\"clientToken\":\"%s-%s-%d\", "
+                                  "\"timestamp\":%ld,\"params\":{\"InnerSceneList\":[",
+                                  METHOD_GATEWAY_REPORT_INNER_SCENE_LIST, METHOD_GATEWAY_REPORT_INNER_SCENE_LIST,
+                                  mqtt->device_info.product_id, index++, HAL_Timer_current_sec());
+    for (int i = 0; i < list_count; i++) {
+        format_len += HAL_Snprintf(report_buf + format_len, report_len - format_len,
+                                   "{\"InnerSceneId\":\"%s\", \"InnerSceneName\":\"%s\"},", list[i].innerSceneId,
+                                   list[i].innerSceneName);
+        if (format_len >= report_len) {
+            Log_e("buffer is too small(%d)", report_len);
+            return QCLOUD_ERR_FAILURE;
+        }
+    }
+    report_buf[format_len - 1] = ']';
+    report_buf[format_len]     = '}';
+    report_buf[format_len + 1] = '}';
+    report_buf[format_len + 2] = '\0';
+
+    return qcloud_service_mqtt_post_msg(mqtt, report_buf, QOS1);
+}
+
+int IOT_Gateway_Scene_Report_Inner_List_Sync(void *client, char *report_buf, int report_len,
+                                             GatewaySceneInnerList *list, int list_count, int timeout_ms)
+{
+    Gateway *gateway = (Gateway *)client;
+    POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
+    sg_report_inner_list_reply_code = QCLOUD_ERR_FAILURE;
+    int publish_id = IOT_Gateway_Scene_Report_Inner_List(client, report_buf, report_len, list, list_count);
+    if (publish_id > 0) {
+        int wait_cnt = timeout_ms / 100;
+        while (wait_cnt--) {
+            IOT_MQTT_Yield(gateway->mqtt, 100);
+            HAL_SleepMs(100);
+            if (QCLOUD_ERR_FAILURE != sg_report_inner_list_reply_code) {
+                return sg_report_inner_list_reply_code;
+            }
+        }
+    }
+    return sg_report_inner_list_reply_code;
 }
