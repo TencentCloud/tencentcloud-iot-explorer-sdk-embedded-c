@@ -301,10 +301,10 @@ int IOT_Gateway_Subdev_GetBindList(void *client, GatewayParam *param, SubdevBind
 void IOT_Gateway_Subdev_DestoryBindList(SubdevBindList *subdev_bindlist);
 
 typedef struct {
-    int (*gateway_scene_handles_callback)(const char *payload, int payload_len);
+    int (*gateway_scene_handles_callback)(char *scene_id, char *handles);
     int (*gateway_run_scene_callback)(char *scene_id);
     int (*gateway_delete_scene_callback)(char *scene_id);
-    int (*gateway_reload_scene_reply_callback)(const char *payload, int payload_len);
+    int (*gateway_reload_scene_reply_callback)(int result_code, char *result_scene);
     void *mqtt_client;
 } GatewaySceneCallbacks;
 
@@ -359,6 +359,33 @@ int IOT_Gateway_Scene_Report_Inner_List(void *client, char *report_buf, int repo
  */
 int IOT_Gateway_Scene_Report_Inner_List_Sync(void *client, char *report_buf, int report_len,
                                              GatewaySceneInnerList *list, int list_count, int timeout_ms);
+
+// ---------------------------------------------------------------
+// gateway group
+// ---------------------------------------------------------------
+typedef struct {
+    int (*gateway_group_devices_callback)(char *group_id, char *devices_array);
+    int (*gateway_delete_group_callback)(char *group_id);
+    int (*gateway_reload_group_devices_reply_callback)(int result_code, char *result_group_devices);
+    void *mqtt_client;
+} GatewayGroupCallbacks;
+
+/**
+ * @brief gateway group init
+ *
+ * @param client Gateway client
+ * @param cbs  gateway group callbacks
+ * @return int
+ */
+int IOT_Gateway_Group_Init(void *client, GatewayGroupCallbacks *cbs);
+
+/**
+ * @brief sync gateway group devices from cloud
+ *
+ * @param client Gateway client
+ * @return int
+ */
+int IOT_Gateway_Reload_Group_Devices(void *client);
 
 #ifdef __cplusplus
 }

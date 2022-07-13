@@ -788,11 +788,13 @@ static void _gateway_scene_callback(void *user_data, const char *payload, unsign
     char *method = LITE_json_value_of("method", (char *)payload);
     if (!strncmp(method, METHOD_GATEWAY_SCENE_HANDLES, sizeof(METHOD_GATEWAY_SCENE_HANDLES) - 1)) {
         if (gateway_scene_callbacks->gateway_scene_handles_callback) {
-            char *params = LITE_json_value_of("params", (char *)payload);
-            if (params) {
-                gateway_scene_callbacks->gateway_scene_handles_callback(params, strlen(params));
-                HAL_Free(params);
+            char *scene_id = LITE_json_value_of("params.SceneId", (char *)payload);
+            char *handles  = LITE_json_value_of("params.Handles", (char *)payload);
+            if (scene_id && handles) {
+                gateway_scene_callbacks->gateway_scene_handles_callback(scene_id, handles);
             }
+            HAL_Free(scene_id);
+            HAL_Free(handles);
         }
     } else if (!strncmp(method, METHOD_GATEWAY_RUN_SCENE, sizeof(METHOD_GATEWAY_RUN_SCENE) - 1)) {
         if (gateway_scene_callbacks->gateway_run_scene_callback) {
@@ -815,13 +817,15 @@ static void _gateway_scene_callback(void *user_data, const char *payload, unsign
     } else if (!strncmp(method, METHOD_GATEWAY_RELOAD_SCENE_HANDLES_REPLY,
                         sizeof(METHOD_GATEWAY_RELOAD_SCENE_HANDLES_REPLY) - 1)) {
         if (gateway_scene_callbacks->gateway_reload_scene_reply_callback) {
+            char *code_str     = LITE_json_value_of("code", (char *)payload);
             char *scene_result = LITE_json_value_of("sceneResult", (char *)payload);
-            if (scene_result) {
-                gateway_scene_callbacks->gateway_reload_scene_reply_callback(scene_result, strlen(scene_result));
-                HAL_Free(scene_result);
+            if (scene_result && code_str) {
+                gateway_scene_callbacks->gateway_reload_scene_reply_callback(atoi(code_str), scene_result);
             } else {
                 Log_e("can not find scene result . payload : %s", payload);
             }
+            HAL_Free(scene_result);
+            HAL_Free(code_str);
         }
     } else if (!strncmp(method, METHOD_GATEWAY_DELETE_SCENE, sizeof(METHOD_GATEWAY_DELETE_SCENE) - 1)) {
         if (gateway_scene_callbacks->gateway_run_scene_callback) {
@@ -869,7 +873,7 @@ int IOT_Gateway_Scene_Init(void *client, GatewaySceneCallbacks *cbs)
 
     Qcloud_IoT_Client *mqtt = (Qcloud_IoT_Client *)gateway->mqtt;
     cbs->mqtt_client        = mqtt;
-    qcloud_service_mqtt_event_register(eSERVICE_SCENE_HANDLES, _gateway_scene_callback, cbs);
+    qcloud_service_mqtt_event_register(eSERVICE_GATEWAY_SCENE, _gateway_scene_callback, cbs);
     return qcloud_service_mqtt_init(mqtt->device_info.product_id, mqtt->device_info.device_name, mqtt);
 }
 
@@ -945,4 +949,97 @@ int IOT_Gateway_Scene_Report_Inner_List_Sync(void *client, char *report_buf, int
         }
     }
     return sg_report_inner_list_reply_code;
+}
+
+// ---------------------------------------------------------------------------
+// gateway group id
+// ---------------------------------------------------------------------------
+
+static void _gateway_group_callback(void *user_data, const char *payload, unsigned int payload_len)
+{
+    POINTER_SANITY_CHECK_RTN(payload);
+    POINTER_SANITY_CHECK_RTN(user_data);
+    GatewayGroupCallbacks *gateway_group_callbacks = (GatewayGroupCallbacks *)user_data;
+
+    Log_d("group recv : %.*s", payload_len, payload);
+    char *method = LITE_json_value_of("method", (char *)payload);
+    if (!strncmp(method, METHOD_GATEWAY_GROUP_DEVICES, sizeof(METHOD_GATEWAY_GROUP_DEVICES) - 1)) {
+        char *group_id = LITE_json_value_of("params.GroupId", (char *)payload);
+        char *devices  = LITE_json_value_of("params.DeviceList", (char *)payload);
+        if (group_id && devices) {
+            gateway_group_callbacks->gateway_group_devices_callback(group_id, devices);
+        }
+        HAL_Free(group_id);
+        HAL_Free(devices);
+    } else if (!strncmp(method, METHOD_GATEWAY_DELETE_GROUP, sizeof(METHOD_GATEWAY_DELETE_GROUP) - 1)) {
+        char *group_id     = LITE_json_value_of("params.GroupId", (char *)payload);
+        char *client_token = LITE_json_value_of("clientToken", (char *)payload);
+        int   code         = -1;
+        if (group_id) {
+            code = gateway_group_callbacks->gateway_delete_group_callback(group_id);
+        }
+
+        char reply[512] = {0};
+        HAL_Snprintf(reply, 512,
+                     "{\"method\":\"gateway_delete_group_reply\",\"clientToken\":\"%s\", \"groupId\":\"%s\", "
+                     "\"code\":%d, \"status\":\"%s\"}",
+                     client_token, group_id, code, code ? "error" : "success");
+        qcloud_service_mqtt_post_msg(gateway_group_callbacks->mqtt_client, reply, QOS0);
+        HAL_Free(group_id);
+        HAL_Free(client_token);
+    } else if (!strncmp(method, METHOD_GATEWAY_RELOAD_GROUP_DEVICES_REPLY,
+                        sizeof(METHOD_GATEWAY_RELOAD_GROUP_DEVICES_REPLY) - 1)) {
+        char *code_str      = LITE_json_value_of("code", (char *)payload);
+        char *group_devices = LITE_json_value_of("groupResult", (char *)payload);
+        if (code_str && group_devices) {
+            gateway_group_callbacks->gateway_reload_group_devices_reply_callback(atoi(code_str), group_devices);
+        }
+        HAL_Free(code_str);
+        HAL_Free(group_devices);
+    } else {
+        Log_w("unknow method : %s", method);
+    }
+    HAL_Free(method);
+}
+
+/**
+ * @brief gateway group init
+ *
+ * @param client Gateway client
+ * @param cbs  gateway group callbacks
+ * @return int
+ */
+int IOT_Gateway_Group_Init(void *client, GatewayGroupCallbacks *cbs)
+{
+    Gateway *gateway = (Gateway *)client;
+
+    POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
+
+    Qcloud_IoT_Client *mqtt = (Qcloud_IoT_Client *)gateway->mqtt;
+    cbs->mqtt_client        = mqtt;
+    qcloud_service_mqtt_event_register(eSERVICE_GATEWAY_GROUP, _gateway_group_callback, cbs);
+    return qcloud_service_mqtt_init(mqtt->device_info.product_id, mqtt->device_info.device_name, mqtt);
+}
+
+/**
+ * @brief sync gateway group devices from cloud
+ *
+ * @param client Gateway client
+ * @return int
+ */
+int IOT_Gateway_Reload_Group_Devices(void *client)
+{
+    char       payload[512] = {0};
+    static int index        = 0;
+    Gateway   *gateway      = (Gateway *)client;
+    POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
+    Qcloud_IoT_Client *mqtt = (Qcloud_IoT_Client *)gateway->mqtt;
+    POINTER_SANITY_CHECK(gateway, QCLOUD_ERR_INVAL);
+
+    HAL_Snprintf(payload, sizeof(payload),
+                 "{\"method\":\"%s\",\"clientToken\":\"gateway-reload-group-devices-handles-%s-%d\",\"timestamp\":%ld, "
+                 "\"params\":{\"GroupId\":\"*\"}}",
+                 METHOD_GATEWAY_RELOAD_GROUP_DEVICES, mqtt->device_info.product_id, index++, HAL_Timer_current_sec());
+
+    return qcloud_service_mqtt_post_msg(mqtt, payload, QOS0);
 }

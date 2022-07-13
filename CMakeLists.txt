@@ -1,10 +1,10 @@
 # 项目信息
-project (QCloud_IoT_SDK C)
+project(QCloud_IoT_SDK C)
 
 # CMake 最低版本号要求
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required(VERSION 3.5)
 
-######################CONFIG BEGIN####################################
+# #####################CONFIG BEGIN####################################
 # 编译类型: release/debug
 set(BUILD_TYPE "release")
 
@@ -12,11 +12,11 @@ set(BUILD_TYPE "release")
 set(EXTRACT_SRC OFF)
 
 # 编译工具链
- set(COMPILE_TOOLS "gcc") 
- set(PLATFORM 	  "linux")
- 
-#set(COMPILE_TOOLS "MSVC") 
-#set(PLATFORM 	  "windows") 
+set(COMPILE_TOOLS "gcc")
+set(PLATFORM "linux")
+
+# set(COMPILE_TOOLS "MSVC")
+# set(PLATFORM 	  "windows")
 
 # 是否使能MQTT功能
 set(FEATURE_MQTT_COMM_ENABLED ON)
@@ -35,6 +35,9 @@ set(FEATURE_GATEWAY_AUTOMATION_ENABLED ON)
 
 # 是否使能网关本地场景功能
 set(FEATURE_GATEWAY_SCENE_ENABLED ON)
+
+# 是否使能网关设备组功能
+set(FEATURE_GATEWAY_GROUP_ENABLED ON)
 
 # 是否使能多线程
 set(FEATURE_MULTITHREAD_ENABLED ON)
@@ -102,28 +105,28 @@ set(FEATURE_AT_DEBUG OFF)
 
 # 使用SDK AT组件实现通用TCP模组网络读写需要配置 <---end
 
-######################CONFIG END######################################
+# #####################CONFIG END######################################
 
 # 设置CMAKE使用编译工具及编译选项
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -ffunction-sections -fdata-sections")
 
-if ((NOT COMPILE_TOOLS STREQUAL "gcc") AND (NOT COMPILE_TOOLS STREQUAL "MSVC"))
-	#用户自定义
+if((NOT COMPILE_TOOLS STREQUAL "gcc") AND(NOT COMPILE_TOOLS STREQUAL "MSVC"))
+	# 用户自定义
 	set(CMAKE_C_COMPILER ${COMPILE_TOOLS}) # 编译工具
 	message(WARNING "User defined platform or compile tools!")
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCC)
-	if(${BUILD_TYPE} STREQUAL  "release")
+	if(${BUILD_TYPE} STREQUAL "release")
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -Wno-error=sign-compare -Wno-error=format -std=gnu99 -Os -pthread") # 编译选项
-	elseif(${BUILD_TYPE} STREQUAL  "debug")
+	elseif(${BUILD_TYPE} STREQUAL "debug")
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Werror -Wall -Wno-error=sign-compare -Wno-error=format -std=gnu99 -Os -pthread") # 编译选项
 	endif()
 endif()
 
 if(CMAKE_COMPILER_IS_CLANG)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_USE_32BIT_TIME_T)
+
 	if(CMAKE_C_FLAGS MATCHES "/W[0-4]")
 		string(REGEX REPLACE "/W[0-4]" "/W2" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 	else()
@@ -132,18 +135,18 @@ if(CMAKE_COMPILER_IS_CLANG)
 endif()
 
 # 解析配置
-if(${BUILD_TYPE} STREQUAL  "release")
+if(${BUILD_TYPE} STREQUAL "release")
 	option(IOT_DEBUG "Enable IOT_DEBUG" OFF)
-elseif(${BUILD_TYPE} STREQUAL  "debug")
+elseif(${BUILD_TYPE} STREQUAL "debug")
 	option(IOT_DEBUG "Enable IOT_DEBUG" OFF)
 else()
 	message(FATAL_ERROR "INVAILD BUILD_TYPE:${BUILD_TYPE}!")
 endif()
 
-if(${FEATURE_AUTH_MODE} STREQUAL  "KEY")
+if(${FEATURE_AUTH_MODE} STREQUAL "KEY")
 	option(AUTH_MODE_KEY "Enable AUTH_MODE_KEY" ON)
 	option(AUTH_MODE_CERT "Enable AUTH_MODE_CERT" OFF)
-elseif(${FEATURE_AUTH_MODE} STREQUAL  "CERT" AND ${FEATURE_AUTH_WITH_NOTLS} STREQUAL "OFF")
+elseif(${FEATURE_AUTH_MODE} STREQUAL "CERT" AND ${FEATURE_AUTH_WITH_NOTLS} STREQUAL "OFF")
 	option(AUTH_MODE_KEY "Enable AUTH_MODE_KEY" OFF)
 	option(AUTH_MODE_CERT "Enable AUTH_MODE_CERT" ON)
 	option(AUTH_WITH_NOTLS "Enable AUTH_WITH_NOTLS" OFF)
@@ -155,12 +158,12 @@ if(${FEATURE_OTA_COMM_ENABLED} STREQUAL "ON")
 	option(OTA_MQTT_CHANNEL "Enable OTA_MQTT_CHANNEL" ON)
 endif()
 
-
 option(DEV_DYN_REG_ENABLED "Enable DEV_DYN_REG" ${FEATURE_DEV_DYN_REG_ENABLED})
 option(GATEWAY_ENABLED "Enable GATEWAY" ${FEATURE_GATEWAY_ENABLED})
 option(GATEWAY_DYN_BIND_SUBDEV_ENABLED "Enable GATEWAY_DYN_BIND_SUBDEV" ${FEATURE_GATEWAY_DYN_BIND_SUBDEV_ENABLED})
 option(GATEWAY_AUTOMATION_ENABLED "Enable GATEWAY AUTOMATION" ${FEATURE_GATEWAY_AUTOMATION_ENABLED})
 option(GATEWAY_SCENE_ENABLED "Enable GATEWAY SCENE" ${FEATURE_GATEWAY_SCENE_ENABLED})
+option(GATEWAY_GROUP_ENABLED "Enable GATEWAY GROUP" ${FEATURE_GATEWAY_GROUP_ENABLED})
 option(AUTH_WITH_NOTLS "Enable AUTH_WITH_NOTLS" ${FEATURE_AUTH_WITH_NOTLS})
 option(EVENT_POST_ENABLED "Enable EVENT_POST" ${FEATURE_EVENT_POST_ENABLED})
 option(ACTION_ENABLED "Enable ACTION" ${FEATURE_ACTION_ENABLED})
@@ -176,27 +179,26 @@ option(MULTITHREAD_ENABLED "Enable Multithread" ${FEATURE_MULTITHREAD_ENABLED})
 option(KGMUSIC_ENABLED "Enable KGMUSIC" ${FEATURE_KGMUSIC_ENABLED})
 option(LOCATION_ENABLED "Enable Electric fence" ${FEATURE_LOCATION_ENABLED})
 
-if(${FEATURE_AUTH_WITH_NOTLS} STREQUAL "ON" )
+if(${FEATURE_AUTH_WITH_NOTLS} STREQUAL "ON")
 	option(OTA_USE_HTTPS "Enable OTA_USE_HTTPS" OFF)
 else()
 	option(OTA_USE_HTTPS "Enable OTA_USE_HTTPS" ${FEATURE_OTA_USE_HTTPS})
 endif()
 
-if(${FEATURE_AUTH_WITH_NOTLS} STREQUAL "ON" )
+if(${FEATURE_AUTH_WITH_NOTLS} STREQUAL "ON")
 	option(OTA_USE_HTTPS "Enable OTA_USE_HTTPS" OFF)
 else()
 	option(OTA_USE_HTTPS "Enable OTA_USE_HTTPS" ${FEATURE_OTA_USE_HTTPS})
 endif()
-
 
 if(${FEATURE_ASR_ENABLED} STREQUAL "ON" AND ${FEATURE_OTA_USE_HTTPS} STREQUAL "OFF")
-    message(FATAL_ERROR "Error! ASR NEED HTTPS ENABLE")
+	message(FATAL_ERROR "Error! ASR NEED HTTPS ENABLE")
 endif()
 
 if(${FEATURE_GATEWAY_ENABLED} STREQUAL "ON")
 	option(MULTITHREAD_ENABLED "Enable MULTITHREAD" ON)
 else()
-	option(MULTITHREAD_ENABLED "Enable MULTITHREAD" ${FEATURE_MULTITHREAD_ENABLED})	
+	option(MULTITHREAD_ENABLED "Enable MULTITHREAD" ${FEATURE_MULTITHREAD_ENABLED})
 endif()
 
 if(AT_TCP_ENABLED STREQUAL "ON")
@@ -209,26 +211,26 @@ else()
 	option(AT_DEBUG "Enable AT_DEBUG" OFF)
 endif()
 
-configure_file (
-  "${PROJECT_SOURCE_DIR}/tools/cmake_scripts/config.h.in"
-  "${PROJECT_SOURCE_DIR}/include/config.h" 
-  @ONLY
+configure_file(
+	"${PROJECT_SOURCE_DIR}/tools/cmake_scripts/config.h.in"
+	"${PROJECT_SOURCE_DIR}/include/config.h"
+	@ONLY
 )
 
 # 头文件目录
-include_directories(${PROJECT_SOURCE_DIR}/include 
-					${PROJECT_SOURCE_DIR}/include/exports 
-					${PROJECT_SOURCE_DIR}/platform/at_device/esp8266 
-					${PROJECT_SOURCE_DIR}/sdk_src/internal_inc
-					${PROJECT_SOURCE_DIR}/external_libs/mbedtls/include
-					${PROJECT_SOURCE_DIR}/external_libs/cJSON)
-					
+include_directories(${PROJECT_SOURCE_DIR}/include
+	${PROJECT_SOURCE_DIR}/include/exports
+	${PROJECT_SOURCE_DIR}/platform/at_device/esp8266
+	${PROJECT_SOURCE_DIR}/sdk_src/internal_inc
+	${PROJECT_SOURCE_DIR}/external_libs/mbedtls/include
+	${PROJECT_SOURCE_DIR}/external_libs/cJSON)
+
 file(GLOB src_include ${PROJECT_SOURCE_DIR}/include/*.h)
 file(GLOB src_inc_export ${PROJECT_SOURCE_DIR}/include/exports/*.h)
 file(COPY ${src_include} DESTINATION ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/include)
 file(COPY ${src_inc_export} DESTINATION ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/include/exports)
 
-if(${EXTRACT_SRC} STREQUAL  "ON" AND  NOT DEFINED SAMPLE_ONLY)
+if(${EXTRACT_SRC} STREQUAL "ON" AND NOT DEFINED SAMPLE_ONLY)
 	file(GLOB src_internal_inc ${PROJECT_SOURCE_DIR}/sdk_src/internal_inc/*.h)
 	file(COPY ${src_include} DESTINATION ${PROJECT_SOURCE_DIR}/output/qcloud_iot_c_sdk/include)
 	file(COPY ${src_inc_export} DESTINATION ${PROJECT_SOURCE_DIR}/output/qcloud_iot_c_sdk/include/exports)
@@ -245,21 +247,23 @@ if(NOT DEFINED SAMPLE_ONLY)
 	add_subdirectory(${PROJECT_SOURCE_DIR}/sdk_src)
 	add_subdirectory(${PROJECT_SOURCE_DIR}/platform)
 	add_subdirectory(${PROJECT_SOURCE_DIR}/external_libs/mbedtls)
-if(FEATURE_WIFI_CONFIG_ENABLED STREQUAL "ON")
-	add_subdirectory(${PROJECT_SOURCE_DIR}/external_libs/cJSON)
-endif()
+
+	if(FEATURE_WIFI_CONFIG_ENABLED STREQUAL "ON")
+		add_subdirectory(${PROJECT_SOURCE_DIR}/external_libs/cJSON)
+	endif()
 endif()
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/samples)
+
 if(SAMPLE_ONLY STREQUAL "ON")
-	message(STATUS  "Only compile samples!")
+	message(STATUS "Only compile samples!")
 endif()
 
 # 证书及设备信息
 if(NOT DEFINED SAMPLE_ONLY)
 	file(COPY ${PROJECT_SOURCE_DIR}/certs DESTINATION ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
 	file(COPY ${PROJECT_SOURCE_DIR}/device_info.json DESTINATION ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
-	
+
 	if(ASR_ENABLED STREQUAL "ON")
 		file(COPY ${PROJECT_SOURCE_DIR}/tools/test_file DESTINATION ${PROJECT_SOURCE_DIR}/output/${BUILD_TYPE}/bin)
 	endif()

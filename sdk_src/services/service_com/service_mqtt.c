@@ -39,7 +39,8 @@ static Service_Event_Struct_t sg_service_event_map[] = {
     {eSERVICE_RESOURCE, NULL, NULL},           {eSERVICE_FACE_AI, NULL, NULL},
     {eSERVICE_UNBIND_DEV, NULL, NULL},         {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL},
     {eSERVICE_GATEWAY_AUTOMATION, NULL, NULL}, {eSERVICE_KGMUSIC, NULL, NULL},
-    {eSERVICE_LOCATION, NULL, NULL},           {eSERVICE_SCENE_HANDLES, NULL, NULL},
+    {eSERVICE_LOCATION, NULL, NULL},           {eSERVICE_GATEWAY_SCENE, NULL, NULL},
+    {eSERVICE_GATEWAY_GROUP, NULL, NULL},
 };
 
 static char sg_service_pub_topic[MAX_SIZE_OF_CLOUD_TOPIC];
@@ -112,8 +113,12 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
     } else if (!strcmp(method, METHOD_GATEWAY_SCENE_HANDLES) || !strcmp(method, METHOD_GATEWAY_RUN_SCENE) ||
                !strcmp(method, METHOD_GATEWAY_RELOAD_SCENE_HANDLES_REPLY) ||
                !strcmp(method, METHOD_GATEWAY_RELOAD_SCENE_HANDLES) || !strcmp(method, METHOD_GATEWAY_DELETE_SCENE) ||
-               !strcmp(method, METHOD_GATEWAY_REPORT_INNER_SCENE_LIST_REPLY)) { 
-        return eSERVICE_SCENE_HANDLES;
+               !strcmp(method, METHOD_GATEWAY_REPORT_INNER_SCENE_LIST_REPLY)) {
+        return eSERVICE_GATEWAY_SCENE;
+    } else if (!strcmp(method, METHOD_GATEWAY_GROUP_DEVICES) || !strcmp(method, METHOD_GATEWAY_RELOAD_GROUP_DEVICES) ||
+               !strcmp(method, METHOD_GATEWAY_RELOAD_GROUP_DEVICES_REPLY) ||
+               !strcmp(method, METHOD_GATEWAY_DELETE_GROUP)) {
+        return eSERVICE_GATEWAY_GROUP;
     }
     Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));
     return eSERVICE_DEFAULT;
