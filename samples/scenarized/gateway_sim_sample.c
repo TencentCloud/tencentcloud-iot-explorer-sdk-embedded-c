@@ -437,7 +437,7 @@ static int _select_local(int max_fd, fd_set *rd_set, int gw_fd)
 // gateway scene
 // --------------------------------------------------------------
 #ifdef GATEWAY_SCENE_ENABLED
-int _gateway_scene_handles_callback(char *scene_id, char *handles)
+static int _gateway_scene_handles_callback(char *scene_id, char *handles)
 {
     char file_name[128] = {0};
     // todo : save
@@ -453,7 +453,7 @@ int _gateway_scene_handles_callback(char *scene_id, char *handles)
     return QCLOUD_RET_SUCCESS;
 }
 
-int _gateway_run_scene_callback(char *scene_id)
+static int _gateway_run_scene_callback(char *scene_id)
 {
     Log_d("\r\n scene_id : %s \r\n\r\n", scene_id);
     char file_name[128] = {0};
@@ -474,7 +474,7 @@ int _gateway_run_scene_callback(char *scene_id)
     return QCLOUD_RET_SUCCESS;
 }
 
-int _gateway_delete_scene_callback(char *scene_id)
+static int _gateway_delete_scene_callback(char *scene_id)
 {
     char file_name[128] = {0};
     HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
@@ -482,7 +482,7 @@ int _gateway_delete_scene_callback(char *scene_id)
     return HAL_FileRemove(file_name);
 }
 
-int _gateway_reload_scene_reply_callback(int result_code, char *result_scene)
+static int _gateway_reload_scene_reply_callback(int result_code, char *result_scene)
 {
     Log_d("result code:%d|scene:%s", result_code, result_scene);
     // todo : maybe need retry reload_scene_handles
@@ -494,7 +494,7 @@ int _gateway_reload_scene_reply_callback(int result_code, char *result_scene)
 // gateway group
 // ---------------------------------------------------------------------
 #ifdef GATEWAY_GROUP_ENABLED
-int _gateway_group_devices_callback(char *group_id, char *devices_array)
+static int _gateway_group_devices_callback(char *group_id, char *devices_array)
 {
     char file_name[128] = {0};
     // todo : save
@@ -510,7 +510,7 @@ int _gateway_group_devices_callback(char *group_id, char *devices_array)
     return QCLOUD_RET_SUCCESS;
 }
 
-int _gateway_delete_group_callback(char *group_id)
+static int _gateway_delete_group_callback(char *group_id)
 {
     char file_name[128] = {0};
     HAL_Snprintf(file_name, 128, "./%s.json", group_id);
@@ -518,12 +518,22 @@ int _gateway_delete_group_callback(char *group_id)
     return HAL_FileRemove(file_name);
 }
 
-int _gateway_reload_group_devices_reply_callback(int result_code, char *result_group_devices)
+static int _gateway_reload_group_devices_reply_callback(int result_code, char *result_group_devices)
 {
     Log_d("code:%d|result group devices:%s", result_code, result_group_devices);
     // todo : maybe need reload again
     return QCLOUD_RET_SUCCESS;
 }
+
+static int _gateway_group_control_callback(char *group_id, char *control_data)
+{
+    Log_d("group id:%s|control data : %s", group_id, control_data);
+    // todo : 1. find devices group by group id
+    //        2. control devices by control_data
+
+    return 0;
+}
+
 #endif
 
 /*Gateway should enable multithread*/
@@ -585,6 +595,7 @@ int main(int argc, char **argv)
     group_cbs.gateway_delete_group_callback               = _gateway_delete_group_callback;
     group_cbs.gateway_reload_group_devices_reply_callback = _gateway_reload_group_devices_reply_callback;
     group_cbs.gateway_group_devices_callback              = _gateway_group_devices_callback;
+    group_cbs.gateway_group_control_callback              = _gateway_group_control_callback;
 
     rc = IOT_Gateway_Group_Init(client, &group_cbs);
     if (!rc) {

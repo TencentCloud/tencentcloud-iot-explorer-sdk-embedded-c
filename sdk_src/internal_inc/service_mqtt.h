@@ -49,7 +49,8 @@ extern "C" {
 #define METHOD_GATEWAY_RELOAD_GROUP_DEVICES_REPLY    "gateway_reload_group_devices_reply"
 #define METHOD_GATEWAY_DELETE_GROUP                  "gateway_delete_group"
 #define METHOD_GATEWAY_GROUP_DEVICES                 "gateway_group_devices"
-    
+#define METHOD_GATEWAY_GROUP_CONTROL                 "gateway_group_control"
+
 typedef enum {
     eSERVICE_RESOURCE           = 0,
     eSERVICE_FACE_AI            = 1,

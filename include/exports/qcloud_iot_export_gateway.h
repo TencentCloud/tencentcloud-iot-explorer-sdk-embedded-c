@@ -367,6 +367,7 @@ typedef struct {
     int (*gateway_group_devices_callback)(char *group_id, char *devices_array);
     int (*gateway_delete_group_callback)(char *group_id);
     int (*gateway_reload_group_devices_reply_callback)(int result_code, char *result_group_devices);
+    int (*gateway_group_control_callback)(char *group_id, char *control_data);
     void *mqtt_client;
 } GatewayGroupCallbacks;
 

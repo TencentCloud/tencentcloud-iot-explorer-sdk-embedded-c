@@ -117,7 +117,7 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
         return eSERVICE_GATEWAY_SCENE;
     } else if (!strcmp(method, METHOD_GATEWAY_GROUP_DEVICES) || !strcmp(method, METHOD_GATEWAY_RELOAD_GROUP_DEVICES) ||
                !strcmp(method, METHOD_GATEWAY_RELOAD_GROUP_DEVICES_REPLY) ||
-               !strcmp(method, METHOD_GATEWAY_DELETE_GROUP)) {
+               !strcmp(method, METHOD_GATEWAY_DELETE_GROUP) || !strcmp(method, METHOD_GATEWAY_GROUP_CONTROL)) {
         return eSERVICE_GATEWAY_GROUP;
     }
     Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));

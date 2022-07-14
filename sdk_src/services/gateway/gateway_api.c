@@ -996,6 +996,24 @@ static void _gateway_group_callback(void *user_data, const char *payload, unsign
         }
         HAL_Free(code_str);
         HAL_Free(group_devices);
+    } else if (!strncmp(method, METHOD_GATEWAY_GROUP_CONTROL, sizeof(METHOD_GATEWAY_GROUP_CONTROL) - 1)) {
+        char *group_id     = LITE_json_value_of("params.GroupId", (char *)payload);
+        char *client_token = LITE_json_value_of("clientToken", (char *)payload);
+        char *control_data = LITE_json_value_of("params.Data", (char *)payload);
+        int   code         = -1;
+        if (group_id && control_data) {
+            code = gateway_group_callbacks->gateway_group_control_callback(group_id, control_data);
+        }
+
+        char reply[512] = {0};
+        HAL_Snprintf(reply, 512,
+                     "{\"method\":\"gateway_group_control_reply\",\"clientToken\":\"%s\", \"groupId\":\"%s\", "
+                     "\"code\":%d, \"status\":\"%s\"}",
+                     client_token, group_id, code, code ? "error" : "success");
+        qcloud_service_mqtt_post_msg(gateway_group_callbacks->mqtt_client, reply, QOS0);
+        HAL_Free(group_id);
+        HAL_Free(control_data);
+        HAL_Free(client_token);
     } else {
         Log_w("unknow method : %s", method);
     }
