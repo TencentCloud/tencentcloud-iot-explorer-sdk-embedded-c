@@ -28,6 +28,10 @@ extern publish_token_info_t sg_publish_token_info;
 
 static int _app_reply_dev_info(comm_peer_t *peer, eWiFiConfigCmd cmd)
 {
+    if (!peer) {
+        return -1;
+    }
+
     int         ret;
     DeviceInfo  devinfo;
     cJSON_Hooks memoryHook;
@@ -261,6 +265,48 @@ static void _app_handle_broadcast_local_ipv4(int socket_id)
     }
 }
 
+static int _parse_json_token(const char *json, comm_peer_t *peer)
+{
+    int    ret;
+    cJSON *root       = cJSON_Parse(json);
+    cJSON *ssid_json  = cJSON_GetObjectItem(root, "ssid");
+    cJSON *psw_json   = cJSON_GetObjectItem(root, "password");
+    cJSON *token_json = cJSON_GetObjectItem(root, "token");
+
+    if (ssid_json && psw_json && token_json) {
+        // parse token and connect to ap
+        sg_publish_token_info.pairTime.getSSID = HAL_GetTimeMs();
+        qiot_device_bind_set_token(token_json->valuestring);
+        _app_reply_dev_info(peer, CMD_DEVICE_REPLY);
+        // sleep a while before changing to STA mode
+        HAL_SleepMs(3000);
+        Log_i("STA to connect SSID:%s PASSWORD:%s", ssid_json->valuestring, psw_json->valuestring);
+        PUSH_LOG("SSID:%s|PSW:%s|TOKEN:%s", ssid_json->valuestring, psw_json->valuestring, token_json->valuestring);
+        ret = HAL_Wifi_StaConnect(ssid_json->valuestring, psw_json->valuestring, 0);
+        if (ret) {
+            Log_e("wifi_sta_connect failed: %d", ret);
+            PUSH_LOG("wifi_sta_connect failed: %d", ret);
+            app_send_error_log(peer, CUR_ERR, ERR_WIFI_AP_STA, ret);
+            cJSON_Delete(root);
+#if WIFI_PROV_SOFT_AP_ENABLE
+            set_soft_ap_config_result(WIFI_CONFIG_FAIL);
+#endif
+            return -1;
+        } else {
+            Log_d("wifi_sta_connect success");
+#if WIFI_PROV_SOFT_AP_ENABLE
+            set_soft_ap_config_result(WIFI_CONFIG_SUCCESS);
+#endif
+        }
+        cJSON_Delete(root);
+
+        /* return 1 as device alreay switch to STA mode and unable to recv cmd anymore
+         * 1: Everything OK and we've finished the job */
+        return 1;
+    }
+    return -1;
+}
+
 static int _app_handle_recv_data(comm_peer_t *peer, char *pdata, int len)
 {
     int    ret  = 0;
@@ -319,47 +365,7 @@ static int _app_handle_recv_data(comm_peer_t *peer, char *pdata, int len)
 
             /* SSID/PW/TOKEN for softAP */
         case CMD_SSID_PW_TOKEN: {
-            cJSON *ssid_json  = cJSON_GetObjectItem(root, "ssid");
-            cJSON *psw_json   = cJSON_GetObjectItem(root, "password");
-            cJSON *token_json = cJSON_GetObjectItem(root, "token");
-
-            if (ssid_json && psw_json && token_json) {
-                // parse token and connect to ap
-                sg_publish_token_info.pairTime.getSSID = HAL_GetTimeMs();
-                qiot_device_bind_set_token(token_json->valuestring);
-                _app_reply_dev_info(peer, CMD_DEVICE_REPLY);
-                // sleep a while before changing to STA mode
-                HAL_SleepMs(3000);
-                Log_i("STA to connect SSID:%s PASSWORD:%s", ssid_json->valuestring, psw_json->valuestring);
-                PUSH_LOG("SSID:%s|PSW:%s|TOKEN:%s", ssid_json->valuestring, psw_json->valuestring,
-                         token_json->valuestring);
-                ret = HAL_Wifi_StaConnect(ssid_json->valuestring, psw_json->valuestring, 0);
-                if (ret) {
-                    Log_e("wifi_sta_connect failed: %d", ret);
-                    PUSH_LOG("wifi_sta_connect failed: %d", ret);
-                    app_send_error_log(peer, CUR_ERR, ERR_WIFI_AP_STA, ret);
-                    cJSON_Delete(root);
-#if WIFI_PROV_SOFT_AP_ENABLE
-                    set_soft_ap_config_result(WIFI_CONFIG_FAIL);
-#endif
-                    return -1;
-                } else {
-                    Log_d("wifi_sta_connect success");
-#if WIFI_PROV_SOFT_AP_ENABLE
-                    set_soft_ap_config_result(WIFI_CONFIG_SUCCESS);
-#endif
-                }
-                cJSON_Delete(root);
-
-                /* return 1 as device alreay switch to STA mode and unable to recv cmd anymore
-                 * 1: Everything OK and we've finished the job */
-                return 1;
-            } else {
-                cJSON_Delete(root);
-                Log_e("invlaid ssid/password/token!");
-                app_send_error_log(peer, CUR_ERR, ERR_APP_CMD, ERR_APP_CMD_AP_INFO);
-                return -1;
-            }
+            return _parse_json_token(pdata, peer);
         } break;
 
         case CMD_LOG_QUERY:
@@ -489,4 +495,9 @@ int qiot_comm_service_start(void)
 void qiot_comm_service_stop(void)
 {
     sg_comm_task_run = false;
+}
+
+int qiot_comm_parse_json_token(const char *json)
+{
+    return _parse_json_token(json, NULL);
 }

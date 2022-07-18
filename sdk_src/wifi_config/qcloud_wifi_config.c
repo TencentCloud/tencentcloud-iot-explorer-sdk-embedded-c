@@ -33,15 +33,23 @@ typedef struct {
     int (*config_stop)(void);
 } WiFiConfigMethod;
 
+static int _qr_code_config_start(void *json, WifiConfigEventCallBack callback)
+{
+    int rc = qiot_comm_parse_json_token((const char *)json);
+    callback(rc == 1 ? RESULT_WIFI_CONFIG_SUCCESS : RESULT_WIFI_CONFIG_FAILED, NULL);
+    return !(rc == 1);
+}
+
 static WiFiConfigMethod sg_wifi_config_methods[] = {
-    {HAL_SoftApProvision_Start, HAL_SoftApProvision_Stop},  // WIFI_CONFIG_TYPE_SOFT_AP
-    {HAL_SmartConfig_Start, HAL_SmartConfig_Stop},          // WIFI_CONFIG_TYPE_SMART_CONFIG
-    {HAL_AirkissConfig_Start, HAL_AirkissConfig_Stop},      // WIFI_CONFIG_TYPE_AIRKISS
-    {HAL_SimpleConfig_Start, HAL_SimpleConfig_Stop},        // WIFI_CONFIG_TYPE_SIMPLE_CONFIG
-    {HAL_BTComboConfig_Start, HAL_BTComboConfig_Stop}       // WIFI_CONFIG_TYPE_BTCombo_CONFIG
+    [WIFI_CONFIG_TYPE_SOFT_AP]       = {HAL_SoftApProvision_Start, HAL_SoftApProvision_Stop},
+    [WIFI_CONFIG_TYPE_SMART_CONFIG]  = {HAL_SmartConfig_Start, HAL_SmartConfig_Stop},
+    [WIFI_CONFIG_TYPE_AIRKISS]       = {HAL_AirkissConfig_Start, HAL_AirkissConfig_Stop},
+    [WIFI_CONFIG_TYPE_SIMPLE_CONFIG] = {HAL_SimpleConfig_Start, HAL_SimpleConfig_Stop},
+    [WIFI_CONFIG_TYPE_BT_COMBO]      = {HAL_BTComboConfig_Start, HAL_BTComboConfig_Stop},
+    [WIFI_CONFIG_TYPE_QR_CODE]       = {_qr_code_config_start, NULL},
 };
 
-static WiFiConfigMethod *       sg_wifi_config_method_now = NULL;
+static WiFiConfigMethod        *sg_wifi_config_method_now = NULL;
 static WifiConfigResultCallBack sg_wifi_config_result_cb  = NULL;
 
 static void _qiot_wifi_config_event_cb(eWiFiConfigEvent event, void *usr_data)
@@ -85,7 +93,7 @@ static void _qiot_wifi_config_event_cb(eWiFiConfigEvent event, void *usr_data)
  */
 int qiot_wifi_config_start(eWiFiConfigType type, void *params, WifiConfigResultCallBack result_cb)
 {
-    if (type < WIFI_CONFIG_TYPE_SOFT_AP || type > WIFI_CONFIG_TYPE_BT_COMBO) {
+    if (type < WIFI_CONFIG_TYPE_SOFT_AP || type > WIFI_CONFIG_TYPE_QR_CODE) {
         Log_e("Unknown wifi config type!");
         return ERR_UNKNOWN_WIFI_CONFIG_TYPE;
     } else {
@@ -104,6 +112,9 @@ int qiot_wifi_config_start(eWiFiConfigType type, void *params, WifiConfigResultC
                 break;
             case WIFI_CONFIG_TYPE_BT_COMBO:
                 strncpy(sg_publish_token_info.pairTime.type, "BTCombo", MAX_TYPE_LENGTH);
+                break;
+            case WIFI_CONFIG_TYPE_QR_CODE:
+                strncpy(sg_publish_token_info.pairTime.type, "QrCode", MAX_TYPE_LENGTH);
                 break;
             default:
                 strncpy(sg_publish_token_info.pairTime.type, "Unknow", MAX_TYPE_LENGTH);
@@ -136,7 +147,7 @@ int qiot_wifi_config_start(eWiFiConfigType type, void *params, WifiConfigResultC
         return ERR_WIFI_CONFIG_START_FAILED;
     }
 
-#if !WIFI_PROV_BT_COMBO_CONFIG_ENABLE
+#if !WIFI_PROV_BT_COMBO_CONFIG_ENABLE && !WIFI_PROV_QR_CODE_CONFIG_ENABLE
     if (qiot_comm_service_start()) {
         sg_wifi_config_method_now->config_stop();
         sg_wifi_config_method_now = NULL;

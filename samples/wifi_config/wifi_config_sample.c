@@ -34,7 +34,7 @@
 #include "qcloud_wifi_config_internal.h"
 
 #if !(WIFI_PROV_SOFT_AP_ENABLE || WIFI_PROV_SMART_CONFIG_ENABLE || WIFI_PROV_AIRKISS_CONFIG_ENABLE || \
-      WIFI_PROV_SIMPLE_CONFIG_ENABLE || WIFI_PROV_BT_COMBO_CONFIG_ENABLE)
+      WIFI_PROV_SIMPLE_CONFIG_ENABLE || WIFI_PROV_BT_COMBO_CONFIG_ENABLE || WIFI_PROV_QR_CODE_CONFIG_ENABLE)
 
 #error "Please choose one set to 1 of them in qcloud_wifi_config.h"
 #endif
@@ -481,8 +481,8 @@ static bool qcloud_wifi_config_proc()
     int   rc;
     Timer timer;
 #if WIFI_PROV_SOFT_AP_ENABLE
-    WiFiConfigParams apConf    = {"qcloud-softap", "12345678", 6};
-    rc                         = qiot_wifi_config_start(WIFI_CONFIG_TYPE_SOFT_AP, &apConf, _wifi_config_result_cb);
+    WiFiConfigParams apConf = {"qcloud-softap", "12345678", 6};
+    rc                      = qiot_wifi_config_start(WIFI_CONFIG_TYPE_SOFT_AP, &apConf, _wifi_config_result_cb);
     countdown(&timer, 500);
     while ((rc == QCLOUD_RET_SUCCESS) && (false == wifi_config_result_success) && !expired(&timer)) {
         Log_d("wait wifi config result...");
@@ -545,6 +545,21 @@ static bool qcloud_wifi_config_proc()
         return true;
     }
 #endif  // WIFI_PROV_BT_COMBO_CONFIG_ENABLE
+
+#if WIFI_PROV_QR_CODE_CONFIG_ENABLE
+    rc = qiot_wifi_config_start(WIFI_CONFIG_TYPE_QR_CODE,
+                                "{\"SSID\":\"your_ssid\",\"password\":\"your_password\",\"token\":\"your_token\"}",
+                                _wifi_config_result_cb);
+    countdown(&timer, 500);
+    while ((rc == QCLOUD_RET_SUCCESS) && (false == wifi_config_result_success) && !expired(&timer)) {
+        Log_d("wait wifi config result...");
+        HAL_SleepMs(1000);
+    }
+    qiot_wifi_config_stop();
+    if (true == wifi_config_result_success) {
+        return true;
+    }
+#endif  // WIFI_PROV_QR_CODE_CONFIG_ENABLE
     return false;
 }
 
