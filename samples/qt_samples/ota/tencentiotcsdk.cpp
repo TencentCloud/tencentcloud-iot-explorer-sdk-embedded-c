@@ -1,4 +1,4 @@
-#include "tencentiotcsdk.h"
+﻿#include "tencentiotcsdk.h"
 
 static DeviceInfo sg_devInfo;
 
@@ -350,9 +350,7 @@ begin_of_ota:
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_FILE_SIZE, &ota_ctx->fw_file_size, 4);
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_VERSION, ota_ctx->remote_version, FW_VERSION_MAX_LEN);
             HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.bin", ota_ctx->remote_version);
-            ota_ctx->fw_file_path[strlen(ota_ctx->remote_version) + 1] = '\0';
             HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", ota_ctx->remote_version);
-            ota_ctx->fw_info_file_path[strlen(ota_ctx->remote_version) + 1] = '\0';
             /* check if pre-downloading finished or not */
             /* if local FW downloaded size (ota_ctx->downloaded_size) is not zero, it
              * will do resuming download */
