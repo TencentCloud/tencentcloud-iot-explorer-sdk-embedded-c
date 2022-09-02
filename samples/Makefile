@@ -96,7 +96,8 @@ data_template_sample:
 	
 	$(TOP_Q) \
 	mv $@ $(FINAL_DIR)/bin && \
-	mv light_$@ $(FINAL_DIR)/bin 
+	mv light_$@ $(FINAL_DIR)/bin && \
+	mv dyn_parse_$@ $(FINAL_DIR)/bin 
 endif
 
 ifneq (,$(filter -DMQTT_COMM_ENABLED,$(CFLAGS)))
