@@ -90,6 +90,9 @@ data_template_sample:
 	
 	$(TOP_Q) \
 	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/scenarized/light_$@.c $(LDFLAGS) -o light_$@
+
+	$(TOP_Q) \
+	$(PLATFORM_CC) $(CFLAGS) $(SAMPLE_DIR)/scenarized/dyn_parse_$@.c $(LDFLAGS) -o dyn_parse_$@
 	
 	$(TOP_Q) \
 	mv $@ $(FINAL_DIR)/bin && \

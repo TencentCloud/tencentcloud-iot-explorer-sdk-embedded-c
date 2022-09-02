@@ -42,6 +42,10 @@ target_link_libraries(data_template_sample 	 	 ${lib})
 file(GLOB src_light_data_template_sample	${PROJECT_SOURCE_DIR}/samples/scenarized/light_data_template_sample.c)
 add_executable(light_data_template_sample 	${src_light_data_template_sample})
 target_link_libraries(light_data_template_sample ${lib})
+
+file(GLOB src_dyn_parse_data_template_sample 			${PROJECT_SOURCE_DIR}/samples/scenarized/dyn_parse_data_template_sample.c)
+add_executable(dyn_parse_data_template_sample 		        ${src_dyn_parse_data_template_sample})
+target_link_libraries(dyn_parse_data_template_sample 	 	${lib})
 	
 # MQTT
 file(GLOB src_mqtt_sample 					${PROJECT_SOURCE_DIR}/samples/mqtt/mqtt_sample.c)
