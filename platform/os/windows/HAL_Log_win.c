@@ -32,7 +32,7 @@
 
 size_t HAL_Log_Save(const char *log, size_t wLen)
 {
-    FILE * fp;
+    FILE  *fp;
     size_t len;
 
     if ((fp = fopen(LOG_SAVE_FILE_PATH, "a+")) == NULL) {
@@ -50,10 +50,10 @@ size_t HAL_Log_Save(const char *log, size_t wLen)
 
 size_t HAL_Log_Read(char *buff, size_t rLen)
 {
-    FILE * fp;
+    FILE  *fp;
     size_t len;
 
-    if ((fp = fopen(LOG_SAVE_FILE_PATH, "r")) == NULL) {
+    if ((fp = fopen(LOG_SAVE_FILE_PATH, "rb")) == NULL) {
         Log_e("fail to open file %s", LOG_SAVE_FILE_PATH);
         return 0;
     }

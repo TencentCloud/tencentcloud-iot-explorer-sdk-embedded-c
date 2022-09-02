@@ -24,7 +24,7 @@ extern eWifiConfigState sg_wifiConfigState;
 
 static int sg_bind_reply_code = -1;
 
-publish_token_info_t sg_publish_token_info;
+publish_token_info_t g_publish_token_info;
 
 typedef struct {
     bool sub_ready;
@@ -35,7 +35,7 @@ typedef struct {
 
 static void _mqtt_event_handler(void *pclient, void *handle_context, MQTTEventMsg *msg)
 {
-    MQTTMessage *    mqtt_messge = (MQTTMessage *)msg->msg;
+    MQTTMessage     *mqtt_messge = (MQTTMessage *)msg->msg;
     uintptr_t        packet_id   = (uintptr_t)msg->msg;
     TokenHandleData *app_data    = (TokenHandleData *)handle_context;
 
@@ -104,7 +104,7 @@ static void _on_message_callback(void *pClient, MQTTMessage *message, void *user
     Log_i("recv msg topic: %s", message->ptopic);
 
     uint32_t msg_topic_len = message->payload_len + 4;
-    char *   buf           = (char *)HAL_Malloc(msg_topic_len);
+    char    *buf           = (char *)HAL_Malloc(msg_topic_len);
     if (buf == NULL) {
         Log_e("malloc %u bytes failed", msg_topic_len);
         return;
@@ -225,19 +225,19 @@ static int _send_token_wait_reply(void *client, DeviceInfo *dev_info, TokenHandl
     int wait_cnt = 20;
 
     // for smartconfig, we need to wait for the token data from app
-    while (!sg_publish_token_info.token_received && (wait_cnt-- > 0)) {
+    while (!g_publish_token_info.token_received && (wait_cnt-- > 0)) {
         IOT_MQTT_Yield(client, 1000);
         Log_i("wait for token data...");
     }
 
-    if (!sg_publish_token_info.token_received) {
+    if (!g_publish_token_info.token_received) {
         Log_e("Wait for token data timeout");
         return QCLOUD_ERR_INVAL;
     }
 
     wait_cnt = 3;
 publish_token:
-    ret = _publish_token_msg(client, dev_info, &sg_publish_token_info);
+    ret = _publish_token_msg(client, dev_info, &g_publish_token_info);
     if (ret < 0 && (wait_cnt-- > 0)) {
         Log_e("Client publish token failed: %d", ret);
         if (IOT_MQTT_IsConnected(client)) {
@@ -375,9 +375,9 @@ static int _mqtt_send_token(void)
     sg_bind_reply_code = app_data.reply_code;
 
     // mqtt connection
-    sg_wifiConfigState                       = WIFI_CONFIG_STATE_CONNECT_MQTT;
-    sg_publish_token_info.pairTime.mqttStart = HAL_GetTimeMs();
-    void *client                             = _setup_mqtt_connect(&dev_info, &app_data);
+    sg_wifiConfigState                      = WIFI_CONFIG_STATE_CONNECT_MQTT;
+    g_publish_token_info.pairTime.mqttStart = HAL_GetTimeMs();
+    void *client                            = _setup_mqtt_connect(&dev_info, &app_data);
     if (client == NULL) {
         ret = IOT_MQTT_GetErrCode();
         Log_e("Cloud Device Construct Failed: %d", ret);
@@ -385,7 +385,7 @@ static int _mqtt_send_token(void)
         push_error_log(ERR_MQTT_CONNECT, ret);
         return ret;
     }
-    sg_publish_token_info.pairTime.mqttConnected = HAL_GetTimeMs();
+    g_publish_token_info.pairTime.mqttConnected = HAL_GetTimeMs();
     // subscribe token reply topic
     ret = _subscribe_topic_wait_result(client, &dev_info, &app_data);
     if (ret < 0) {
@@ -432,9 +432,9 @@ int qiot_device_bind(void)
 
 void qiot_device_bind_set_token(const char *token)
 {
-    sg_publish_token_info.token_received    = true;
-    sg_publish_token_info.pairTime.getToken = HAL_GetTimeMs();
-    strncpy(sg_publish_token_info.token_str, token, MAX_TOKEN_LENGTH);
+    g_publish_token_info.token_received    = true;
+    g_publish_token_info.pairTime.getToken = HAL_GetTimeMs();
+    strncpy(g_publish_token_info.token_str, token, MAX_TOKEN_LENGTH);
 }
 
 bool qiot_device_bind_get_cloud_reply_code(int *bind_reply_code)

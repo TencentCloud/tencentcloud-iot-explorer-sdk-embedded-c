@@ -433,12 +433,115 @@ static int _select_local(int max_fd, fd_set *rd_set, int gw_fd)
     return select(max_fd + 1, rd_set, NULL, NULL, &tv);
 }
 
+// --------------------------------------------------------------
+// gateway scene
+// --------------------------------------------------------------
+#ifdef GATEWAY_SCENE_ENABLED
+static int _gateway_scene_handles_callback(char *scene_id, char *handles)
+{
+    char file_name[128] = {0};
+    // todo : save
+    HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
+    void *fp = HAL_FileOpen(file_name, "wb+");
+    if (!fp) {
+        Log_e("open file(%s) error. ", file_name);
+        return QCLOUD_ERR_FAILURE;
+    }
+    HAL_FileWrite(handles, strlen(handles), 1, fp);
+    HAL_FileFlush(fp);
+    HAL_FileClose(fp);
+    return QCLOUD_RET_SUCCESS;
+}
+
+static int _gateway_run_scene_callback(char *scene_id)
+{
+    Log_d("\r\n scene_id : %s \r\n\r\n", scene_id);
+    char file_name[128] = {0};
+    HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
+    void *fp = HAL_FileOpen(file_name, "r");
+    if (!fp) {
+        Log_e("scene_id(%s) not exist", scene_id);
+        return -1;
+    }
+    char handles[512] = {0};
+    memset(handles, 0, sizeof(handles));
+    HAL_FileSeek(fp, 0, SEEK_SET);
+    HAL_FileRead(handles, 1, sizeof(handles), fp);
+    HAL_FileClose(fp);
+    Log_d("handles : %s\r\n", handles);
+    // todo : subdev control
+    // if ActionType = 5 need read gateway group file by GroupId
+    return QCLOUD_RET_SUCCESS;
+}
+
+static int _gateway_delete_scene_callback(char *scene_id)
+{
+    char file_name[128] = {0};
+    HAL_Snprintf(file_name, 128, "./%s.json", scene_id);
+    Log_w("delete scene :%s", file_name);
+    return HAL_FileRemove(file_name);
+}
+
+static int _gateway_reload_scene_reply_callback(int result_code, char *result_scene)
+{
+    Log_d("result code:%d|scene:%s", result_code, result_scene);
+    // todo : maybe need retry reload_scene_handles
+    return 0;
+}
+#endif
+
+// -------------------------------------------------------------------
+// gateway group
+// ---------------------------------------------------------------------
+#ifdef GATEWAY_GROUP_ENABLED
+static int _gateway_group_devices_callback(char *group_id, char *devices_array)
+{
+    char file_name[128] = {0};
+    // todo : save
+    HAL_Snprintf(file_name, 128, "./%s.json", group_id);
+    void *fp = HAL_FileOpen(file_name, "wb+");
+    if (!fp) {
+        Log_e("open file(%s) error. ", file_name);
+        return QCLOUD_ERR_FAILURE;
+    }
+    HAL_FileWrite(devices_array, strlen(devices_array), 1, fp);
+    HAL_FileFlush(fp);
+    HAL_FileClose(fp);
+    return QCLOUD_RET_SUCCESS;
+}
+
+static int _gateway_delete_group_callback(char *group_id)
+{
+    char file_name[128] = {0};
+    HAL_Snprintf(file_name, 128, "./%s.json", group_id);
+    Log_w("delete group :%s", file_name);
+    return HAL_FileRemove(file_name);
+}
+
+static int _gateway_reload_group_devices_reply_callback(int result_code, char *result_group_devices)
+{
+    Log_d("code:%d|result group devices:%s", result_code, result_group_devices);
+    // todo : maybe need reload again
+    return QCLOUD_RET_SUCCESS;
+}
+
+static int _gateway_group_control_callback(char *group_id, char *control_data)
+{
+    Log_d("group id:%s|control data : %s", group_id, control_data);
+    // todo : 1. find devices group by group id
+    //        2. control devices by control_data
+
+    return 0;
+}
+
+#endif
+
 /*Gateway should enable multithread*/
 int main(int argc, char **argv)
 {
     int                rc = QCLOUD_ERR_FAILURE;
     int                i;
-    void *             client = NULL;
+    void              *client = NULL;
     GatewayDeviceInfo *gw     = &sg_GWdevInfo;
     GatewayParam       param  = DEFAULT_GATEWAY_PARAMS;
 
@@ -462,6 +565,44 @@ int main(int argc, char **argv)
         Log_e("client constructed failed.");
         return QCLOUD_ERR_FAILURE;
     }
+
+#ifdef GATEWAY_SCENE_ENABLED
+    GatewaySceneCallbacks scene_cbs;
+    scene_cbs.gateway_scene_handles_callback      = _gateway_scene_handles_callback;
+    scene_cbs.gateway_reload_scene_reply_callback = _gateway_reload_scene_reply_callback;
+    scene_cbs.gateway_run_scene_callback          = _gateway_run_scene_callback;
+    scene_cbs.gateway_delete_scene_callback       = _gateway_delete_scene_callback;
+    rc                                            = IOT_Gateway_Scene_Init(client, &scene_cbs);
+    if (!rc) {
+        IOT_Gateway_Reload_Scene(client);
+    }
+
+    char                  inner_report_buf[4096];
+    GatewaySceneInnerList scene_inner_list[MAX_LENGTH_INNER_SCENE_LIST];
+    for (int i = 0; i < MAX_LENGTH_INNER_SCENE_LIST; i++) {
+        HAL_Snprintf(scene_inner_list[i].innerSceneId, MAX_LENGTH_INNER_SCENE_ID, "inner_scene_id_%d", i);
+        HAL_Snprintf(scene_inner_list[i].innerSceneName, MAX_LENGTH_INNER_SCENE_NAME, "inner_scene_name_%d", i);
+    }
+    rc = IOT_Gateway_Scene_Report_Inner_List_Sync(client, inner_report_buf, sizeof(inner_report_buf), scene_inner_list,
+                                                  MAX_LENGTH_INNER_SCENE_LIST, 10000);
+
+    Log_d("report inner list rc:%d.", rc);
+
+#endif
+
+#ifdef GATEWAY_GROUP_ENABLED
+    GatewayGroupCallbacks group_cbs;
+    group_cbs.gateway_delete_group_callback               = _gateway_delete_group_callback;
+    group_cbs.gateway_reload_group_devices_reply_callback = _gateway_reload_group_devices_reply_callback;
+    group_cbs.gateway_group_devices_callback              = _gateway_group_devices_callback;
+    group_cbs.gateway_group_control_callback              = _gateway_group_control_callback;
+
+    rc = IOT_Gateway_Group_Init(client, &group_cbs);
+    if (!rc) {
+        IOT_Gateway_Reload_Group_Devices(client);
+    }
+#endif
+
     param.product_id  = gw->gw_info.product_id;
     param.device_name = gw->gw_info.device_name;
 

@@ -58,7 +58,7 @@ typedef void (*GatewayEventHandleFun)(void *client, void *context, void *msg);
 /* The structure of gateway init param */
 typedef struct {
     MQTTInitParams        init_param;    /* MQTT params */
-    void *                event_context; /* the user context */
+    void                 *event_context; /* the user context */
     GatewayEventHandleFun event_handler; /* event handler for gateway user*/
 } GatewayInitParam;
 
@@ -299,6 +299,94 @@ int IOT_Gateway_Subdev_GetBindList(void *client, GatewayParam *param, SubdevBind
  * @return QCLOUD_RET_SUCCESS for success, or err code for failure
  */
 void IOT_Gateway_Subdev_DestoryBindList(SubdevBindList *subdev_bindlist);
+
+typedef struct {
+    int (*gateway_scene_handles_callback)(char *scene_id, char *handles);
+    int (*gateway_run_scene_callback)(char *scene_id);
+    int (*gateway_delete_scene_callback)(char *scene_id);
+    int (*gateway_reload_scene_reply_callback)(int result_code, char *result_scene);
+    void *mqtt_client;
+} GatewaySceneCallbacks;
+
+/**
+ * @brief gateway scene init
+ *
+ * @param client Gateway client
+ * @param cbs  gateway scene callbacks
+ * @return int
+ */
+int IOT_Gateway_Scene_Init(void *client, GatewaySceneCallbacks *cbs);
+
+/**
+ * @brief sync gateway scene from cloud
+ *
+ * @param client Gateway client
+ * @return int
+ */
+int IOT_Gateway_Reload_Scene(void *client);
+
+#define MAX_LENGTH_INNER_SCENE_ID   (64)
+#define MAX_LENGTH_INNER_SCENE_NAME (64)
+#define MAX_LENGTH_INNER_SCENE_LIST (20)
+
+typedef struct {
+    char innerSceneId[MAX_LENGTH_INNER_SCENE_ID];
+    char innerSceneName[MAX_LENGTH_INNER_SCENE_NAME];
+} GatewaySceneInnerList;
+
+/**
+ * @brief report local scene list
+ *
+ * @param client gateway client
+ * @param report_buf used store json
+ * @param report_len json buffer length
+ * @param list need report list
+ * @param list_count list port
+ * @return int >= 0 for success
+ */
+int IOT_Gateway_Scene_Report_Inner_List(void *client, char *report_buf, int report_len, GatewaySceneInnerList *list,
+                                        int list_count);
+/**
+ * @brief report local scene list
+ *
+ * @param client gateway client
+ * @param report_buf used store json
+ * @param report_len json buffer length
+ * @param list need report list
+ * @param list_count list port
+ * @param timeout_ms wait timeout
+ * @return int = 0 for success
+ */
+int IOT_Gateway_Scene_Report_Inner_List_Sync(void *client, char *report_buf, int report_len,
+                                             GatewaySceneInnerList *list, int list_count, int timeout_ms);
+
+// ---------------------------------------------------------------
+// gateway group
+// ---------------------------------------------------------------
+typedef struct {
+    int (*gateway_group_devices_callback)(char *group_id, char *devices_array);
+    int (*gateway_delete_group_callback)(char *group_id);
+    int (*gateway_reload_group_devices_reply_callback)(int result_code, char *result_group_devices);
+    int (*gateway_group_control_callback)(char *group_id, char *control_data);
+    void *mqtt_client;
+} GatewayGroupCallbacks;
+
+/**
+ * @brief gateway group init
+ *
+ * @param client Gateway client
+ * @param cbs  gateway group callbacks
+ * @return int
+ */
+int IOT_Gateway_Group_Init(void *client, GatewayGroupCallbacks *cbs);
+
+/**
+ * @brief sync gateway group devices from cloud
+ *
+ * @param client Gateway client
+ * @return int
+ */
+int IOT_Gateway_Reload_Group_Devices(void *client);
 
 #ifdef __cplusplus
 }

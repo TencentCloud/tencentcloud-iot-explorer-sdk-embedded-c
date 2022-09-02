@@ -24,7 +24,7 @@
 static bool sg_comm_task_run = false;
 
 eWifiConfigState            sg_wifiConfigState = WIFI_CONFIG_STATE_CONNECT_AP;
-extern publish_token_info_t sg_publish_token_info;
+extern publish_token_info_t g_publish_token_info;
 
 static int _app_reply_dev_info(comm_peer_t *peer, eWiFiConfigCmd cmd)
 {
@@ -325,7 +325,7 @@ static int _app_handle_recv_data(comm_peer_t *peer, char *pdata, int len)
 
             if (ssid_json && psw_json && token_json) {
                 // parse token and connect to ap
-                sg_publish_token_info.pairTime.getSSID = HAL_GetTimeMs();
+                g_publish_token_info.pairTime.getSSID = HAL_GetTimeMs();
                 qiot_device_bind_set_token(token_json->valuestring);
                 _app_reply_dev_info(peer, CMD_DEVICE_REPLY);
                 // sleep a while before changing to STA mode
@@ -402,7 +402,7 @@ static void _qiot_comm_service_task(void *pvParameters)
     }
 
     Log_i("UDP server socket listening...");
-    sg_publish_token_info.pairTime.start = HAL_GetTimeMs();
+    g_publish_token_info.pairTime.start = HAL_GetTimeMs();
     while (sg_comm_task_run && --server_count) {
         ret =
             HAL_UDP_ReadTimeoutPeerInfo(server_socket, (unsigned char *)rx_buffer, sizeof(rx_buffer) - 1,
