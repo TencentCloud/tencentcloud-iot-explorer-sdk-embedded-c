@@ -20,13 +20,15 @@ extern "C" {
 #endif
 
 #define WIFI_ERR_LOG_POST 1
-#define WIFI_LOG_UPLOAD   1
+#define WIFI_LOG_UPLOAD   0
 
-#define WIFI_PROV_SOFT_AP_ENABLE         1  ///< wifi provisioning method: device AP, need Wechat Applets
-#define WIFI_PROV_SMART_CONFIG_ENABLE    1  ///< wifi provisioning method: smart config, need Wechat Applets
-#define WIFI_PROV_AIRKISS_CONFIG_ENABLE  1  ///< wifi provisioning method: airkiss, need Wechat Applets
-#define WIFI_PROV_SIMPLE_CONFIG_ENABLE   1  ///< wifi provisioning method: simple config, need Wechat Applets
-#define WIFI_PROV_BT_COMBO_CONFIG_ENABLE 1  ///< wifi provisioning method: bt combo config, need Wechat Applets
+#define WIFI_PROV_SOFT_AP_ENABLE         0  ///< wifi provisioning method: device AP, need Wechat Applets
+#define WIFI_PROV_SMART_CONFIG_ENABLE    0  ///< wifi provisioning method: smart config, need Wechat Applets
+#define WIFI_PROV_AIRKISS_CONFIG_ENABLE  0  ///< wifi provisioning method: airkiss, need Wechat Applets
+#define WIFI_PROV_SIMPLE_CONFIG_ENABLE   0  ///< wifi provisioning method: simple config, need Wechat Applets
+#define WIFI_PROV_BT_COMBO_CONFIG_ENABLE 0  ///< wifi provisioning method: bt combo config, need Wechat Applets
+#define WIFI_PROV_QR_CODE_CONFIG_ENABLE \
+    1  ///< wifi provisioning method: qr code, {"SSID":"x","password":"x","token":"x"}
 
 #define MAX_SSID_LEN 32  // max ssid len
 #define MAX_PSK_LEN  65  // max psk len
@@ -37,6 +39,7 @@ typedef enum {
     WIFI_CONFIG_TYPE_AIRKISS       = 2, /* Airkiss */
     WIFI_CONFIG_TYPE_SIMPLE_CONFIG = 3, /* Simple config  */
     WIFI_CONFIG_TYPE_BT_COMBO      = 4, /* BT Combo config */
+    WIFI_CONFIG_TYPE_QR_CODE       = 5, /* QR Code config */
 } eWiFiConfigType;
 
 typedef enum {

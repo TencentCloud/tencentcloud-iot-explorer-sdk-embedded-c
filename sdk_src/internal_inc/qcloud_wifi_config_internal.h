@@ -138,6 +138,7 @@ typedef struct {
 
 int  qiot_comm_service_start(void);
 void qiot_comm_service_stop(void);
+int  qiot_comm_parse_json_token(const char *json);
 
 int qiot_device_bind(void);
 
