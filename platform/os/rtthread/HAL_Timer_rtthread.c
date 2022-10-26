@@ -30,17 +30,17 @@ extern "C" {
 
 static char now_time_str[20] = {0};
 
-uint32_t HAL_GetTimeMs(void)
+uint64_t HAL_GetTimeMs(void)
 {
 #if (RT_TICK_PER_SECOND == 1000)
     /* #define RT_TICK_PER_SECOND 1000 */
-    return (unsigned long)rt_tick_get();
+    return (uint64_t)rt_tick_get();
 #else
-    unsigned long tick = 0;
+    uint64_t tick = 0;
 
     tick = rt_tick_get();
     tick = tick * 1000;
-    return (unsigned long)((tick + RT_TICK_PER_SECOND - 1) / RT_TICK_PER_SECOND);
+    return (uint64_t)((tick + RT_TICK_PER_SECOND - 1) / RT_TICK_PER_SECOND);
 #endif
 }
 
@@ -63,7 +63,7 @@ char *HAL_Timer_current(void)
 
 bool HAL_Timer_expired(Timer *timer)
 {
-    uint32_t now_ts;
+    uint64_t now_ts;
 
     now_ts = HAL_GetTimeMs();
 

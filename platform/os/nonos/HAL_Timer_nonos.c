@@ -33,7 +33,7 @@ extern "C" {
 
 static char now_time_str[20] = {0};
 
-uint32_t HAL_GetTimeMs(void)
+uint64_t HAL_GetTimeMs(void)
 {
     return HAL_GetTick();
 }
@@ -59,7 +59,7 @@ char *HAL_Timer_current(void)
 
 bool HAL_Timer_expired(Timer *timer)
 {
-    uint32_t now_ts;
+    uint64_t now_ts;
 
     now_ts = HAL_GetTimeMs();
 
