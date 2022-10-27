@@ -303,10 +303,11 @@ static void _template_mqtt_event_handler(void *pclient, void *context, MQTTEvent
 
 static int _template_check_subscribe(Qcloud_IoT_Template *pTemplate, int packet_id)
 {
+    int rc                            = 0;
     pTemplate->inner_data.sync_status = packet_id;
 
-    while (packet_id == pTemplate->inner_data.sync_status) {
-        IOT_Template_Yield(pTemplate, 100);
+    while (packet_id == pTemplate->inner_data.sync_status && rc >= 0) {
+        rc = IOT_Template_Yield(pTemplate, 100);
     }
 
     if (0 == pTemplate->inner_data.sync_status) {
