@@ -853,14 +853,12 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     rc = iot_device_info_set(&pTemplate->device_info, pParams->product_id, pParams->device_name);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("failed to set device info: %d", rc);
-        HAL_Free(pTemplate);
         goto End;
     }
 
     void *mqtt_client = NULL;
     if (NULL == pMqttClient) {
         if ((mqtt_client = IOT_MQTT_Construct(&mqtt_init_params)) == NULL) {
-            HAL_Free(pTemplate);
             goto End;
         }
     } else {  // multi dev share the same mqtt client
@@ -880,9 +878,7 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     pTemplate->inner_data.eventflags       = 0;
 
     rc = qcloud_iot_template_init(pTemplate);
-    if (rc != QCLOUD_RET_SUCCESS) {
-        IOT_MQTT_Destroy(&(pTemplate->mqtt));
-        IOT_Template_Destroy(pTemplate);
+    if (rc) {
         goto End;
     }
 
@@ -900,7 +896,6 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     rc = IOT_Event_Init(pTemplate);
     if (rc < 0) {
         Log_e("event init failed: %d", rc);
-        IOT_Template_Destroy(pTemplate);
         goto End;
     }
 
@@ -913,7 +908,6 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     rc = IOT_Action_Init(pTemplate);
     if (rc < 0) {
         Log_e("action init failed: %d", rc);
-        IOT_Template_Destroy(pTemplate);
         goto End;
     }
 
@@ -925,7 +919,11 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
     return pTemplate;
 
 End:
-
+    if (pTemplate) {
+        IOT_Template_Destroy(pTemplate);
+        HAL_Free(pTemplate);
+        pTemplate = NULL;
+    }
     return NULL;
 }
 
