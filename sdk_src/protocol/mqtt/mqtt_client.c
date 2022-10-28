@@ -67,7 +67,7 @@ void *IOT_MQTT_Construct(MQTTInitParams *pParams)
     STRING_PTR_SANITY_CHECK(pParams->device_name, NULL);
 
     Qcloud_IoT_Client *mqtt_client = NULL;
-    char *             client_id   = NULL;
+    char              *client_id   = NULL;
 
     // create and init MQTTClient
     if ((mqtt_client = (Qcloud_IoT_Client *)HAL_Malloc(sizeof(Qcloud_IoT_Client))) == NULL) {
@@ -109,7 +109,7 @@ void *IOT_MQTT_Construct(MQTTInitParams *pParams)
     size_t len;
     memset(mqtt_client->psk_decode, 0x00, DECODE_PSK_LENGTH);
     rc                               = qcloud_iot_utils_base64decode(mqtt_client->psk_decode, DECODE_PSK_LENGTH, &len,
-                                       (unsigned char *)pParams->device_secret, src_len);
+                                                                     (unsigned char *)pParams->device_secret, src_len);
     connect_params.device_secret     = (char *)mqtt_client->psk_decode;
     connect_params.device_secret_len = len;
     if (rc != QCLOUD_RET_SUCCESS) {
@@ -196,6 +196,13 @@ int IOT_MQTT_Destroy(void **pClient)
     Log_i("mqtt release!");
 
     return rc;
+}
+
+void IOT_MQTT_SetEventHandler(void *pClient, MQTTEventHandler *evt_handler)
+{
+    Qcloud_IoT_Client *mqtt_client    = (Qcloud_IoT_Client *)pClient;
+    mqtt_client->event_handle.h_fp    = evt_handler->h_fp;
+    mqtt_client->event_handle.context = evt_handler->context;
 }
 
 int IOT_MQTT_YieldWithoutLog(void *pClient, uint32_t timeout_ms)
@@ -324,7 +331,7 @@ int IOT_MQTT_StartLoop(void *pClient)
 {
     POINTER_SANITY_CHECK(pClient, QCLOUD_ERR_INVAL);
 
-    Qcloud_IoT_Client * mqtt_client   = (Qcloud_IoT_Client *)pClient;
+    Qcloud_IoT_Client  *mqtt_client   = (Qcloud_IoT_Client *)pClient;
     static ThreadParams thread_params = {0};
     thread_params.thread_func         = _mqtt_yield_thread;
     thread_params.thread_name         = "mqtt_yield_thread";

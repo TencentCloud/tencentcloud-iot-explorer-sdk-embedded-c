@@ -844,12 +844,6 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
         return NULL;
     }
 
-    MQTTInitParams mqtt_init_params;
-    _copy_template_init_params_to_mqtt(&mqtt_init_params, pParams);
-
-    mqtt_init_params.event_handle.h_fp    = _template_mqtt_event_handler;
-    mqtt_init_params.event_handle.context = pTemplate;
-
     rc = iot_device_info_set(&pTemplate->device_info, pParams->product_id, pParams->device_name);
     if (rc != QCLOUD_RET_SUCCESS) {
         Log_e("failed to set device info: %d", rc);
@@ -858,11 +852,17 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
 
     void *mqtt_client = NULL;
     if (NULL == pMqttClient) {
+        MQTTInitParams mqtt_init_params;
+        _copy_template_init_params_to_mqtt(&mqtt_init_params, pParams);
+        mqtt_init_params.event_handle.h_fp    = _template_mqtt_event_handler;
+        mqtt_init_params.event_handle.context = pTemplate;
         if ((mqtt_client = IOT_MQTT_Construct(&mqtt_init_params)) == NULL) {
             goto End;
         }
     } else {  // multi dev share the same mqtt client
-        mqtt_client = pMqttClient;
+        mqtt_client                 = pMqttClient;
+        MQTTEventHandler evt_handle = {.h_fp = _template_mqtt_event_handler, .context = pTemplate};
+        IOT_MQTT_SetEventHandler(mqtt_client, &evt_handle);
     }
 
 #ifdef MULTITHREAD_ENABLED
