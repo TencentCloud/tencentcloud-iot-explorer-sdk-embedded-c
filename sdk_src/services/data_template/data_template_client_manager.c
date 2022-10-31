@@ -366,23 +366,18 @@ int send_template_request(Qcloud_IoT_Template *pTemplate, RequestParams *pParams
         IOT_FUNC_EXIT_RC(QCLOUD_ERR_INVAL);
     }
 
-    if (rc != QCLOUD_RET_SUCCESS)
-        IOT_FUNC_EXIT_RC(rc);
-
     rc = _set_template_json_type(pJsonDoc, sizeOfBuffer, pParams->method);
-    if (rc != QCLOUD_RET_SUCCESS)
-        IOT_FUNC_EXIT_RC(rc);
-
-    if (rc == QCLOUD_RET_SUCCESS) {
-        rc = _publish_to_template_upstream_topic(pTemplate, pParams->method, pJsonDoc);
+    if (rc != QCLOUD_RET_SUCCESS) {
+        goto EXIT;
     }
 
+    rc = _publish_to_template_upstream_topic(pTemplate, pParams->method, pJsonDoc);
     if ((rc == QCLOUD_RET_SUCCESS) && (NULL != pParams->request_callback)) {
         rc = _add_request_to_template_list(pTemplate, client_token, pParams);
     }
 
+EXIT:
     HAL_Free(client_token);
-
     IOT_FUNC_EXIT_RC(rc);
 }
 
