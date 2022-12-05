@@ -836,7 +836,8 @@ void *IOT_Template_Get_MQTT_Client(void *pClient)
 void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
 {
     POINTER_SANITY_CHECK(pParams, NULL);
-    int rc;
+    int   rc;
+    void *mqtt_client = NULL;
 
     Qcloud_IoT_Template *pTemplate = NULL;
     if ((pTemplate = (Qcloud_IoT_Template *)HAL_Malloc(sizeof(Qcloud_IoT_Template))) == NULL) {
@@ -856,7 +857,6 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
         goto End;
     }
 
-    void *mqtt_client = NULL;
     if (NULL == pMqttClient) {
         if ((mqtt_client = IOT_MQTT_Construct(&mqtt_init_params)) == NULL) {
             goto End;
@@ -920,7 +920,9 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
 
 End:
     if (pTemplate) {
-        IOT_Template_Destroy(pTemplate);
+        if (mqtt_client != NULL) {
+            IOT_Template_Destroy(pTemplate);
+        }
         HAL_Free(pTemplate);
         pTemplate = NULL;
     }
