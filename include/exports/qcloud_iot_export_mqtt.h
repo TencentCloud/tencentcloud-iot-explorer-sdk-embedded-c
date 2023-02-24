@@ -202,14 +202,20 @@ typedef struct {
  * Default MQTT init parameters
  */
 #ifdef AUTH_MODE_CERT
-#define DEFAULT_MQTTINIT_PARAMS                                        \
-    {                                                                  \
-        "china", NULL, NULL, NULL, NULL, 5000, 240 * 1000, 1, 1, { 0 } \
-    }
-#else
 #define DEFAULT_MQTTINIT_PARAMS                                  \
     {                                                            \
-        "china", NULL, NULL, NULL, 5000, 240 * 1000, 1, 1, { 0 } \
+        "china", NULL, NULL, NULL, NULL, 5000, 240 * 1000, 1, 1, \
+        {                                                        \
+            0                                                    \
+        }                                                        \
+    }
+#else
+#define DEFAULT_MQTTINIT_PARAMS                            \
+    {                                                      \
+        "china", NULL, NULL, NULL, 5000, 240 * 1000, 1, 1, \
+        {                                                  \
+            0                                              \
+        }                                                  \
     }
 #endif
 
@@ -230,6 +236,14 @@ void *IOT_MQTT_Construct(MQTTInitParams *pParams);
  * @return QCLOUD_RET_SUCCESS for success, or err code for failure
  */
 int IOT_MQTT_Destroy(void **pClient);
+
+/**
+ * @brief Set MQTT client event handler
+ *
+ * @param pClient    handle to MQTT client
+ * @param MQTTEventHandler MQTT event handler
+ */
+void IOT_MQTT_SetEventHandler(void *pClient, MQTTEventHandler *evt_handler);
 
 /**
  * @brief Check connection and keep alive state, read/handle MQTT message in synchronized way
