@@ -216,12 +216,8 @@ static TYPE_DEF_TEMPLATE_STRING sg_message[MAX_EVENT_STR_MESSAGE_LEN + 1];
 static DeviceProperty           g_propertyEvent_status_report[] = {
 
     {.key = "status", .data = &sg_status, .type = TYPE_TEMPLATE_BOOL},
-    {.key = "message", .data = sg_message, .type = TYPE_TEMPLATE_STRING},
-#ifdef COLOR_TYPE_STRINGENUM
-    {.key = "color", .data = sg_ProductData.m_color, .type = TYPE_TEMPLATE_STRINGENUM}};
-#else
-    {.key = "color", .data = &sg_ProductData.m_color, .type = TYPE_TEMPLATE_ENUM}};
-#endif
+    {.key = "message", .data = sg_message, .type = TYPE_TEMPLATE_STRING}
+};
 
 static TYPE_DEF_TEMPLATE_FLOAT sg_voltage;
 static DeviceProperty          g_propertyEvent_low_voltage[] = {
@@ -328,18 +324,14 @@ static TYPE_DEF_TEMPLATE_INT sg_blink_in_period    = 5;
 static DeviceProperty        g_actionInput_blink[] = {
     {.key = "period", .data = &sg_blink_in_period, .type = TYPE_TEMPLATE_INT}};
 static TYPE_DEF_TEMPLATE_BOOL       sg_blink_out_result       = 0;
-static TYPE_DEF_TEMPLATE_INT        sg_blink_out_period       = 0;
-static TYPE_DEF_TEMPLATE_STRINGENUM sg_blink_out_color[5 + 1] = {0};
 static DeviceProperty               g_actionOutput_blink[]    = {
 
-    {.key = "result", .data = &sg_blink_out_result, .type = TYPE_TEMPLATE_BOOL},
-    {.key = "period", .data = &sg_blink_out_period, .type = TYPE_TEMPLATE_INT},
-    {.key = "color", .data = sg_blink_out_color, .type = TYPE_TEMPLATE_STRINGENUM}};
+    {.key = "result", .data = &sg_blink_out_result, .type = TYPE_TEMPLATE_BOOL}};
 
 static DeviceAction g_actions[] = {
 
     {
-        .pActionId  = "blink",
+        .pActionId  = "light_blink",
         .timestamp  = 0,
         .input_num  = sizeof(g_actionInput_blink) / sizeof(g_actionInput_blink[0]),
         .output_num = sizeof(g_actionOutput_blink) / sizeof(g_actionOutput_blink[0]),
@@ -366,9 +358,9 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
 
     // do blink
     HAL_Printf("%s[lighting blink][****]" ANSI_COLOR_RESET, ANSI_COLOR_RED);
-    HAL_SleepMs(period * 1000);
+    HAL_SleepMs(period * 100);
     HAL_Printf("\r%s[lighting blink][****]" ANSI_COLOR_RESET, ANSI_COLOR_GREEN);
-    HAL_SleepMs(period * 1000);
+    HAL_SleepMs(period * 100);
     HAL_Printf("\r%s[lighting blink][****]\n" ANSI_COLOR_RESET, ANSI_COLOR_RED);
 
     // construct output
@@ -380,7 +372,7 @@ static void OnActionCallback(void *pClient, const char *pClientToken, DeviceActi
 
     DeviceProperty *pActionOutnput   = pAction->pOutput;
     *(int *)(pActionOutnput[0].data) = 0;  // set result
-    *(int *)(pActionOutnput[1].data) = period;
+    Log_d("To reply action");
     IOT_Action_Reply(pClient, pClientToken, sg_data_report_buffer, sg_data_report_buffersize, pAction, &replyPara);
 }
 
@@ -1050,9 +1042,11 @@ int main(int argc, char **argv)
         /*report msg to server*/
         /*report the lastest properties's status*/
         if (QCLOUD_RET_SUCCESS == deal_up_stream_user_logic(pReportDataList, &ReportCont)) {
+            static int _cnt = 0;
             rc = IOT_Template_JSON_ConstructReportArray(client, sg_data_report_buffer, sg_data_report_buffersize,
                                                         ReportCont, pReportDataList);
-            if (rc == QCLOUD_RET_SUCCESS) {
+            _cnt++;
+            if (rc == QCLOUD_RET_SUCCESS && (_cnt & 0xf) != 0) {
                 rc = IOT_Template_Report(client, sg_data_report_buffer, sg_data_report_buffersize,
                                          OnReportReplyCallback, NULL, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
                 if (rc == QCLOUD_RET_SUCCESS) {

@@ -1,9 +1,5 @@
 {
     "version": "1.0",
-    "profile": {
-        "ProductId": "U7D5MBSDYB",
-        "CategoryId": "3"
-    },
     "properties": [
         {
             "id": "power_switch",
@@ -107,7 +103,8 @@
                     "medium": "Medium",
                     "low": "Low"
                 }
-            }
+            },
+            "required": false
         }
     ],
     "events": [
@@ -197,62 +194,43 @@
             ]
         }
     ],
-    "actions":[
+    "actions": [
         {
-            "id":"light_blink",
-            "name":"light_blink",
-            "desc":"根据time和color实现灯的闪烁",
-            "input":[
+            "id": "light_blink",
+            "name": "light_blink",
+            "desc": "根据time和color实现灯的闪烁",
+            "input": [
                 {
-                    "id":"time",
-                    "name":"time",
-                    "define":{
-                        "type":"int",
-                        "min":"0",
-                        "max":"10",
-                        "start":"0",
-                        "step":"1",
-                        "unit":"秒"
-                    }
-                },
-                {
-                    "id":"color",
-                    "name":"color",
-                    "define":{
-                        "type":"bool",
-                        "mapping":{
-                            "0":"red",
-                            "1":"green"
-                        }
-                    }
-                },
-                {
-                    "id":"total_time",
-                    "name":"total_time",
-                    "define":{
-                        "type":"int",
-                        "min":"0",
-                        "max":"100",
-                        "start":"0",
-                        "step":"1",
-                        "unit":"秒"
+                    "id": "period",
+                    "name": "period",
+                    "define": {
+                        "type": "int",
+                        "min": "0",
+                        "max": "10",
+                        "start": "0",
+                        "step": "1",
+                        "unit": ""
                     }
                 }
             ],
-            "output":[
+            "output": [
                 {
-                    "id":"err_code",
-                    "name":"code",
-                    "define":{
-                        "type":"enum",
-                        "mapping":{
-                            "0":"ok",
-                            "1":"failed"
+                    "id": "err_code",
+                    "name": "code",
+                    "define": {
+                        "type": "enum",
+                        "mapping": {
+                            "0": "ok",
+                            "1": "failed"
                         }
                     }
                 }
             ],
-            "required":false
+            "required": false
         }
-    ]
+    ],
+    "profile": {
+        "ProductId": "0BCDALFUO8",
+        "CategoryId": "3"
+    }
 }
