@@ -857,6 +857,8 @@ void *IOT_Template_Construct(TemplateInitParams *pParams, void *pMqttClient)
         mqtt_init_params.event_handle.h_fp    = _template_mqtt_event_handler;
         mqtt_init_params.event_handle.context = pTemplate;
         if ((mqtt_client = IOT_MQTT_Construct(&mqtt_init_params)) == NULL) {
+            HAL_Free(pTemplate);  // Just free it, no need to destroy it
+            pTemplate = NULL;
             goto End;
         }
     } else {  // multi dev share the same mqtt client
