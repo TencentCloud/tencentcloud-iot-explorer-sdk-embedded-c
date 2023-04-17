@@ -15,6 +15,6 @@
 *.key
 sdk-tests/certs/unittest_private.key
 sdk-tests/certs/unittest_private.key
-.vscode/settings.json
 .vs/
+.vscode/
 /mplayer
