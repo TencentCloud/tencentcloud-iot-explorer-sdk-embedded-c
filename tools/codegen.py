@@ -685,7 +685,7 @@ def main():
     if config_dir:
         config_dir += "/"
 
-    f = open(config_path, "r")
+    f = open(config_path, "r", encoding='utf8')
     try:
         thingmodel = json.load(f)
         if 'properties' not in thingmodel:
