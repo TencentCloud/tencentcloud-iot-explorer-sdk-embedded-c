@@ -45,6 +45,31 @@ static at_device_op_t *_at_device_op_get(void)
     return sg_at_device_ops;
 }
 
+static void _at_recvpkt_destory(List *self)
+{
+    unsigned int len = self->len;
+    ListNode *   next;
+    ListNode *   curr = self->head;
+    at_recv_pkt * pkt;
+
+    while (len--) {
+        next = curr->next;
+        pkt = (at_recv_pkt *)(curr->val);
+        if(pkt) {
+            if(pkt->buff) {
+                HAL_Free(pkt->buff);
+            }
+            if (self->free) {
+                self->free(pkt);
+            }
+        }
+        HAL_Free(curr);
+        curr = next;
+    }
+
+    HAL_Free(self);
+}
+
 static int _at_socket_ctx_free(at_socket_ctx_t *pCtx)
 {
     POINTER_SANITY_CHECK(pCtx, QCLOUD_ERR_INVAL);
@@ -53,7 +78,7 @@ static int _at_socket_ctx_free(at_socket_ctx_t *pCtx)
     pCtx->net_type = eNET_DEFAULT;
 
     if (pCtx->recvpkt_list) {
-        qcloud_list_destroy(pCtx->recvpkt_list);
+        _at_recvpkt_destory(pCtx->recvpkt_list);
         pCtx->recvpkt_list = NULL;
     }
 
@@ -185,6 +210,13 @@ static int _at_recvpkt_get(List *pkt_list, char *buff, size_t len)
                 memcpy(buff + readlen, pkt->buff + pkt->bfsz_index, (len - readlen));
                 pkt->bfsz_index += len - readlen;
                 readlen = len;
+
+                /*if page_len == 0 delete pkt*/
+                page_len = pkt->bfsz_totle - pkt->bfsz_index;
+                if(!page_len) {
+                    HAL_Free(pkt->buff);
+                    qcloud_list_remove(pkt_list, node);
+                }
                 break;
             } else {
                 memcpy(buff + readlen, pkt->buff + pkt->bfsz_index, page_len);
