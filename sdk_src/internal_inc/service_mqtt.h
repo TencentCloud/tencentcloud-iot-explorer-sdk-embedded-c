@@ -50,6 +50,9 @@ extern "C" {
 #define METHOD_GATEWAY_DELETE_GROUP                  "gateway_delete_group"
 #define METHOD_GATEWAY_GROUP_DEVICES                 "gateway_group_devices"
 #define METHOD_GATEWAY_GROUP_CONTROL                 "gateway_group_control"
+#define METHOD_QQMUSIC_QUERY_SONG_LIST_REPLY         "qqmusic_query_song_list_reply"
+#define METHOD_QQMUSIC_SYNC_SONG_LIST                "qqmusic_sync_song_list"
+#define METHOD_QQMUSIC_QUERY_SONG_REPLY              "qqmusic_query_song_reply"
 
 typedef enum {
     eSERVICE_RESOURCE           = 0,
@@ -61,6 +64,7 @@ typedef enum {
     eSERVICE_LOCATION           = 6,
     eSERVICE_GATEWAY_SCENE      = 7,
     eSERVICE_GATEWAY_GROUP      = 8,
+    eSERVICE_QQMUSIC            = 9,
     eSERVICE_DEFAULT            = 0xff
 } eServiceEvent;
 

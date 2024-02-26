@@ -40,7 +40,7 @@ static Service_Event_Struct_t sg_service_event_map[] = {
     {eSERVICE_UNBIND_DEV, NULL, NULL},         {eSERVICE_UNBIND_DEV_REPLY, NULL, NULL},
     {eSERVICE_GATEWAY_AUTOMATION, NULL, NULL}, {eSERVICE_KGMUSIC, NULL, NULL},
     {eSERVICE_LOCATION, NULL, NULL},           {eSERVICE_GATEWAY_SCENE, NULL, NULL},
-    {eSERVICE_GATEWAY_GROUP, NULL, NULL},
+    {eSERVICE_GATEWAY_GROUP, NULL, NULL},      {eSERVICE_QQMUSIC, NULL, NULL},
 };
 
 static char sg_service_pub_topic[MAX_SIZE_OF_CLOUD_TOPIC];
@@ -119,6 +119,9 @@ static eServiceEvent _service_mqtt_parse_event(char *method)
                !strcmp(method, METHOD_GATEWAY_RELOAD_GROUP_DEVICES_REPLY) ||
                !strcmp(method, METHOD_GATEWAY_DELETE_GROUP) || !strcmp(method, METHOD_GATEWAY_GROUP_CONTROL)) {
         return eSERVICE_GATEWAY_GROUP;
+    } else if (!strcmp(method, METHOD_QQMUSIC_QUERY_SONG_LIST_REPLY) ||
+               !strcmp(method, METHOD_QQMUSIC_SYNC_SONG_LIST) || !strcmp(method, METHOD_QQMUSIC_QUERY_SONG_REPLY)) {
+        return eSERVICE_QQMUSIC;
     }
     Log_i("not support service method %s", STRING_PTR_PRINT_SANITY_CHECK(method));
     return eSERVICE_DEFAULT;

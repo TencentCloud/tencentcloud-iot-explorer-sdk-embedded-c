@@ -119,6 +119,13 @@ if(${FEATURE_KGMUSIC_ENABLED} STREQUAL "ON")
 	target_link_libraries(kgmusic_data_template_sample 	 	 ${lib})
 endif()
 
+# QQMUSIC
+if(${FEATURE_QQMUSIC_ENABLED} STREQUAL "ON")
+	file(GLOB src_qqmusic_data_template_sample ${PROJECT_SOURCE_DIR}/samples/qqmusic/qqmusic_data_template.c ${PROJECT_SOURCE_DIR}/samples/qqmusic/HAL_Music_Linux.c)
+	add_executable(qqmusic_data_template_sample ${src_qqmusic_data_template_sample})
+	target_link_libraries(qqmusic_data_template_sample ${lib})
+endif()
+
 # LOCATION
 if(${FEATURE_LOCATION_ENABLED} STREQUAL "ON")
 	file(GLOB src_location_sample  				${PROJECT_SOURCE_DIR}/samples/location/location_sample.c)

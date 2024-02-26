@@ -502,7 +502,7 @@ static void _on_template_downstream_topic_handler(void *pClient, MQTTMessage *me
     memset(sg_template_cloud_rcv_buf, 0, sizeof(sg_template_cloud_rcv_buf));
     memcpy(sg_template_cloud_rcv_buf, message->payload, cloud_rcv_len + 1);
     sg_template_cloud_rcv_buf[cloud_rcv_len] = '\0';  // jsmn_parse relies on a string
-    // Log_i("recv:%s", sg_template_cloud_rcv_buf);
+    Log_d("recv:%s", sg_template_cloud_rcv_buf);
 
     // parse the message type from topic $thing/down/property
     if (!parse_template_method_type(sg_template_cloud_rcv_buf, &type_str)) {

@@ -711,6 +711,80 @@ char *HAL_FileGets(char *str, int n, void *fp);
  */
 int HAL_FileFlush(void *fp);
 
+#ifdef QQMUSIC_ENABLED
+/**
+ * @brief Initialize Music player and play music
+ *
+ * @param player @see HAL Music Player
+ * @param url music url
+ * @param duration music total duration
+ * @return 0 when success
+ */
+int HAL_Music_Play(void **player, const char *url, int duration);
+
+/**
+ * @brief stop music player
+ *
+ * @param player
+ * @return 0 when success
+ */
+int HAL_Music_Stop(void **player);
+
+/**
+ * @brief play or pause
+ *
+ * @param player music player
+ * @param playPause 0:pause, 1:play
+ * @return true for play
+ * @return false for pause
+ */
+bool HAL_Music_PlayPause(void *player, uint8_t playPause);
+
+/**
+ * @brief get music player volume
+ *
+ * @param player music player
+ * @param volume
+ * @return 0 when success
+ */
+int HAL_Music_SetVolume(void *player, int volume);
+
+/**
+ * @brief get music player volume
+ *
+ * @param player music player
+ * @return current volume
+ */
+int HAL_Music_GetVolume(void *player);
+
+/**
+ * @brief get music player play status
+ *
+ * @param player music player
+ * @return true for play end
+ * @return false for playing
+ */
+bool HAL_Music_PlayEndCheck(void *player);
+
+/**
+ * @brief get music player play position
+ *
+ * @param player music player
+ * @return current play position
+ */
+int HAL_Music_GetPlayPosition(void *player);
+
+/**
+ * @brief set music player play position
+ *
+ * @param player music player
+ * @param position play position
+ * @return 0 when success
+ */
+int HAL_Music_SetPlayPosition(void *player, int position);
+
+#endif
+
 #if defined(__cplusplus)
 }
 #endif

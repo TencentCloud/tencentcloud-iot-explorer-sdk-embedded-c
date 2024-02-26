@@ -184,6 +184,11 @@ int LITE_get_uint32(uint32_t *value, char *src)
     return (sscanf(src, "%" SCNu32, value) == 1) ? QCLOUD_RET_SUCCESS : QCLOUD_ERR_FAILURE;
 }
 
+int LITE_get_uint64(uint64_t *value, char *src)
+{
+    return (sscanf(src, "%" SCNu64, value) == 1) ? QCLOUD_RET_SUCCESS : QCLOUD_ERR_FAILURE;
+}
+
 int LITE_get_uint16(uint16_t *value, char *src)
 {
     return (sscanf(src, "%" SCNu16, value) == 1) ? QCLOUD_RET_SUCCESS : QCLOUD_ERR_FAILURE;
@@ -394,4 +399,37 @@ int LITE_dt_parse_obj_array(void *out_res, size_t out_len, size_t obj_len, const
     }
 
     return res;
+}
+
+int LITE_json_get_int32(char *key, char *src, int32_t *out)
+{
+    int   rc  = QCLOUD_ERR_FAILURE;
+    char *str = LITE_json_value_of(key, src);
+    if (str) {
+        rc = LITE_get_int32(out, str);
+        HAL_Free(str);
+    }
+    return rc;
+}
+
+int LITE_json_get_uint32(char *key, char *src, uint32_t *out)
+{
+    int   rc  = QCLOUD_ERR_FAILURE;
+    char *str = LITE_json_value_of(key, src);
+    if (str) {
+        rc = LITE_get_uint32(out, str);
+        HAL_Free(str);
+    }
+    return rc;
+}
+
+int LITE_json_get_uint64(char *key, char *src, uint64_t *out)
+{
+    int   rc  = QCLOUD_ERR_FAILURE;
+    char *str = LITE_json_value_of(key, src);
+    if (str) {
+        rc = LITE_get_uint64(out, str);
+        HAL_Free(str);
+    }
+    return rc;
 }
