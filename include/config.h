@@ -9,7 +9,7 @@
 #define OTA_MQTT_CHANNEL
 /* #undef SYSTEM_COMM */
 /* #undef EVENT_POST_ENABLED */
-/* #undef ACTION_ENABLED */
+#define ACTION_ENABLED
 #define DEV_DYN_REG_ENABLED
 /* #undef LOG_UPLOAD */
 /* #undef IOT_DEBUG */
@@ -20,9 +20,10 @@
 /* #undef AT_DEBUG */
 /* #undef OTA_USE_HTTPS */
 #define GATEWAY_ENABLED
-#define MULTITHREAD_ENABLED
+/* #undef MULTITHREAD_ENABLED */
 /* #undef GATEWAY_DYN_BIND_SUBDEV_ENABLED */
 /* #undef ASR_ENABLED */
 #define RESOURCE_UPDATE_ENABLED
 /* #undef WIFI_CONFIG_ENABLED */
 #define KGMUSIC_ENABLED
+#define QQMUSIC_ENABLED

@@ -54,7 +54,13 @@ if(${FEATURE_KGMUSIC_ENABLED} STREQUAL "ON")
 	list(APPEND src_sdk ${src_kgmusic})
 endif()
 
-# ELECTRIC FENCE 
+# QQMUSIC
+if(${FEATURE_QQMUSIC_ENABLED} STREQUAL "ON")
+	file(GLOB src_qqmusic ${CMAKE_CURRENT_SOURCE_DIR}/services/qqmusic/*.c)
+	list(APPEND src_sdk ${src_qqmusic})
+endif()
+
+# ELECTRIC FENCE
 if(${FEATURE_LOCATION_ENABLED} STREQUAL "ON")
 	file(GLOB src_location ${CMAKE_CURRENT_SOURCE_DIR}/services/location/*.c)
 	list(APPEND src_sdk ${src_location})
