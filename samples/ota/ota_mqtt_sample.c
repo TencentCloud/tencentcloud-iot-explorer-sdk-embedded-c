@@ -35,6 +35,7 @@
 
 #define FW_VERSION_MAX_LEN        32
 #define FW_FILE_PATH_MAX_LEN      128
+#define FW_USR_DEFINED_MAX_LEN    (1536)
 #define OTA_BUF_LEN               5000
 #define FW_INFO_FILE_DATA_LEN     128
 #define OTA_HTTP_MAX_FETCHED_SIZE (50 * 1024)
@@ -49,6 +50,7 @@ typedef struct OTAContextData {
 
     // remote_version means version for the FW in the cloud and to be downloaded
     char          remote_version[FW_VERSION_MAX_LEN];
+    char          usr_defined_info[FW_USR_DEFINED_MAX_LEN]; /* usr defined infomation , json string. */
     uint32_t      fw_file_size;
     IOT_OTAFWType fw_type; /* fw type */
 
@@ -417,6 +419,10 @@ bool process_ota(OTAContextData *ota_ctx)
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_FILE_SIZE, &ota_ctx->fw_file_size, 4);
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_VERSION, ota_ctx->remote_version, FW_VERSION_MAX_LEN);
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_FWTYPE, &ota_ctx->fw_type, 4);
+            IOT_OTA_Ioctl(h_ota, IOT_OTAG_USR_DEFINED, ota_ctx->usr_defined_info, FW_USR_DEFINED_MAX_LEN);
+
+            // process usr defined info here
+            Log_d("usr defined info : %s", ota_ctx->usr_defined_info);
 
             HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.bin", ota_ctx->remote_version);
             HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", ota_ctx->remote_version);

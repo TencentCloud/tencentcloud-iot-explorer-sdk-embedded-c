@@ -47,10 +47,11 @@ typedef struct {
     uint32_t           size_fetched;      /* size of already downloaded */
     uint32_t           size_file;         /* size of file */
 
-    char         *purl;       /* point to URL */
-    char         *version;    /* point to string */
-    char          md5sum[33]; /* MD5 string */
-    IOT_OTAFWType fw_type;    /* fw type */
+    char         *purl;             /* point to URL */
+    char         *version;          /* point to string */
+    char         *usr_defined_info; /* usr defined infomation, json string, max len 1536bytes */
+    char          md5sum[33];       /* MD5 string */
+    IOT_OTAFWType fw_type;          /* fw type */
 
     void *md5;       /* MD5 handle */
     void *ch_signal; /* channel handle of signal exchanged with OTA server */
@@ -117,7 +118,7 @@ static void _ota_callback(void *pcontext, const char *msg, uint32_t msg_len)
         }
 
         if (0 != qcloud_otalib_get_params(msg, &json_type, &h_ota->purl, &h_ota->version, h_ota->md5sum,
-                                          &h_ota->size_file, &h_ota->fw_type)) {
+                                          &h_ota->size_file, &h_ota->fw_type, &h_ota->usr_defined_info)) {
             Log_e("Get firmware parameter failed");
             goto End;
         }
@@ -670,10 +671,17 @@ int IOT_OTA_Ioctl(void *handle, IOT_OTA_CmdType type, void *buf, size_t buf_len)
                 }
                 return 0;
             }
+
         case IOT_OTAG_FWTYPE: {
             *(IOT_OTAFWType *)buf = h_ota->fw_type;
             return 0;
         } break;
+
+        case IOT_OTAG_USR_DEFINED: {
+            memset(buf, 0, buf_len);
+            strncpy(buf, h_ota->usr_defined_info, buf_len);
+        } break;
+
         default:
             Log_e("invalid cmd type");
             h_ota->err = IOT_OTA_ERR_INVALID_PARAM;
