@@ -194,7 +194,7 @@ int qcloud_otalib_get_report_version_result(const char *json)
 }
 
 int qcloud_otalib_get_params(const char *json, char **type, char **url, char **version, char *md5, uint32_t *fileSize,
-                             IOT_OTAFWType *fw_type)
+                             IOT_OTAFWType *fw_type, char **usr_defined_info)
 {
 #define OTA_FILESIZE_STR_LEN (16)
 
@@ -248,6 +248,12 @@ int qcloud_otalib_get_params(const char *json, char **type, char **url, char **v
         *fw_type = IOT_OTA_FWTYPE_MODULE;
     }
 
+    /* get usr defined info */
+    if (0 != _qcloud_otalib_get_firmware_varlen_para(json, USER_DEFINED, usr_defined_info)) {
+        Log_e("get value of usr defined info key failed");
+        IOT_FUNC_EXIT_RC(IOT_OTA_ERR_FAIL);
+    }
+
     IOT_FUNC_EXIT_RC(QCLOUD_RET_SUCCESS);
 
 #undef OTA_FILESIZE_STR_LEN
@@ -260,7 +266,8 @@ int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, IOT_OTAFWT
     int ret;
     ret =
         HAL_Snprintf(buf, bufLen, "{\"type\": \"report_version\", \"report\":{\"version\":\"%s\", \"fw_type\":\"%s\"}}",
-                     STRING_PTR_PRINT_SANITY_CHECK(version), type == IOT_OTA_FWTYPE_MCU ? IOT_OTA_FWTYPE_MCU_STR :IOT_OTA_FWTYPE_MODULE_STR);
+                     STRING_PTR_PRINT_SANITY_CHECK(version),
+                     type == IOT_OTA_FWTYPE_MCU ? IOT_OTA_FWTYPE_MCU_STR : IOT_OTA_FWTYPE_MODULE_STR);
 
     if (ret < 0) {
         Log_e("HAL_Snprintf failed");

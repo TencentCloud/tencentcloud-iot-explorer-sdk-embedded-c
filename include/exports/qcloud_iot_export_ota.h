@@ -86,7 +86,7 @@ typedef enum {
     IOT_OTAG_VERSION,        /* firmware version (string) */
     IOT_OTAG_CHECK_FIRMWARE, /* check firmware */
     IOT_OTAG_FWTYPE,         /* firmware type */
-
+    IOT_OTAG_USR_DEFINED,    /* user defined infomation */
 } IOT_OTA_CmdType;
 
 typedef enum {
@@ -104,7 +104,7 @@ typedef enum {
 
 } IOT_OTAReportType;
 
-#define IOT_OTA_FWTYPE_MCU_STR  "mcu"
+#define IOT_OTA_FWTYPE_MCU_STR    "mcu"
 #define IOT_OTA_FWTYPE_MODULE_STR "module"
 
 typedef enum {

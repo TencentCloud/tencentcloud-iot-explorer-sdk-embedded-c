@@ -50,11 +50,12 @@ int qcloud_otalib_get_report_version_result(const char *json);
  * @param version       parsed version
  * @param md5           parsed MD5
  * @param fileSize      parsed file size
- * @param type
+ * @param type          parsed type
+ * @param usr_defined_info parsed user defined information
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
 int qcloud_otalib_get_params(const char *json, char **type, char **url, char **version, char *md5, uint32_t *fileSize,
-                             IOT_OTAFWType *fw_type);
+                             IOT_OTAFWType *fw_type, char **usr_defined_info);
 
 /**
  * @brief Generate firmware info from id and version
