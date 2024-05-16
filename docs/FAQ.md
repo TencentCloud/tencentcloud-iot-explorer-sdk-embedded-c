@@ -121,8 +121,7 @@
 ## AT模组问题
 ### 使用`AT`模组,设备无法连接物联网开发平台？
   * 检查设备信息是否设置正确，请参考[腾讯云AT指令集](https://docs.espressif.com/projects/esp-at/zh_CN/latest/Customized_AT_Commands_and_Firmware/Tencent_Cloud_IoT_AT/Tencent_Cloud_IoT_AT_Command_Set.html)使用`AT`指令。
-### 如何升级`AT`模组？
-  * 物联网开发平台支持`MCU`和`AT`模组升级，可以通过平台下发消息中的`fw_type`字段进行区分。`mcu`表示`MCU`固件升级，`moudule`表示模组固件升级。
+
 ### AT模组配网时,如何使用动态注册功能？
 * 使用AT指令配网时，也可以使用动态注册功能。使用流程是先通过`AT+TCPRDINFOSET=<tls_mode>,<product_ID>,<product_secret>,<devic<br>e_name>`,设置产品ID、产品密钥和设备名称，然后开启配网指令。在ESP8266上的使用示例如下：
 ![](https://qcloudimg.tencent-cloud.cn/raw/9485fea2b68ebc0fcf4d52fc53e71282.jpg)
