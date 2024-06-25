@@ -36,20 +36,27 @@ typedef struct _RegionDomain_ {
 
 /*mqtt domain*/
 static RegionDomain sg_iot_mqtt_domain[] = {
-    {.region = "china", .domain = QCLOUD_IOT_MQTT_DIRECT_DOMAIN},    /* China */
-    {.region = "us-east", .domain = QCLOUD_IOT_MQTT_US_EAST_DOMAIN}, /* Eastern US*/
+    {.region = "china", .domain = QCLOUD_IOT_MQTT_DIRECT_DOMAIN},          /* China */
+    {.region = "us-east", .domain = QCLOUD_IOT_MQTT_US_EAST_DOMAIN},       /* Eastern US*/
+    {.region = "europe", .domain = QCLOUD_IOT_MQTT_EUROPE_DOMAIN},         /* Europe*/
+    {.region = "ap-bangkok", .domain = QCLOUD_IOT_MQTT_AP_BANGKOK_DOMAIN}, /* Bangkok*/
 };
 
 /*dynreg domain*/
 static RegionDomain sg_iot_dyn_reg_domain[] = {
-    {.region = "china", .domain = DYN_REG_SERVER_URL},           /* China */
-    {.region = "us-east", .domain = DYN_REG_SERVER_US_EAST_URL}, /* Eastern US*/
+    {.region = "china", .domain = DYN_REG_SERVER_URL},                 /* China */
+    {.region = "us-east", .domain = DYN_REG_SERVER_US_EAST_URL},       /* Eastern US*/
+    {.region = "europe", .domain = DYN_REG_SERVER_EUROPE_URL},         /* Europe*/
+    {.region = "ap-bangkok", .domain = DYN_REG_SERVER_AP_BANGKOK_URL}, /* Bangkok*/
 };
 
 /*log domain*/
 static RegionDomain sg_iot_log_domain[] = {
-    {.region = "china", .domain = LOG_UPLOAD_SERVER_DOMAIN},           /* China */
-    {.region = "us-east", .domain = LOG_UPLOAD_SERVER_US_EAST_DOMAIN}, /* Eastern US*/
+    {.region = "china", .domain = LOG_UPLOAD_SERVER_DOMAIN},                 /* China */
+    {.region = "us-east", .domain = LOG_UPLOAD_SERVER_US_EAST_DOMAIN},       /* Eastern US*/
+    {.region = "europe", .domain = LOG_UPLOAD_SERVER_EUROPE_DOMAIN},         /* Europe*/
+    {.region = "ap-bangkok", .domain = LOG_UPLOAD_SERVER_AP_BANGKOK_DOMAIN}, /* Bangkok*/
+
 };
 
 #ifndef AUTH_WITH_NOTLS
