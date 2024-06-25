@@ -581,7 +581,7 @@ int IOT_OTA_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeo
     h_ota->size_fetched += ret;
 
     /* report percent every second. */
-    uint32_t percent = (h_ota->size_fetched * 100) / h_ota->size_file;
+    uint32_t percent = (uint64_t)((uint64_t)h_ota->size_fetched * 100) / h_ota->size_file;
     if (percent == 100) {
         IOT_OTA_ReportProgress(h_ota, percent, IOT_OTAR_DOWNLOADING);
     } else if (h_ota->size_last_fetched > 0 && expired(&h_ota->report_timer)) {
