@@ -89,6 +89,7 @@ int ofc_set_request_range(void *handle)
 
     if (!remain_size) {
         Log_w("remain size == 0");
+        return QCLOUD_ERR_FAILURE;
     }
 
     fetch_size = h_odc->http_seg_info.segment_size < remain_size ? h_odc->http_seg_info.segment_size : remain_size;

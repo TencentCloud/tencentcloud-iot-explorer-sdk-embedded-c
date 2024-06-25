@@ -27,14 +27,14 @@
 #include "qcloud_iot_import.h"
 #include "utils_getopt.h"
 
-#define FW_RUNNING_MCU_VERSION    "mcu_v1.0.0"
-#define FW_RUNNING_MODULE_VERSION "module_v1.0.0"
+#define FW_RUNNING_MCU_VERSION "mcu_v1.0.0"
 
 #define KEY_VER  "version"
 #define KEY_SIZE "downloaded_size"
 
 #define FW_VERSION_MAX_LEN        32
 #define FW_FILE_PATH_MAX_LEN      128
+#define FW_USR_DEFINED_MAX_LEN    (1536)
 #define OTA_BUF_LEN               5000
 #define FW_INFO_FILE_DATA_LEN     128
 #define OTA_HTTP_MAX_FETCHED_SIZE (50 * 1024)
@@ -48,9 +48,9 @@ typedef struct OTAContextData {
     char  fw_info_file_path[FW_FILE_PATH_MAX_LEN];
 
     // remote_version means version for the FW in the cloud and to be downloaded
-    char          remote_version[FW_VERSION_MAX_LEN];
-    uint32_t      fw_file_size;
-    IOT_OTAFWType fw_type; /* fw type */
+    char     remote_version[FW_VERSION_MAX_LEN];
+    char     usr_defined_info[FW_USR_DEFINED_MAX_LEN]; /* usr defined infomation , json string. */
+    uint32_t fw_file_size;
 
     // for resuming download
     /* local_version means downloading but not running */
@@ -367,16 +367,12 @@ static int _save_fw_data_to_file(char *file_name, uint32_t offset, char *buf, in
     return 0;
 }
 
-static char *_get_local_fw_running_version(IOT_OTAFWType type)
+static char *_get_local_fw_running_version(void)
 {
     // asuming the version is inside the code and binary
     // you can also get from a meta file
-    if (type == IOT_OTA_FWTYPE_MCU) {
-        Log_i("FW running mcu version: %s", FW_RUNNING_MCU_VERSION);
-        return FW_RUNNING_MCU_VERSION;
-    }
-    Log_i("FW running module version: %s", FW_RUNNING_MODULE_VERSION);
-    return FW_RUNNING_MODULE_VERSION;
+    Log_i("Current report version: %s", FW_RUNNING_MCU_VERSION);
+    return FW_RUNNING_MCU_VERSION;
 }
 /**********************************************************************************
  * OTA file operations END
@@ -395,12 +391,7 @@ bool process_ota(OTAContextData *ota_ctx)
     int   last_downloaded_size  = 0;
 
     /* Must report version first */
-    if (0 > IOT_OTA_ReportVersion(h_ota, IOT_OTA_FWTYPE_MCU, _get_local_fw_running_version(IOT_OTA_FWTYPE_MCU))) {
-        Log_e("report OTA version failed");
-        upgrade_fetch_success = false;
-        goto end_of_ota;
-    }
-    if (0 > IOT_OTA_ReportVersion(h_ota, IOT_OTA_FWTYPE_MODULE, _get_local_fw_running_version(IOT_OTA_FWTYPE_MODULE))) {
+    if (0 > IOT_OTA_ReportVersion(h_ota, _get_local_fw_running_version())) {
         Log_e("report OTA version failed");
         upgrade_fetch_success = false;
         goto end_of_ota;
@@ -416,7 +407,10 @@ bool process_ota(OTAContextData *ota_ctx)
         if (IOT_OTA_IsFetching(h_ota)) {
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_FILE_SIZE, &ota_ctx->fw_file_size, 4);
             IOT_OTA_Ioctl(h_ota, IOT_OTAG_VERSION, ota_ctx->remote_version, FW_VERSION_MAX_LEN);
-            IOT_OTA_Ioctl(h_ota, IOT_OTAG_FWTYPE, &ota_ctx->fw_type, 4);
+            IOT_OTA_Ioctl(h_ota, IOT_OTAG_USR_DEFINED, ota_ctx->usr_defined_info, FW_USR_DEFINED_MAX_LEN);
+
+            // process usr defined info here
+            Log_d("usr defined info : %s", ota_ctx->usr_defined_info);
 
             HAL_Snprintf(ota_ctx->fw_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.bin", ota_ctx->remote_version);
             HAL_Snprintf(ota_ctx->fw_info_file_path, FW_FILE_PATH_MAX_LEN, "./FW_%s.json", ota_ctx->remote_version);
@@ -438,8 +432,7 @@ bool process_ota(OTAContextData *ota_ctx)
                 upgrade_fetch_success = false;
                 goto end_of_ota;
             }
-            Log_d("remote fw type : %d %s", ota_ctx->fw_type,
-                  ota_ctx->fw_type == IOT_OTA_FWTYPE_MCU ? IOT_OTA_FWTYPE_MCU_STR : IOT_OTA_FWTYPE_MODULE_STR);
+            
             // download and save the fw
             do {
                 int len = IOT_OTA_FetchYield(h_ota, buf_ota, OTA_BUF_LEN, 1);

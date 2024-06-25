@@ -85,8 +85,7 @@ typedef enum {
     IOT_OTAG_MD5SUM,         /* firmware md5 checksum (string) */
     IOT_OTAG_VERSION,        /* firmware version (string) */
     IOT_OTAG_CHECK_FIRMWARE, /* check firmware */
-    IOT_OTAG_FWTYPE,         /* firmware type */
-
+    IOT_OTAG_USR_DEFINED,    /* user defined infomation */
 } IOT_OTA_CmdType;
 
 typedef enum {
@@ -103,15 +102,6 @@ typedef enum {
     IOT_OTAR_UPGRADE_SUCCESS  = 4,
 
 } IOT_OTAReportType;
-
-#define IOT_OTA_FWTYPE_MCU_STR  "mcu"
-#define IOT_OTA_FWTYPE_MODULE_STR "module"
-
-typedef enum {
-    IOT_OTA_FWTYPE_UNKNOW = 0,
-    IOT_OTA_FWTYPE_MCU    = 1,
-    IOT_OTA_FWTYPE_MODULE = 2,
-} IOT_OTAFWType;
 
 /**
  * @brief Init OTA module and resources
@@ -169,12 +159,11 @@ int IOT_OTA_ResetClientMD5(void *handle);
  *        NOTE: do this report before real download
  *
  * @param handle: OTA module handle
- * @param fw_type: local firmware type
  * @param version:  local firmware version string
  *
  * @return packet id (>=0) when success, or err code (<0) for failure
  */
-int IOT_OTA_ReportVersion(void *handle, IOT_OTAFWType fw_type, const char *version);
+int IOT_OTA_ReportVersion(void *handle, const char *version);
 
 /**
  * @brief Report upgrade begin to server

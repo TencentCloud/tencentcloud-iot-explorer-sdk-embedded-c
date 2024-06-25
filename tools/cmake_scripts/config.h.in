@@ -26,3 +26,4 @@
 #cmakedefine RESOURCE_UPDATE_ENABLED
 #cmakedefine WIFI_CONFIG_ENABLED
 #cmakedefine KGMUSIC_ENABLED
+#cmakedefine QQMUSIC_ENABLED

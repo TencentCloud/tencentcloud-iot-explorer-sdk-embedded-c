@@ -1,4 +1,4 @@
 #ifndef __GIT_INFO_H_
 #define __GIT_INFO_H_
-#define GIT_COMMIT_ID "b85e01b58221478f86521ee2aced6615b2f83485"
+#define GIT_COMMIT_ID "77c26bdb692c2fed2f5acf68027614992d8d6266"
 #endif

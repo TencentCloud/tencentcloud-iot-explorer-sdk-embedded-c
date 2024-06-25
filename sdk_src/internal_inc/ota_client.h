@@ -36,7 +36,7 @@ extern "C" {
 #define URL_FIELD      "url"
 #define FILESIZE_FIELD "file_size"
 #define RESULT_FIELD   "result_code"
-#define FW_TYPE        "fw_type"
+#define USER_DEFINED   "user_defined"
 
 #define REPORT_VERSION_RSP "report_version_rsp"
 #define UPDATE_FIRMWARE    "update_firmware"

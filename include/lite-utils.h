@@ -78,6 +78,7 @@ int LITE_get_int32(int32_t *value, char *src);
 int LITE_get_int16(int16_t *value, char *src);
 int LITE_get_int8(int8_t *value, char *src);
 int LITE_get_uint32(uint32_t *value, char *src);
+int LITE_get_uint64(uint64_t *value, char *src);
 int LITE_get_uint16(uint16_t *value, char *src);
 int LITE_get_uint8(uint8_t *value, char *src);
 int LITE_get_float(float *value, char *src);
@@ -170,6 +171,37 @@ int LITE_dt_parse_str_array(char *out_res[], size_t arr_len, size_t str_len, con
  */
 int LITE_dt_parse_obj_array(void *out_res, size_t arr_len, size_t obj_len, const char *json_str,
                             json_object_parse_t parse_fn);
+
+/**
+ * @brief
+ *
+ * @param key json key
+ * @param src json string
+ * @param out_int the output int32
+ * @return 0 for success, negative for failure
+ */
+int LITE_json_get_int32(char *key, char *src, int32_t *out);
+
+/**
+ * @brief
+ *
+ * @param key json key
+ * @param src json string
+ * @param out_int the output uint32
+ * @return 0 for success, negative for failure
+ */
+int LITE_json_get_uint32(char *key, char *src, uint32_t *out);
+
+/**
+ * @brief
+ *
+ * @param key json key
+ * @param src json string
+ * @param out_int the output uint64
+ * @return 0 for success, negative for failure
+ */
+int LITE_json_get_uint64(char *key, char *src, uint64_t *out);
+
 #ifdef __cplusplus
 }
 #endif

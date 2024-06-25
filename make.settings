@@ -91,5 +91,8 @@ FEATURE_WIFI_CONFIG_ENABLED             = n
 # 是否打开酷狗音乐功能
 FEATURE_KGMUSIC_ENABLED                 = y
 
+# 是否打开QQ音乐功能
+FEATURE_QQMUSIC_ENABLED                 = y
+
 # 是否打开位置功能
 FEATURE_LOCATION_ENABLED                = y
