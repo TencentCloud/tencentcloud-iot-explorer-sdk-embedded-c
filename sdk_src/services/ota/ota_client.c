@@ -47,11 +47,10 @@ typedef struct {
     uint32_t           size_fetched;      /* size of already downloaded */
     uint32_t           size_file;         /* size of file */
 
-    char         *purl;             /* point to URL */
-    char         *version;          /* point to string */
-    char         *usr_defined_info; /* usr defined infomation, json string, max len 1536bytes */
-    char          md5sum[33];       /* MD5 string */
-    IOT_OTAFWType fw_type;          /* fw type */
+    char *purl;             /* point to URL */
+    char *version;          /* point to string */
+    char *usr_defined_info; /* usr defined infomation, json string, max len 1536bytes */
+    char  md5sum[33];       /* MD5 string */
 
     void *md5;       /* MD5 handle */
     void *ch_signal; /* channel handle of signal exchanged with OTA server */
@@ -118,7 +117,7 @@ static void _ota_callback(void *pcontext, const char *msg, uint32_t msg_len)
         }
 
         if (0 != qcloud_otalib_get_params(msg, &json_type, &h_ota->purl, &h_ota->version, h_ota->md5sum,
-                                          &h_ota->size_file, &h_ota->fw_type, &h_ota->usr_defined_info)) {
+                                          &h_ota->size_file, &h_ota->usr_defined_info)) {
             Log_e("Get firmware parameter failed");
             goto End;
         }
@@ -182,10 +181,7 @@ static int IOT_OTA_ReportProgress(void *handle, IOT_OTA_Progress_Code progress, 
         return QCLOUD_ERR_FAILURE;
     }
 
-    ret = qcloud_otalib_gen_report_msg(
-        msg_reported, MSG_REPORT_LEN, h_ota->id,
-        h_ota->fw_type == IOT_OTA_FWTYPE_MCU ? IOT_OTA_FWTYPE_MCU_STR : IOT_OTA_FWTYPE_MODULE_STR, h_ota->version,
-        progress, reportType);
+    ret = qcloud_otalib_gen_report_msg(msg_reported, MSG_REPORT_LEN, h_ota->id, h_ota->version, progress, reportType);
     if (0 != ret) {
         Log_e("generate reported message failed");
         h_ota->err = ret;
@@ -240,10 +236,7 @@ static int IOT_OTA_ReportUpgradeResult(void *handle, const char *version, IOT_OT
         return QCLOUD_ERR_FAILURE;
     }
 
-    ret = qcloud_otalib_gen_report_msg(
-        msg_upgrade, MSG_UPGPGRADE_LEN, 1,
-        h_ota->fw_type == IOT_OTA_FWTYPE_MCU ? IOT_OTA_FWTYPE_MCU_STR : IOT_OTA_FWTYPE_MODULE_STR, version, 1,
-        reportType);
+    ret = qcloud_otalib_gen_report_msg(msg_upgrade, MSG_UPGPGRADE_LEN, 1, version, 1, reportType);
     if (ret != 0) {
         Log_e("generate inform message failed");
         h_ota->err = ret;
@@ -420,7 +413,7 @@ int IOT_OTA_ResetClientMD5(void *handle)
     return QCLOUD_RET_SUCCESS;
 }
 
-int IOT_OTA_ReportVersion(void *handle, IOT_OTAFWType fw_type, const char *version)
+int IOT_OTA_ReportVersion(void *handle, const char *version)
 {
 #define MSG_INFORM_LEN (128)
 
@@ -452,7 +445,7 @@ int IOT_OTA_ReportVersion(void *handle, IOT_OTAFWType fw_type, const char *versi
         return QCLOUD_ERR_FAILURE;
     }
 
-    ret = qcloud_otalib_gen_info_msg(msg_informed, MSG_INFORM_LEN, h_ota->id, fw_type, version);
+    ret = qcloud_otalib_gen_info_msg(msg_informed, MSG_INFORM_LEN, h_ota->id, version);
     if (ret != 0) {
         Log_e("generate inform message failed");
         h_ota->err = ret;
@@ -671,11 +664,7 @@ int IOT_OTA_Ioctl(void *handle, IOT_OTA_CmdType type, void *buf, size_t buf_len)
                 }
                 return 0;
             }
-
-        case IOT_OTAG_FWTYPE: {
-            *(IOT_OTAFWType *)buf = h_ota->fw_type;
-            return 0;
-        } break;
+            break;
 
         case IOT_OTAG_USR_DEFINED: {
             memset(buf, 0, buf_len);

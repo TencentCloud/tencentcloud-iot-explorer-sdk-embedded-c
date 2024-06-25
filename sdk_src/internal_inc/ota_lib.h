@@ -55,7 +55,7 @@ int qcloud_otalib_get_report_version_result(const char *json);
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
 int qcloud_otalib_get_params(const char *json, char **type, char **url, char **version, char *md5, uint32_t *fileSize,
-                             IOT_OTAFWType *fw_type, char **usr_defined_info);
+                             char **usr_defined_info);
 
 /**
  * @brief Generate firmware info from id and version
@@ -63,11 +63,10 @@ int qcloud_otalib_get_params(const char *json, char **type, char **url, char **v
  * @param buf       output buffer
  * @param bufLen    size of buffer
  * @param id        firmware id
- * @param type      firmware type
  * @param version   firmware version
  * @return          QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, IOT_OTAFWType type, const char *version);
+int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, const char *version);
 
 /**
  * @brief Generate firmware report
@@ -75,14 +74,12 @@ int qcloud_otalib_gen_info_msg(char *buf, size_t bufLen, uint32_t id, IOT_OTAFWT
  * @param buf           output buffer
  * @param bufLen        size of buffer
  * @param id            firmware id
- * @param fw_type       firmware type
  * @param version       firmware version
  * @param progress      download progress
- * @param reportType    report type
  * @return              QCLOUD_RET_SUCCESS for success, or err code for failure
  */
-int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const char *fw_type, const char *version,
-                                 int progress, IOT_OTAReportType reportType);
+int qcloud_otalib_gen_report_msg(char *buf, size_t bufLen, uint32_t id, const char *version, int progress,
+                                 IOT_OTAReportType reportType);
 
 #ifdef __cplusplus
 }
